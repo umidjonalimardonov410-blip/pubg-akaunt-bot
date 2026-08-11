@@ -15,6 +15,13 @@
       "when": 1786445106982,
       "tag": "0001_clean_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786483009883,
+      "tag": "0002_military_eternals",
+      "breakpoints": true
     }
   ]
 }

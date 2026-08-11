@@ -14,6 +14,9 @@ function Router() {
       <Route path={"/accounts"} component={Home} />
       <Route path={"/sell"} component={Home} />
       <Route path={"/orders"} component={Home} />
+      <Route path={"/saved"} component={Home} />
+      <Route path={"/referral"} component={Home} />
+      <Route path={"/chat/:id"} component={Home} />
       <Route path={"/order/:id"} component={Home} />
       <Route path={"/profile"} component={Home} />
       <Route path={"/reviews"} component={Home} />

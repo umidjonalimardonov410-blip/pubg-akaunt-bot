@@ -3,8 +3,8 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows } from "./db";
-import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes } from "../drizzle/schema";
+import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
+import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals } from "../drizzle/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
@@ -514,6 +514,121 @@ export const appRouter = router({
       }),
   }),
 
+  // Buyer watchlist
+  favorites: router({
+    ids: protectedProcedure.query(async ({ ctx }) => getFavoriteAccountIds(ctx.user.id)),
+    list: protectedProcedure.query(async ({ ctx }) => getFavoriteAccounts(ctx.user.id)),
+    toggle: protectedProcedure
+      .input(z.object({ accountId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const account = await getPubgAccountById(input.accountId);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        const existing = await db.select().from(favorites).where(and(eq(favorites.userId, ctx.user.id), eq(favorites.accountId, input.accountId))).limit(1);
+        if (existing.length > 0) {
+          await db.delete(favorites).where(eq(favorites.id, existing[0].id));
+          return { saved: false };
+        }
+        await db.insert(favorites).values({ userId: ctx.user.id, accountId: input.accountId });
+        return { saved: true };
+      }),
+  }),
+
+  // Profile, public seller trust card, and referrals
+  profile: router({
+    get: protectedProcedure.query(async ({ ctx }) => getUserById(ctx.user.id)),
+    update: protectedProcedure
+      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.update(users).set({ name: input.name?.trim() || null, profileBio: input.profileBio?.trim() || null }).where(eq(users.id, ctx.user.id));
+        return await getUserById(ctx.user.id);
+      }),
+    referral: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const user = await getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: 'NOT_FOUND' });
+      const code = user.referralCode || `IS${user.id}${user.openId.slice(0, 6).toUpperCase()}`;
+      if (!user.referralCode) await db.update(users).set({ referralCode: code }).where(eq(users.id, ctx.user.id));
+      const rows = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id));
+      return { code, total: rows.length, credited: rows.filter(row => row.status === 'credited').length, reward: rows.reduce((sum, row) => sum + Number(row.rewardAmount), 0) };
+    }),
+    claimReferral: protectedProcedure
+      .input(z.object({ code: z.string().min(3).max(32) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const referrerRows = await db.select().from(users).where(eq(users.referralCode, input.code.trim().toUpperCase())).limit(1);
+        const referrer = referrerRows[0];
+        if (!referrer || referrer.id === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Referral kodi noto‘g‘ri' });
+        const existing = await db.select().from(referrals).where(eq(referrals.referredUserId, ctx.user.id)).limit(1);
+        if (existing.length > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Referral allaqachon ishlatilgan' });
+        const reward = 5000;
+        await db.transaction(async (tx: any) => {
+          await tx.insert(referrals).values({ referrerId: referrer.id, referredUserId: ctx.user.id, code: input.code.trim().toUpperCase(), rewardAmount: reward.toString(), status: 'credited', creditedAt: new Date() });
+          await tx.update(users).set({ walletBalance: sql`walletBalance + ${reward}` }).where(eq(users.id, referrer.id));
+          await tx.insert(transactions).values({ userId: referrer.id, type: 'referral_reward', amount: reward.toString(), description: `Referral bonusi: ${ctx.user.name || 'yangi foydalanuvchi'}`, status: 'completed' });
+        });
+        return { success: true, reward };
+      }),
+  }),
+
+  // Private buyer/seller messaging. Threads are visible only to participants and admins.
+  chat: router({
+    threads: protectedProcedure.query(async ({ ctx }) => getUserChatThreads(ctx.user.id)),
+    messages: protectedProcedure
+      .input(z.object({ threadId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const thread = await getChatThreadById(input.threadId);
+        if (!thread) throw new TRPCError({ code: 'NOT_FOUND', message: 'Chat topilmadi' });
+        if (thread.buyerId !== ctx.user.id && thread.sellerId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (db && ctx.user.role !== 'admin') await db.update(chatMessages).set({ isRead: true }).where(and(eq(chatMessages.threadId, input.threadId), eq(chatMessages.isRead, false)));
+        return await getChatMessages(input.threadId);
+      }),
+    open: protectedProcedure
+      .input(z.object({ accountId: z.number(), orderId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const account = await getPubgAccountById(input.accountId);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        if (account.sellerId === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'O‘zingizga xabar yubora olmaysiz' });
+        const existingRows = await db.select().from(chatThreads).where(and(eq(chatThreads.accountId, input.accountId), eq(chatThreads.buyerId, ctx.user.id), eq(chatThreads.sellerId, account.sellerId))).limit(1);
+        if (existingRows[0]) return existingRows[0];
+        const result = await db.insert(chatThreads).values({ accountId: input.accountId, orderId: input.orderId, buyerId: ctx.user.id, sellerId: account.sellerId, status: 'open' });
+        return await getChatThreadById(getInsertId(result));
+      }),
+    send: protectedProcedure
+      .input(z.object({ threadId: z.number(), body: z.string().trim().min(1).max(2000) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const thread = await getChatThreadById(input.threadId);
+        if (!thread) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (thread.buyerId !== ctx.user.id && thread.sellerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
+        const result = await db.insert(chatMessages).values({ threadId: input.threadId, senderId: ctx.user.id, body: input.body });
+        await db.update(chatThreads).set({ updatedAt: new Date() }).where(eq(chatThreads.id, input.threadId));
+        const recipientId = thread.buyerId === ctx.user.id ? thread.sellerId : thread.buyerId;
+        await db.insert(notifications).values({ userId: recipientId, type: 'admin_message', title: 'Yangi xavfsiz chat xabari', message: input.body.slice(0, 180), accountId: thread.accountId ?? undefined, orderId: thread.orderId ?? undefined });
+        return { messageId: getInsertId(result) };
+      }),
+    close: protectedProcedure
+      .input(z.object({ threadId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const thread = await getChatThreadById(input.threadId);
+        if (!thread) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (thread.buyerId !== ctx.user.id && thread.sellerId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.update(chatThreads).set({ status: 'closed' }).where(eq(chatThreads.id, input.threadId));
+        return { success: true };
+      }),
+  }),
+
   // Disputes and owner alerts
   disputes: router({
     create: protectedProcedure
@@ -629,6 +744,14 @@ export const appRouter = router({
         }).where(eq(disputes.id, input.disputeId));
 
         return { success: true };
+      }),
+
+    getChatThreads: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        return await db.select().from(chatThreads);
       }),
 
     getStats: protectedProcedure

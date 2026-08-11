@@ -1,6 +1,6 @@
-import { eq, and, or, like, gte, lte, desc } from "drizzle-orm";
+import { eq, and, or, like, gte, lte, desc, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, pubgAccounts, orders, reviews, transactions, notifications, disputes } from "../drizzle/schema";
+import { InsertUser, users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -335,4 +335,40 @@ export function getInsertId(result: unknown): number {
 export function getAffectedRows(result: unknown): number {
   const header = Array.isArray(result) ? result[0] : result;
   return Number((header as { affectedRows?: number; rowsAffected?: number } | undefined)?.affectedRows ?? (header as { rowsAffected?: number } | undefined)?.rowsAffected ?? 0);
+}
+
+export async function getFavoriteAccountIds(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ accountId: favorites.accountId }).from(favorites).where(eq(favorites.userId, userId));
+  return rows.map(row => row.accountId);
+}
+
+export async function getFavoriteAccounts(userId: number) {
+  const ids = await getFavoriteAccountIds(userId);
+  if (ids.length === 0) return [];
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(pubgAccounts).where(inArray(pubgAccounts.id, ids)).orderBy(desc(pubgAccounts.createdAt));
+}
+
+export async function getChatThreadById(threadId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(chatThreads).where(eq(chatThreads.id, threadId)).limit(1);
+  return rows[0];
+}
+
+export async function getChatMessages(threadId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(chatMessages).where(eq(chatMessages.threadId, threadId)).orderBy(chatMessages.createdAt);
+}
+
+export async function getUserChatThreads(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(chatThreads)
+    .where(or(eq(chatThreads.buyerId, userId), eq(chatThreads.sellerId, userId)))
+    .orderBy(desc(chatThreads.updatedAt));
 }

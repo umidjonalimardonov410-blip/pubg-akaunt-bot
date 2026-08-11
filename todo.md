@@ -45,7 +45,7 @@
 - [x] Integration tests for order flow
 - [x] Visual testing on mobile and desktop
 - [x] Performance baseline: cached data queries and bounded notification polling
-- [ ] Final checkpoint and deployment
+- [x] Final checkpoint saved; publishing remains a user action in the Management UI
 - [x] Smart search autocomplete suggestions for account ID, player name, and skins
 - [x] Suggestion-selection UI test coverage
 - [x] Add frontend component tests for autocomplete dropdown visibility and skin/account/player selection
@@ -55,3 +55,23 @@
 - [x] Add tests for accounts.create, media.upload validation, reviews permissions/idempotency, wallet transactions, and admin actions
 - [x] Add a persistence-boundary order flow test covering create through Completed plus forbidden access and invalid transitions
 - [x] Ensure Home.escrow.test.ts is discovered and executed by the final Vitest command
+
+## Pro Marketplace & Telegram Mini App Enhancements
+- [x] Add Telegram WebApp SDK bootstrap with header/background sync, expand, BackButton, and haptic feedback helpers
+- [x] Add Telegram Mini App deep-link/share utilities for account listings and referrals
+- [x] Add favorites/watchlist persistence with buyer-facing saved accounts view
+- [x] Add buyer-seller secure chat threads scoped to an account/order with admin-readable procedures
+- [ ] Add seller profile editing and public seller trust card with verification, badges, rating, sales count, and response indicators
+- [ ] Add account comparison and recently viewed listings for faster purchase decisions
+- [x] Add referral/invite tracking with Uzbek share copy and wallet reward ledger
+- [ ] Add stronger seller media validation, upload limits, and listing draft/preview flow
+- [ ] Add admin audit log and marketplace analytics export-ready queries
+- [x] Add Telegram helper tests for deep links, initialization, and haptic behavior
+- [x] Re-run TypeScript, Vitest, production build, and desktop/mobile visual checks
+- [x] Save a new checkpoint and package the updated Mini App source ZIP
+- [x] Parse Telegram start_param or startapp referral payload and automatically stage/claim it after authentication
+- [x] Add referral deep-link attribution test coverage for incoming ref_ payloads
+- [x] Add Home referral adapter coverage that verifies authenticated Telegram payload triggers profile.claimReferral once
+- [x] Add referral auto-claim edge-case tests for duplicate/self-referral errors and sessionStorage deduplication
+- [x] Add a Home.tsx/client component test that mocks authenticated Telegram start_param and verifies profile.claimReferral is invoked once
+- [x] Add an explicit self-referral error test and confirm sessionStorage deduplication for that response

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json, uniqueIndex } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -18,6 +18,8 @@ export const users = mysqlTable("users", {
   totalSales: int("totalSales").default(0).notNull(),
   isVerifiedSeller: boolean("isVerifiedSeller").default(false).notNull(),
   sellerBadge: mysqlEnum("sellerBadge", ["none", "trusted", "elite", "legendary"]).default("none").notNull(),
+  profileBio: text("profileBio"),
+  referralCode: varchar("referralCode", { length: 32 }),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -134,7 +136,7 @@ export const transactions = mysqlTable("transactions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   
-  type: mysqlEnum("type", ["topup", "withdrawal", "order_payment", "order_refund", "seller_payout"]).notNull(),
+  type: mysqlEnum("type", ["topup", "withdrawal", "order_payment", "order_refund", "seller_payout", "referral_reward"]).notNull(),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   
   // Reference
@@ -194,3 +196,64 @@ export const disputes = mysqlTable("disputes", {
 
 export type Dispute = typeof disputes.$inferSelect;
 export type InsertDispute = typeof disputes.$inferInsert;
+
+/**
+ * Buyer watchlist / saved accounts.
+ */
+export const favorites = mysqlTable("favorites", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({
+  userAccountUnique: uniqueIndex("favorites_user_account_unique").on(table.userId, table.accountId),
+}));
+
+export type Favorite = typeof favorites.$inferSelect;
+export type InsertFavorite = typeof favorites.$inferInsert;
+
+/**
+ * Private buyer/seller thread attached to an account or order.
+ */
+export const chatThreads = mysqlTable("chat_threads", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId"),
+  orderId: int("orderId"),
+  buyerId: int("buyerId").notNull(),
+  sellerId: int("sellerId").notNull(),
+  status: mysqlEnum("status", ["open", "closed"]).default("open").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChatThread = typeof chatThreads.$inferSelect;
+export type InsertChatThread = typeof chatThreads.$inferInsert;
+
+export const chatMessages = mysqlTable("chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  threadId: int("threadId").notNull(),
+  senderId: int("senderId").notNull(),
+  body: text("body").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/**
+ * Referral attribution and one-time reward ledger.
+ */
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(),
+  referredUserId: int("referredUserId").notNull(),
+  code: varchar("code", { length: 32 }).notNull(),
+  rewardAmount: decimal("rewardAmount", { precision: 12, scale: 2 }).default("0").notNull(),
+  status: mysqlEnum("status", ["pending", "credited"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  creditedAt: timestamp("creditedAt"),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;

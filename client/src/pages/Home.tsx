@@ -28,6 +28,7 @@ import {
   Play,
   Plus,
   Search,
+  Send,
   Shield,
   ShoppingBag,
   Sparkles,
@@ -40,6 +41,8 @@ import {
   Zap,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { accountShareUrl, autoClaimTelegramReferral, getTelegramReferralCode, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
+import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
 
 const HERO_IMAGE = "/manus-storage/hero-soldier_222b0d1f.jpeg";
 const CARD_IMAGE = "/manus-storage/soldier-red_6bdf1882.jpg";
@@ -137,7 +140,7 @@ function normalizeAccount(row: any): Listing {
   };
 }
 
-type PageKey = "home" | "accounts" | "sell" | "orders" | "profile" | "reviews" | "support" | "admin" | "details" | "escrow";
+type PageKey = "home" | "accounts" | "sell" | "orders" | "profile" | "reviews" | "support" | "admin" | "details" | "escrow" | "saved" | "chat" | "referral";
 
 export const ESCROW_STAGES = [
   { key: 'payment_frozen', label: 'To‘lov muzlatildi', description: 'Pul bitim yakunigacha himoyalangan.' },
@@ -163,6 +166,9 @@ function pageFromPath(pathname: string): { key: PageKey; id?: number } {
   if (pathname.startsWith("/accounts")) return { key: "accounts" };
   if (pathname.startsWith("/sell")) return { key: "sell" };
   if (pathname.startsWith("/orders")) return { key: "orders" };
+  if (pathname.startsWith("/saved")) return { key: "saved" };
+  if (pathname.startsWith("/referral")) return { key: "referral" };
+  if (pathname.startsWith("/chat/")) return { key: "chat", id: Number(pathname.split("/").pop()) || 1 };
   if (pathname.startsWith("/order/")) return { key: "escrow", id: Number(pathname.split("/").pop()) || 1 };
   if (pathname.startsWith("/profile")) return { key: "profile" };
   if (pathname.startsWith("/reviews")) return { key: "reviews" };
@@ -237,7 +243,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
         <div className="flex items-center gap-10">
           <Brand />
           <nav className="hidden items-center gap-6 text-sm font-semibold text-white/55 lg:flex">
-            {[['Bozor', '/accounts'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Yordam', '/support']].map(([label, path]) => (
+            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Yordam', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => onNavigate(path)} className="transition hover:text-white">{label}</button>
             ))}
           </nav>
@@ -284,7 +290,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
       {menuOpen && (
         <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3 lg:hidden">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-1">
-            {[['Bozor', '/accounts'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
+            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{label}</button>
             ))}
           </div>
@@ -320,7 +326,7 @@ function ListingCard({ item, onOpen }: { item: Listing; onOpen: (id: number) => 
         <img src={item.image} alt={item.playerName} className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0e1012] via-transparent to-black/20" />
         <div className="absolute left-3 top-3"><StatusPill tone="red"><Zap className="h-3 w-3" />{item.tag}</StatusPill></div>
-        <button onClick={() => setSaved(!saved)} className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-xl border backdrop-blur-md transition ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300' : 'border-white/10 bg-black/30 text-white/70 hover:text-white'}`} aria-label="Saqlash"><Heart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} /></button>
+        <FavoriteButton accountId={item.id} compact />
         <div className="absolute bottom-3 left-3 flex items-center gap-2"><span className="rounded-lg bg-black/55 px-2.5 py-1 text-[11px] font-bold text-white">LVL {item.level}</span><span className="rounded-lg bg-black/55 px-2.5 py-1 text-[11px] font-bold text-red-300">{item.rank}</span></div>
       </div>
       <div className="p-4">
@@ -467,8 +473,9 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
   const [showVideo, setShowVideo] = useState(false);
   const [buying, setBuying] = useState(false);
   const createOrder = trpc.orders.create.useMutation({ onSuccess: () => { setBuying(false); toast.success("Buyurtma yaratildi. Kafolatli savdo bosqichi boshlandi."); onNavigate('/orders'); }, onError: () => { setBuying(false); toast.info("Kirishdan so'ng buyurtma berish mumkin."); } });
+  const openChat = trpc.chat.open.useMutation({ onSuccess: thread => { telegramHaptic('success'); onNavigate(`/chat/${thread?.id}`); }, onError: error => toast.error(error.message) });
   const handleBuy = () => { if (!buying) { setBuying(true); createOrder.mutate({ accountId: item.id }); } };
-  return <main className="space-y-5"><button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-white/45 transition hover:text-white"><ArrowLeft className="h-4 w-4" />Bozorga qaytish</button><div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]"><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3"><div className="relative overflow-hidden rounded-2xl bg-black"><img src={activeImage} alt={item.playerName} className="aspect-video w-full object-cover" />{showVideo && <div className="absolute inset-0 grid place-items-center bg-black/75 p-4">{item.videoUrl ? <video src={item.videoUrl} controls playsInline className="max-h-full w-full rounded-xl" /> : <div className="rounded-2xl border border-red-500/40 bg-[#121417]/90 p-6 text-center backdrop-blur"><Play className="mx-auto h-8 w-8 text-red-300" /><p className="mt-3 text-sm font-bold text-white">Video hali yuklanmagan</p><p className="mt-1 text-xs text-white/40">Sotuvchi video qo‘shsa, shu oynada ko‘rishingiz mumkin.</p></div>}</div>}<button onClick={() => setShowVideo(!showVideo)} className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-xs font-bold text-white backdrop-blur"><Play className="h-3.5 w-3.5 text-red-300" />{item.videoUrl ? 'Videoni ko‘rish' : 'Video holati'}</button></div><div className="mt-3 grid grid-cols-4 gap-2">{gallery.slice(0, 4).map((image, index) => <button key={`${image}-${index}`} onClick={() => { setActiveImage(image); setShowVideo(false); }} className={`overflow-hidden rounded-xl border ${activeImage === image ? 'border-red-400' : 'border-white/10'}`}><img src={image} alt={`${item.playerName} galereyasi ${index + 1}`} className="aspect-square w-full object-cover" /></button>)}</div></section><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-start justify-between gap-3"><div><StatusPill tone="green"><BadgeCheck className="h-3 w-3" />Admin ko'rigidan o'tadi</StatusPill><h1 className="mt-4 font-display text-3xl font-black text-white">{item.playerName}</h1><p className="mt-2 text-sm text-white/45">LVL {item.level} • {item.rank} • {item.region}</p></div><button className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-white/55 hover:text-red-300" aria-label="Saqlash"><Heart className="h-4 w-4" /></button></div><p className="mt-5 text-sm leading-7 text-white/55">{item.description}</p><div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">{[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-2 block text-lg font-black text-white">{value}</span></div>)}</div><div className="mt-6"><h2 className="font-display text-sm font-black text-white">Inventar va skinlar</h2><div className="mt-3 flex flex-wrap gap-2">{item.skins.map(skin => <span key={skin} className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100"><Sparkles className="h-3.5 w-3.5 text-red-300" />{skin}</span>)}</div></div><div className="mt-7 border-t border-white/[0.08] pt-5"><div className="flex items-end justify-between gap-3"><div><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Sotuv narxi</span><span className="font-display text-2xl font-black text-red-300">{uzNumber(item.price)} <span className="font-sans text-xs">so'm</span></span></div><span className="text-right text-[11px] text-white/35">To'lov kafolat tizimida<br />saqlanadi</span></div><PrimaryButton onClick={handleBuy} className="mt-5 w-full">{buying ? 'Buyurtma berilmoqda...' : 'Kafolatli sotib olish'} <LockKeyhole className="h-4 w-4" /></PrimaryButton></div></section></div><TrustStrip /></main>;
+  return <main className="space-y-5"><button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-white/45 transition hover:text-white"><ArrowLeft className="h-4 w-4" />Bozorga qaytish</button><div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]"><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3"><div className="relative overflow-hidden rounded-2xl bg-black"><img src={activeImage} alt={item.playerName} className="aspect-video w-full object-cover" />{showVideo && <div className="absolute inset-0 grid place-items-center bg-black/75 p-4">{item.videoUrl ? <video src={item.videoUrl} controls playsInline className="max-h-full w-full rounded-xl" /> : <div className="rounded-2xl border border-red-500/40 bg-[#121417]/90 p-6 text-center backdrop-blur"><Play className="mx-auto h-8 w-8 text-red-300" /><p className="mt-3 text-sm font-bold text-white">Video hali yuklanmagan</p><p className="mt-1 text-xs text-white/40">Sotuvchi video qo‘shsa, shu oynada ko‘rishingiz mumkin.</p></div>}</div>}<button onClick={() => setShowVideo(!showVideo)} className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-xs font-bold text-white backdrop-blur"><Play className="h-3.5 w-3.5 text-red-300" />{item.videoUrl ? 'Videoni ko‘rish' : 'Video holati'}</button></div><div className="mt-3 grid grid-cols-4 gap-2">{gallery.slice(0, 4).map((image, index) => <button key={`${image}-${index}`} onClick={() => { setActiveImage(image); setShowVideo(false); }} className={`overflow-hidden rounded-xl border ${activeImage === image ? 'border-red-400' : 'border-white/10'}`}><img src={image} alt={`${item.playerName} galereyasi ${index + 1}`} className="aspect-square w-full object-cover" /></button>)}</div></section><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-start justify-between gap-3"><div><StatusPill tone="green"><BadgeCheck className="h-3 w-3" />Admin ko'rigidan o'tadi</StatusPill><h1 className="mt-4 font-display text-3xl font-black text-white">{item.playerName}</h1><p className="mt-2 text-sm text-white/45">LVL {item.level} • {item.rank} • {item.region}</p></div><FavoriteButton accountId={item.id} /></div><p className="mt-5 text-sm leading-7 text-white/55">{item.description}</p><div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">{[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-2 block text-lg font-black text-white">{value}</span></div>)}</div><div className="mt-6"><h2 className="font-display text-sm font-black text-white">Inventar va skinlar</h2><div className="mt-3 flex flex-wrap gap-2">{item.skins.map(skin => <span key={skin} className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100"><Sparkles className="h-3.5 w-3.5 text-red-300" />{skin}</span>)}</div></div><div className="mt-7 border-t border-white/[0.08] pt-5"><div className="flex items-end justify-between gap-3"><div><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Sotuv narxi</span><span className="font-display text-2xl font-black text-red-300">{uzNumber(item.price)} <span className="font-sans text-xs">so'm</span></span></div><span className="text-right text-[11px] text-white/35">To'lov kafolat tizimida<br />saqlanadi</span></div><div className="mt-5 grid gap-2 sm:grid-cols-2"><PrimaryButton onClick={handleBuy} className="w-full">{buying ? 'Buyurtma berilmoqda...' : 'Kafolatli sotib olish'} <LockKeyhole className="h-4 w-4" /></PrimaryButton><PrimaryButton variant="ghost" onClick={() => { const text = `${item.playerName} — ${uzNumber(item.price)} so‘m. Inferno Stealth’da ko‘ring.`; telegramHaptic('light'); shareTelegramText(text, accountShareUrl(item.id)); }} className="w-full"><Send className="h-4 w-4" />Ulashish</PrimaryButton></div><div className="mt-2 grid gap-2 sm:grid-cols-2"><PrimaryButton variant="soft" disabled={openChat.isPending} onClick={() => openChat.mutate({ accountId: item.id })} className="w-full"><MessageCircle className="h-4 w-4" />{openChat.isPending ? 'Chat ochilmoqda...' : 'Sotuvchiga yozish'}</PrimaryButton><PrimaryButton variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="h-4 w-4" />Bozorga qaytish</PrimaryButton></div></div></section></div><TrustStrip /></main>;
 }
 
 function SellPage({ onNavigate }: { onNavigate: (path: string) => void }) {
@@ -668,6 +675,35 @@ export default function Home() {
   const [location, setLocation] = useLocation();
   const page = pageFromPath(location);
   const navigate = (path: string) => setLocation(path);
-  const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportPage /> : <AdminPage />;
-  return <div className="min-h-screen bg-[#08090b] text-white"><AppHeader onNavigate={navigate} /><div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-red-500/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-4 pb-24 pt-7 lg:px-8 lg:pb-12 lg:pt-10">{content}</div></div><BottomNav current={page.key} onNavigate={navigate} /></div>;
+  const { isAuthenticated } = useAuth();
+  const claimReferral = trpc.profile.claimReferral.useMutation();
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    autoClaimTelegramReferral({
+      isAuthenticated,
+      code: getTelegramReferralCode(),
+      storage: window.sessionStorage,
+      claim: (input, callbacks) => claimReferral.mutate(input, callbacks),
+      onSuccess: result => {
+        telegramHaptic('success');
+        toast.success(`${uzNumber(result.reward)} so‘m referral bonusi qo‘shildi`);
+      },
+      onError: error => {
+        if (!/already|allaqachon|o'zi|o‘z/i.test(error.message)) toast.info('Referral kodi avtomatik tekshirilmadi. Profil orqali qayta urinib ko‘ring.');
+      },
+    });
+  }, [isAuthenticated]);
+  React.useEffect(() => {
+    const webApp = initTelegramWebApp();
+    if (!webApp) return;
+    const goBack = () => { if (location !== '/') setLocation('/'); };
+    if (page.key === 'home') webApp.BackButton?.hide?.();
+    else {
+      webApp.BackButton?.show?.();
+      webApp.BackButton?.onClick?.(goBack);
+    }
+    return () => webApp.BackButton?.offClick?.(goBack);
+  }, [location, page.key, setLocation]);
+  const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportPage /> : page.key === 'admin' ? <AdminPage /> : <ReferralPage />;
+  return <div className="min-h-screen bg-[#08090b] text-white"><AppHeader onNavigate={navigate} /><div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-red-500/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-4 pb-24 pt-7 lg:px-8 lg:pb-12">{content}</div></div><BottomNav current={page.key} onNavigate={navigate} /></div>;
 }
