@@ -242,6 +242,35 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
 
 /**
+ * Admin audit logs for marketplace security and oversight.
+ */
+export const adminAuditLogs = mysqlTable("admin_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  adminId: int("adminId").notNull(),
+  action: varchar("action", { length: 128 }).notNull(),
+  targetType: varchar("targetType", { length: 64 }).notNull(),
+  targetId: int("targetId"),
+  details: text("details"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLogs.$inferInsert;
+
+/**
+ * Recently viewed accounts for quick comparison and buyer history.
+ */
+export const recentlyViewed = mysqlTable("recently_viewed", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId").notNull(),
+  viewedAt: timestamp("viewedAt").defaultNow().notNull(),
+});
+
+export type RecentlyViewed = typeof recentlyViewed.$inferSelect;
+export type InsertRecentlyViewed = typeof recentlyViewed.$inferInsert;
+
+/**
  * Referral attribution and one-time reward ledger.
  */
 export const referrals = mysqlTable("referrals", {
