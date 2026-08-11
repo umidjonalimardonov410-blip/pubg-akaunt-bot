@@ -1,11 +1,19 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { z } from "zod";
+import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts } from "./db";
+import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes } from "../drizzle/schema";
+import { eq, and, gte, sql } from "drizzle-orm";
+import { storagePut } from "./storage";
+import { notifyOwner } from "./_core/notification";
+import { TRPCError } from "@trpc/server";
+import { ENV } from "./_core/env";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -17,12 +25,629 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // Marketplace: Accounts
+  accounts: router({
+    search: publicProcedure
+      .input(z.object({
+        search: z.string().optional(),
+        minPrice: z.number().optional(),
+        maxPrice: z.number().optional(),
+        minLevel: z.number().optional(),
+        maxLevel: z.number().optional(),
+        region: z.string().optional(),
+        skins: z.array(z.string()).optional(),
+        limit: z.number().optional().default(20),
+        offset: z.number().optional().default(0),
+      }))
+      .query(async ({ input }) => {
+        return await searchPubgAccounts(input);
+      }),
+
+    suggestions: publicProcedure
+      .input(z.object({ query: z.string().max(80) }))
+      .query(async ({ input }) => getAccountSuggestions(input.query)),
+
+    getById: publicProcedure
+      .input(z.number())
+      .query(async ({ input }) => {
+        return await getPubgAccountById(input);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        accountId: z.string(),
+        playerName: z.string(),
+        level: z.number(),
+        region: z.string(),
+        kdRatio: z.number(),
+        winRate: z.number(),
+        totalMatches: z.number(),
+        headshotPercentage: z.number(),
+        ucBalance: z.number(),
+        outfitCount: z.number(),
+        gunSkinCount: z.number(),
+        vehicleCount: z.number(),
+        featuredSkins: z.array(z.string()),
+        price: z.number(),
+        description: z.string().optional(),
+        thumbnailUrl: z.string().optional(),
+        galleryUrls: z.array(z.string()).max(12),
+        videoUrl: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database unavailable' });
+
+        const result = await db.insert(pubgAccounts).values({
+          sellerId: ctx.user.id,
+          accountId: input.accountId,
+          playerName: input.playerName,
+          level: input.level,
+          region: input.region,
+          kdRatio: input.kdRatio.toString(),
+          winRate: input.winRate.toString(),
+          totalMatches: input.totalMatches,
+          headshotPercentage: input.headshotPercentage.toString(),
+          ucBalance: input.ucBalance,
+          outfitCount: input.outfitCount,
+          gunSkinCount: input.gunSkinCount,
+          vehicleCount: input.vehicleCount,
+          featuredSkins: input.featuredSkins,
+          price: input.price.toString(),
+          description: input.description,
+          thumbnailUrl: input.thumbnailUrl,
+          galleryUrls: input.galleryUrls,
+          videoUrl: input.videoUrl,
+          status: 'pending_verification',
+        });
+
+        const accountId = (result as any).insertId;
+        await notifyOwner({
+          title: "Yangi PUBG akkaunt e'loni",
+          content: `${input.playerName} (${input.region}) e'loni admin ko'rigiga yuborildi. Narx: ${input.price} so'm.`,
+        }).catch(() => undefined);
+        try {
+          const owner = await getUserByOpenId(ENV.ownerOpenId);
+          if (owner) {
+            await db.insert(notifications).values({
+              userId: owner.id,
+              type: 'new_listing',
+              title: "Yangi PUBG akkaunt e'loni",
+              message: `${input.playerName} e'loni admin ko'rigiga yuborildi.`,
+              accountId,
+            });
+          }
+        } catch (error) {
+          console.warn('[Notifications] Listing owner alert was not persisted:', error);
+        }
+        return { id: accountId };
+      }),
+
+    getSellerAccounts: protectedProcedure
+      .input(z.number().optional())
+      .query(async ({ ctx, input }) => {
+        const sellerId = input || ctx.user.id;
+        return await getSellerAccounts(sellerId);
+      }),
+  }),
+
+  // Secure media upload: the client sends a bounded base64 payload and the server writes it to S3.
+  media: router({
+    upload: protectedProcedure
+      .input(z.object({
+        fileName: z.string().min(1).max(180),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"]),
+        dataBase64: z.string().min(1).max(12_000_000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const bytes = Buffer.from(input.dataBase64, "base64");
+        if (bytes.length > 8 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Fayl hajmi 8 MB dan oshmasin" });
+        }
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+        return await storagePut(`users/${ctx.user.id}/accounts/${safeName}`, bytes, input.contentType);
+      }),
+  }),
+
+  // Marketplace: Orders
+  orders: router({
+    create: protectedProcedure
+      .input(z.object({
+        accountId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const account = await getPubgAccountById(input.accountId);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        if (account.status !== 'available') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Akkaunt sotilmagan' });
+        if (account.sellerId === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'O\'z e\'loningizni sotib olmang' });
+
+        const price = account.price.toString();
+        const orderResult = await db.transaction(async (tx: any) => {
+          const balanceResult = await tx.update(users)
+            .set({ walletBalance: sql`walletBalance - ${price}` })
+            .where(and(eq(users.id, ctx.user.id), gte(users.walletBalance, price)));
+          if (!balanceResult || Number(balanceResult.affectedRows ?? 0) !== 1) {
+            throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Hamyon balansida mablag‘ yetarli emas' });
+          }
+
+          const reservationResult = await tx.update(pubgAccounts)
+            .set({ status: 'pending_verification' })
+            .where(and(eq(pubgAccounts.id, input.accountId), eq(pubgAccounts.status, 'available')));
+          if (!reservationResult || Number(reservationResult.affectedRows ?? 0) !== 1) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Bu akkaunt hozirgina boshqa xaridor tomonidan band qilindi' });
+          }
+
+          const result = await tx.insert(orders).values({
+            accountId: input.accountId,
+            buyerId: ctx.user.id,
+            sellerId: account.sellerId,
+            price,
+            status: 'pending',
+            escrowStage: 'payment_frozen',
+          });
+          const orderId = Number((result as any).insertId);
+          await tx.insert(transactions).values({
+            userId: ctx.user.id,
+            type: 'order_payment',
+            amount: price,
+            orderId,
+            description: `#${orderId} kafolatli savdo uchun mablag‘ muzlatildi`,
+            status: 'completed',
+          });
+          return orderId;
+        });
+
+        await notifyOwner({
+          title: "Yangi kafolatli savdo",
+          content: `#${orderResult} buyurtma uchun to'lov muzlatildi. Akkaunt: ${account.playerName}.`,
+        }).catch(() => undefined);
+        try {
+          const owner = await getUserByOpenId(ENV.ownerOpenId);
+          if (owner) {
+            await db.insert(notifications).values({
+              userId: owner.id,
+              type: 'order_status',
+              title: 'Yangi kafolatli savdo',
+              message: `#${orderResult} buyurtmada to'lov muzlatildi.`,
+              accountId: account.id,
+              orderId: orderResult,
+            });
+          }
+        } catch (error) {
+          console.warn('[Notifications] Escrow owner alert was not persisted:', error);
+        }
+
+        return { orderId: orderResult };
+      }),
+
+    getById: protectedProcedure
+      .input(z.number())
+      .query(async ({ ctx, input }) => {
+        const order = await getOrderById(input);
+        if (!order) return undefined;
+        const isParticipant = order.buyerId === ctx.user.id || order.sellerId === ctx.user.id;
+        if (!isParticipant && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Bu buyurtmaga kirish huquqi yo‘q' });
+        return order;
+      }),
+
+    getUserOrders: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await getUserOrders(ctx.user.id);
+      }),
+
+    getSellerOrders: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await getSellerOrders(ctx.user.id);
+      }),
+
+    updateStatus: protectedProcedure
+      .input(z.object({
+        orderId: z.number(),
+        status: z.enum(['pending', 'in_escrow', 'completed', 'cancelled', 'disputed']),
+        escrowStage: z.enum(['payment_frozen', 'account_verification', 'buyer_confirmation']).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const order = await getOrderById(input.orderId);
+        if (!order) throw new TRPCError({ code: 'NOT_FOUND' });
+        const isAdmin = ctx.user.role === 'admin';
+        const isSeller = order.sellerId === ctx.user.id;
+        const isBuyer = order.buyerId === ctx.user.id;
+        if (!isAdmin && !isSeller && !isBuyer) throw new TRPCError({ code: 'FORBIDDEN' });
+        if (order.status === 'completed' || order.status === 'cancelled' || order.status === 'disputed') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Yakunlangan buyurtma statusini o‘zgartirib bo‘lmaydi' });
+        }
+        if (input.status !== 'in_escrow' || !input.escrowStage) {
+          if (!(isAdmin && input.status === 'cancelled')) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Faqat navbatdagi kafolat bosqichiga o‘tish mumkin' });
+          }
+        }
+        if (input.status === 'in_escrow' && input.escrowStage) {
+          const expectedNext = order.escrowStage === 'payment_frozen'
+            ? 'account_verification'
+            : order.escrowStage === 'account_verification'
+              ? 'buyer_confirmation'
+              : undefined;
+          if (input.escrowStage !== expectedNext) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Kafolat bosqichi tartibi buzildi' });
+          }
+          if (!isAdmin && !isSeller) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Bu bosqichni faqat sotuvchi yoki admin yangilaydi' });
+          }
+        }
+
+        const updateData: any = { status: input.status };
+        if (input.escrowStage) updateData.escrowStage = input.escrowStage;
+        await db.update(orders).set(updateData).where(eq(orders.id, input.orderId));
+        if (input.status === 'in_escrow' && input.escrowStage) {
+          const stageLabel = input.escrowStage === 'account_verification'
+            ? 'akkaunt tekshiruvi'
+            : 'xaridor tasdig‘i';
+          await notifyOwner({
+            title: 'Kafolatli savdo bosqichi yangilandi',
+            content: `#${input.orderId} buyurtma ${stageLabel} bosqichiga o‘tdi.`,
+          }).catch(() => undefined);
+          try {
+            const owner = await getUserByOpenId(ENV.ownerOpenId);
+            if (owner) {
+              await db.insert(notifications).values({
+                userId: owner.id,
+                type: 'order_status',
+                title: 'Kafolatli savdo bosqichi yangilandi',
+                message: `#${input.orderId} buyurtma ${stageLabel} bosqichiga o‘tdi.`,
+                orderId: input.orderId,
+              });
+            }
+          } catch (error) {
+            console.warn('[Notifications] Escrow stage owner alert was not persisted:', error);
+          }
+        }
+        return { success: true };
+      }),
+
+    confirmBuyer: protectedProcedure
+      .input(z.number())
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const order = await getOrderById(input);
+        if (!order) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (order.buyerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
+        if (order.status !== 'in_escrow' || order.escrowStage !== 'buyer_confirmation') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Xaridor tasdig‘i uchun akkaunt tekshiruvi yakunlanishi kerak' });
+        }
+
+        await db.transaction(async (tx: any) => {
+          const completed = await tx.update(orders)
+            .set({ buyerConfirmed: true, buyerConfirmedAt: new Date(), status: 'completed', completedAt: new Date() })
+            .where(and(eq(orders.id, input), eq(orders.status, 'in_escrow'), eq(orders.escrowStage, 'buyer_confirmation')));
+          if (!completed || Number(completed.affectedRows ?? 0) !== 1) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Buyurtma boshqa jarayon tomonidan yakunlandi' });
+          }
+          await tx.update(pubgAccounts)
+            .set({ status: 'sold' })
+            .where(eq(pubgAccounts.id, order.accountId));
+          await tx.update(users)
+            .set({ walletBalance: sql`walletBalance + ${order.price}`, totalSales: sql`totalSales + 1` })
+            .where(eq(users.id, order.sellerId));
+          await tx.insert(transactions).values({
+            userId: order.sellerId,
+            type: 'seller_payout',
+            amount: order.price.toString(),
+            orderId: input,
+            description: `#${input} savdosi uchun sotuvchi to‘lovi`,
+            status: 'completed',
+          });
+        });
+
+        return { success: true };
+      }),
+
+    cancel: protectedProcedure
+      .input(z.object({ orderId: z.number(), reason: z.string().max(255).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const order = await getOrderById(input.orderId);
+        if (!order) throw new TRPCError({ code: 'NOT_FOUND' });
+        const isParticipant = order.buyerId === ctx.user.id || order.sellerId === ctx.user.id;
+        if (!isParticipant && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        if (order.status === 'completed' || order.status === 'cancelled') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Bu buyurtma allaqachon yakunlangan' });
+        }
+
+        await db.transaction(async (tx: any) => {
+          const cancelled = await tx.update(orders)
+            .set({ status: 'cancelled' })
+            .where(and(eq(orders.id, input.orderId), eq(orders.status, order.status)));
+          if (!cancelled || Number(cancelled.affectedRows ?? 0) !== 1) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Buyurtma statusi o‘zgargan, qayta urinib ko‘ring' });
+          }
+          await tx.update(pubgAccounts).set({ status: 'available' }).where(eq(pubgAccounts.id, order.accountId));
+          await tx.update(users)
+            .set({ walletBalance: sql`walletBalance + ${order.price}` })
+            .where(eq(users.id, order.buyerId));
+          await tx.insert(transactions).values({
+            userId: order.buyerId,
+            type: 'order_refund',
+            amount: order.price.toString(),
+            orderId: input.orderId,
+            description: input.reason || `#${input.orderId} savdosi bekor qilindi`,
+            status: 'completed',
+          });
+        });
+        return { success: true };
+      }),
+  }),
+
+  // Marketplace: Reviews
+  reviews: router({
+    create: protectedProcedure
+      .input(z.object({
+        orderId: z.number(),
+        rating: z.number().min(1).max(5),
+        comment: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const order = await getOrderById(input.orderId);
+        if (!order) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (order.buyerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
+
+        const existing = await getOrderReview(input.orderId);
+        if (existing) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Sharh allaqachon qoldirilgan' });
+
+        const result = await db.insert(reviews).values({
+          orderId: input.orderId,
+          reviewerId: ctx.user.id,
+          sellerId: order.sellerId,
+          rating: input.rating,
+          comment: input.comment,
+        });
+
+        return { reviewId: (result as any).insertId };
+      }),
+
+    getSellerReviews: publicProcedure
+      .input(z.number())
+      .query(async ({ input }) => {
+        return await getSellerReviews(input);
+      }),
+  }),
+
+  // Marketplace: Wallet & Transactions
+  wallet: router({
+    getBalance: protectedProcedure
+      .query(async ({ ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        return { balance: user?.walletBalance || 0 };
+      }),
+
+    topup: protectedProcedure
+      .input(z.object({ amount: z.number().int().positive().min(1000).max(100000000) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        await db.transaction(async (tx: any) => {
+          await tx.update(users).set({ walletBalance: sql`walletBalance + ${input.amount}` }).where(eq(users.id, ctx.user.id));
+          await tx.insert(transactions).values({
+            userId: ctx.user.id,
+            type: 'topup',
+            amount: input.amount.toString(),
+            description: 'Hamyon to‘ldirildi',
+            status: 'completed',
+          });
+        });
+
+        return { success: true };
+      }),
+
+    withdraw: protectedProcedure
+      .input(z.object({ amount: z.number().int().positive().min(10000).max(100000000), destination: z.string().min(4).max(255) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        await db.transaction(async (tx: any) => {
+          const balanceResult = await tx.update(users)
+            .set({ walletBalance: sql`walletBalance - ${input.amount}` })
+            .where(and(eq(users.id, ctx.user.id), gte(users.walletBalance, input.amount.toString())));
+          if (!balanceResult || Number(balanceResult.affectedRows ?? 0) !== 1) {
+            throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Yechib olish uchun balans yetarli emas' });
+          }
+          await tx.insert(transactions).values({
+            userId: ctx.user.id,
+            type: 'withdrawal',
+            amount: input.amount.toString(),
+            description: `Yechib olish so‘rovi: ${input.destination}`,
+            status: 'pending',
+          });
+        });
+
+        await notifyOwner({
+          title: 'Yangi yechib olish so‘rovi',
+          content: `Foydalanuvchi #${ctx.user.id} ${input.amount} so‘m yechib olishni so‘radi.`,
+        }).catch(() => undefined);
+        return { success: true };
+      }),
+
+    getTransactions: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await getUserTransactions(ctx.user.id);
+      }),
+  }),
+
+  // Marketplace: Notifications
+  notifications: router({
+    getUnread: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await getUserNotifications(ctx.user.id, true);
+      }),
+
+    getAll: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await getUserNotifications(ctx.user.id);
+      }),
+
+    markAsRead: protectedProcedure
+      .input(z.number())
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, input));
+        return { success: true };
+      }),
+  }),
+
+  // Disputes and owner alerts
+  disputes: router({
+    create: protectedProcedure
+      .input(z.object({ orderId: z.number(), reason: z.string().min(3).max(255), description: z.string().max(2000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const order = await getOrderById(input.orderId);
+        if (!order) throw new TRPCError({ code: 'NOT_FOUND', message: 'Buyurtma topilmadi' });
+        if (order.buyerId !== ctx.user.id && order.sellerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
+        if (order.status === 'completed' || order.status === 'cancelled') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Yakunlangan savdoga nizo ochib bo‘lmaydi' });
+        const existing = await getOrderDispute(input.orderId);
+        if (existing && existing.status !== 'closed') throw new TRPCError({ code: 'CONFLICT', message: 'Bu buyurtma uchun nizo allaqachon ochilgan' });
+
+        const result = await db.insert(disputes).values({
+          orderId: input.orderId,
+          reportedBy: ctx.user.id,
+          reason: input.reason,
+          description: input.description,
+          status: 'open',
+        });
+        await db.update(orders).set({ status: 'disputed' }).where(and(eq(orders.id, input.orderId), eq(orders.status, order.status)));
+        const owner = await getUserByOpenId(ENV.ownerOpenId);
+        if (owner) {
+          await db.insert(notifications).values({
+            userId: owner.id,
+            type: 'dispute_alert',
+            title: 'Yangi nizo ochildi',
+            message: `#${(result as any).insertId} nizo: ${input.reason}`,
+            orderId: input.orderId,
+          });
+        }
+        await notifyOwner({
+          title: 'Yangi savdo nizosi',
+          content: `#${input.orderId} buyurtma bo‘yicha nizo ochildi: ${input.reason}`,
+        }).catch(() => undefined);
+        return { disputeId: (result as any).insertId };
+      }),
+  }),
+
+  // Admin: Disputes & Management
+  admin: router({
+    getPendingAccounts: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        return await getPendingAccounts();
+      }),
+
+    verifyAccount: protectedProcedure
+      .input(z.object({ accountId: z.number(), approved: z.boolean(), notes: z.string().max(2000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const account = await getPubgAccountById(input.accountId);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        if (account.status !== 'pending_verification') throw new TRPCError({ code: 'CONFLICT', message: 'Bu e’lon allaqachon ko‘rib chiqilgan' });
+
+        await db.update(pubgAccounts).set({
+          status: input.approved ? 'available' : 'delisted',
+          isVerified: input.approved,
+          verificationNotes: input.notes,
+        }).where(and(eq(pubgAccounts.id, input.accountId), eq(pubgAccounts.status, 'pending_verification')));
+        await db.insert(notifications).values({
+          userId: account.sellerId,
+          type: 'admin_message',
+          title: input.approved ? 'E’lon tasdiqlandi' : 'E’lon rad etildi',
+          message: input.notes || (input.approved ? 'E’loningiz Inferno Stealth bozorida ko‘rinadi.' : 'E’loningiz tekshiruvdan o‘tmadi.'),
+          accountId: input.accountId,
+        });
+        return { success: true };
+      }),
+
+    getDisputes: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        return await getAdminDisputes();
+      }),
+
+    broadcast: protectedProcedure
+      .input(z.object({ message: z.string().min(3).max(2000), title: z.string().min(3).max(255).default('Inferno Stealth xabari') }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const userRows = await db.select({ id: users.id }).from(users);
+        if (userRows.length > 0) {
+          await db.insert(notifications).values(userRows.map(user => ({
+            userId: user.id,
+            type: 'admin_message' as const,
+            title: input.title,
+            message: input.message,
+          })));
+        }
+        return { success: true, recipients: userRows.length };
+      }),
+
+    resolveDispute: protectedProcedure
+      .input(z.object({
+        disputeId: z.number(),
+        resolution: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        await db.update(disputes).set({
+          status: 'resolved',
+          resolution: input.resolution,
+          resolvedAt: new Date(),
+        }).where(eq(disputes.id, input.disputeId));
+
+        return { success: true };
+      }),
+
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [userRows, accountRows, orderRows, payoutRows, disputeRows] = await Promise.all([
+          db.select().from(users),
+          db.select().from(pubgAccounts),
+          db.select().from(orders),
+          db.select().from(transactions).where(eq(transactions.type, 'seller_payout')),
+          getAdminDisputes(),
+        ]);
+        return {
+          totalUsers: userRows.length,
+          totalAccounts: accountRows.filter(row => row.status === 'available').length,
+          pendingAccounts: accountRows.filter(row => row.status === 'pending_verification').length,
+          totalSales: orderRows.filter(row => row.status === 'completed').length,
+          totalRevenue: payoutRows.reduce((sum, row) => sum + Number(row.amount), 0),
+          openDisputes: disputeRows.length,
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

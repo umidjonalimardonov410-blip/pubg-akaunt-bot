@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, and, or, like, gte, lte, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, pubgAccounts, orders, reviews, transactions, notifications, disputes } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -85,8 +84,239 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// PUBG Accounts queries
+export async function searchPubgAccounts(filters: {
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minLevel?: number;
+  maxLevel?: number;
+  region?: string;
+  skins?: string[];
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions: any[] = [eq(pubgAccounts.status, 'available')];
+  
+  if (filters.search) {
+    const query = `%${filters.search}%`;
+    conditions.push(
+      or(
+        like(pubgAccounts.playerName, query),
+        like(pubgAccounts.accountId, query),
+      ),
+    );
+  }
+  
+  if (filters.minPrice !== undefined) {
+    conditions.push(gte(pubgAccounts.price, filters.minPrice.toString()));
+  }
+  
+  if (filters.maxPrice !== undefined) {
+    conditions.push(lte(pubgAccounts.price, filters.maxPrice.toString()));
+  }
+  
+  if (filters.minLevel !== undefined) {
+    conditions.push(gte(pubgAccounts.level, filters.minLevel));
+  }
+  
+  if (filters.maxLevel !== undefined) {
+    conditions.push(lte(pubgAccounts.level, filters.maxLevel));
+  }
+  
+  if (filters.region) {
+    conditions.push(eq(pubgAccounts.region, filters.region));
+  }
+
+  const rows = await db.select().from(pubgAccounts).where(and(...conditions)).orderBy(desc(pubgAccounts.createdAt));
+  const selectedSkins = filters.skins?.map(skin => skin.toLowerCase()).filter(Boolean) ?? [];
+  const filteredRows = selectedSkins.length === 0
+    ? rows
+    : rows.filter(row => {
+        const inventory = (row.featuredSkins ?? []).map(skin => skin.toLowerCase());
+        return selectedSkins.every(skin => inventory.some(item => item.includes(skin)));
+      });
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 20;
+  return filteredRows.slice(offset, offset + limit);
+}
+
+export async function getPubgAccountById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(pubgAccounts).where(eq(pubgAccounts.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getSellerAccounts(sellerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(pubgAccounts)
+    .where(eq(pubgAccounts.sellerId, sellerId))
+    .orderBy(desc(pubgAccounts.createdAt));
+}
+
+// Orders queries
+export async function getOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserOrders(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(orders)
+    .where(
+      and(
+        eq(orders.buyerId, userId)
+      )
+    )
+    .orderBy(desc(orders.createdAt));
+}
+
+export async function getSellerOrders(sellerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(orders)
+    .where(eq(orders.sellerId, sellerId))
+    .orderBy(desc(orders.createdAt));
+}
+
+// Reviews queries
+export async function getSellerReviews(sellerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(reviews)
+    .where(eq(reviews.sellerId, sellerId))
+    .orderBy(desc(reviews.createdAt));
+}
+
+export async function getOrderReview(orderId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(reviews).where(eq(reviews.orderId, orderId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Transactions queries
+export async function getUserTransactions(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(transactions)
+    .where(eq(transactions.userId, userId))
+    .orderBy(desc(transactions.createdAt));
+}
+
+// Notifications queries
+export async function getUserNotifications(userId: number, unreadOnly = false) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [eq(notifications.userId, userId)];
+  if (unreadOnly) {
+    conditions.push(eq(notifications.isRead, false));
+  }
+  
+  return await db.select().from(notifications)
+    .where(and(...conditions))
+    .orderBy(desc(notifications.createdAt));
+}
+
+// Disputes queries
+export async function getOrderDispute(orderId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(disputes).where(eq(disputes.orderId, orderId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAdminDisputes() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(disputes)
+    .where(eq(disputes.status, 'open'))
+    .orderBy(desc(disputes.createdAt));
+}
+
+export async function getAccountSuggestions(query: string) {
+  const normalized = query.trim();
+  if (normalized.length < 2) return [];
+  const lower = normalized.toLowerCase();
+  const featuredSkins = ['M416 Glacier', 'X-Suit', 'Pharaoh X-Suit', 'Glacier Set', 'Conqueror Set'];
+  const skinSuggestions = featuredSkins
+    .filter(skin => skin.toLowerCase().includes(lower))
+    .map(skin => ({ type: 'Skin', label: skin, value: skin, accountId: undefined }));
+  const db = await getDb();
+  if (!db) return skinSuggestions.slice(0, 8);
+
+  try {
+    const rows = await db.select({
+      id: pubgAccounts.id,
+      accountId: pubgAccounts.accountId,
+      playerName: pubgAccounts.playerName,
+      region: pubgAccounts.region,
+      featuredSkins: pubgAccounts.featuredSkins,
+    }).from(pubgAccounts)
+      .where(eq(pubgAccounts.status, 'available'))
+      .orderBy(desc(pubgAccounts.createdAt))
+      .limit(40);
+
+    const suggestions = rows.flatMap(row => {
+      const matchesText = [row.accountId, row.playerName, row.region].some(value => value.toLowerCase().includes(lower));
+      const textMatches = matchesText ? [
+        { type: 'Akkaunt ID', label: row.accountId, value: row.accountId, accountId: row.id },
+        { type: "O'yinchi", label: row.playerName, value: row.playerName, accountId: row.id },
+      ] : [];
+      const matchedSkins = (row.featuredSkins ?? [])
+        .filter(skin => skin.toLowerCase().includes(lower))
+        .map(skin => ({ type: 'Skin', label: skin, value: skin, accountId: row.id }));
+      return [...textMatches, ...matchedSkins];
+    });
+
+    const seen = new Set<string>();
+    return [...suggestions, ...skinSuggestions].filter(item => {
+      const key = `${item.type}:${item.value}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 8);
+  } catch (error) {
+    console.warn('[Database] Suggestions unavailable; using featured skin suggestions:', error);
+    return skinSuggestions.slice(0, 8);
+  }
+}
+
+export async function getPendingAccounts() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(pubgAccounts)
+    .where(eq(pubgAccounts.status, 'pending_verification'))
+    .orderBy(desc(pubgAccounts.createdAt));
+}
