@@ -320,3 +320,19 @@ export async function getPendingAccounts() {
     .where(eq(pubgAccounts.status, 'pending_verification'))
     .orderBy(desc(pubgAccounts.createdAt));
 }
+
+/** Normalize mysql2/Drizzle insert results across driver result shapes. */
+export function getInsertId(result: unknown): number {
+  const header = Array.isArray(result) ? result[0] : result;
+  const id = Number((header as { insertId?: number | string } | undefined)?.insertId);
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error("Insert did not return a valid insertId");
+  }
+  return id;
+}
+
+/** Normalize affected-row counts across direct and tuple-shaped mysql2 results. */
+export function getAffectedRows(result: unknown): number {
+  const header = Array.isArray(result) ? result[0] : result;
+  return Number((header as { affectedRows?: number; rowsAffected?: number } | undefined)?.affectedRows ?? (header as { rowsAffected?: number } | undefined)?.rowsAffected ?? 0);
+}

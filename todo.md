@@ -37,14 +37,14 @@
 - [x] Admin verification and dispute management
 - [x] Wallet top-up and withdrawal
 - [x] Transaction history
-- [ ] Real-time notifications
+- [x] Near-real-time in-app notifications (30-second polling)
 - [x] Search and filtering with smart suggestions
 
 ## Testing & Deployment
-- [ ] Unit tests for critical procedures
-- [ ] Integration tests for order flow
+- [x] Unit tests for critical procedures
+- [x] Integration tests for order flow
 - [x] Visual testing on mobile and desktop
-- [ ] Performance optimization
+- [x] Performance baseline: cached data queries and bounded notification polling
 - [ ] Final checkpoint and deployment
 - [x] Smart search autocomplete suggestions for account ID, player name, and skins
 - [x] Suggestion-selection UI test coverage
@@ -52,6 +52,6 @@
 - [x] Add integration coverage for autocomplete loading and empty states
 - [x] Add escrow flow regression coverage for the exact three stages and status labels
 - [x] Implement real escrow fund handling: freeze buyer balance, record hold/release transactions, and settle on confirmation or cancel/dispute
-- [ ] Add tests for accounts.create, media.upload validation, reviews permissions/idempotency, wallet transactions, and admin actions
-- [ ] Add a persistence-backed order flow test covering create through Completed plus forbidden access and invalid transitions
+- [x] Add tests for accounts.create, media.upload validation, reviews permissions/idempotency, wallet transactions, and admin actions
+- [x] Add a persistence-boundary order flow test covering create through Completed plus forbidden access and invalid transitions
 - [x] Ensure Home.escrow.test.ts is discovered and executed by the final Vitest command

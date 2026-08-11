@@ -220,6 +220,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
     enabled: isAuthenticated,
     refetchInterval: 30_000,
     staleTime: 15_000,
+    refetchOnWindowFocus: false,
   });
   const markAsRead = trpc.notifications.markAsRead.useMutation({
     onSuccess: () => unreadQuery.refetch(),
@@ -356,6 +357,7 @@ export function SearchPanel({ onFilters }: { onFilters: (filters: AccountFilters
   const suggestionQuery = trpc.accounts.suggestions.useQuery(suggestionInput, {
     enabled: draft.search.trim().length >= 2,
     staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
   const update = (key: keyof typeof draft, value: string) => {
     const next = { ...draft, [key]: value };
@@ -439,7 +441,7 @@ function AccountsPage({ onOpen }: { onOpen: (id: number) => void }) {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [filters, setFilters] = useState<AccountFilters>({});
   const input = useMemo(() => ({ ...filters, limit: 40, offset: 0 }), [filters]);
-  const accountsQuery = trpc.accounts.search.useQuery(input, { staleTime: 20_000 });
+  const accountsQuery = trpc.accounts.search.useQuery(input, { staleTime: 20_000, refetchOnWindowFocus: false });
   const remoteListings = (accountsQuery.data ?? []).map(normalizeAccount);
   const fallback = useMemo(() => {
     const query = (filters.search ?? '').toLowerCase();
@@ -458,7 +460,7 @@ function ListListing({ item, onOpen }: { item: Listing; onOpen: (id: number) => 
 }
 
 function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void; onNavigate: (path: string) => void }) {
-  const accountQuery = trpc.accounts.getById.useQuery(id, { staleTime: 30_000 });
+  const accountQuery = trpc.accounts.getById.useQuery(id, { staleTime: 30_000, refetchOnWindowFocus: false });
   const item: Listing = accountQuery.data ? normalizeAccount(accountQuery.data) : (demoListings.find(listing => listing.id === id) ?? demoListings[0]) as Listing;
   const gallery: string[] = item.galleryUrls?.length ? item.galleryUrls : [item.image, CARD_IMAGE, PORTRAIT_IMAGE, HERO_IMAGE];
   const [activeImage, setActiveImage] = useState(gallery[0] ?? item.image);
@@ -527,7 +529,7 @@ function SellPage({ onNavigate }: { onNavigate: (path: string) => void }) {
 function OrdersPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [tab, setTab] = useState<'active' | 'completed'>('active');
   const { isAuthenticated } = useAuth();
-  const ordersQuery = trpc.orders.getUserOrders.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
+  const ordersQuery = trpc.orders.getUserOrders.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
   const liveOrders = (ordersQuery.data ?? []).map(order => {
     const status = order.status === 'completed' ? 'Completed' : order.status === 'in_escrow' ? 'In Escrow' : 'Pending';
     const stage = order.escrowStage === 'buyer_confirmation' ? 3 : order.escrowStage === 'account_verification' ? 2 : 1;
@@ -541,11 +543,11 @@ function OrdersPage({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { user, isAuthenticated } = useAuth();
-  const balanceQuery = trpc.wallet.getBalance.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const transactionsQuery = trpc.wallet.getTransactions.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const listingsQuery = trpc.accounts.getSellerAccounts.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const sellerOrdersQuery = trpc.orders.getSellerOrders.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const reviewsQuery = trpc.reviews.getSellerReviews.useQuery(user?.id ?? 0, { enabled: Boolean(user?.id), staleTime: 15_000 });
+  const balanceQuery = trpc.wallet.getBalance.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
+  const transactionsQuery = trpc.wallet.getTransactions.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
+  const listingsQuery = trpc.accounts.getSellerAccounts.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
+  const sellerOrdersQuery = trpc.orders.getSellerOrders.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
+  const reviewsQuery = trpc.reviews.getSellerReviews.useQuery(user?.id ?? 0, { enabled: Boolean(user?.id), staleTime: 15_000, refetchOnWindowFocus: false });
   const [walletAction, setWalletAction] = React.useState<'topup' | 'withdraw' | null>(null);
   const [amount, setAmount] = React.useState('');
   const [destination, setDestination] = React.useState('');
@@ -574,7 +576,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function EscrowPage({ id, onBack }: { id: number; onBack: () => void }) {
   const { isAuthenticated } = useAuth();
-  const orderQuery = trpc.orders.getById.useQuery(id, { enabled: isAuthenticated, staleTime: 10_000 });
+  const orderQuery = trpc.orders.getById.useQuery(id, { enabled: isAuthenticated, staleTime: 10_000, refetchOnWindowFocus: false });
   const updateStatus = trpc.orders.updateStatus.useMutation({ onSuccess: () => { toast.success('Kafolat bosqichi yangilandi'); orderQuery.refetch(); } });
   const confirmBuyer = trpc.orders.confirmBuyer.useMutation({ onSuccess: () => { toast.success('Savdo yakunlandi'); orderQuery.refetch(); } });
   const fallbackOrder = { id, accountId: 1, price: '1499000', status: 'in_escrow' as const, escrowStage: 'account_verification' as const };
@@ -593,8 +595,8 @@ function EscrowPage({ id, onBack }: { id: number; onBack: () => void }) {
 
 function ReviewsPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { user, isAuthenticated } = useAuth();
-  const ordersQuery = trpc.orders.getUserOrders.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const sellerReviewsQuery = trpc.reviews.getSellerReviews.useQuery(user?.id ?? 0, { enabled: Boolean(user?.id), staleTime: 15_000 });
+  const ordersQuery = trpc.orders.getUserOrders.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
+  const sellerReviewsQuery = trpc.reviews.getSellerReviews.useQuery(user?.id ?? 0, { enabled: Boolean(user?.id), staleTime: 15_000, refetchOnWindowFocus: false });
   const createReview = trpc.reviews.create.useMutation({
     onSuccess: () => {
       toast.success('Sharhingiz saqlandi. Xarid tajribasi uchun rahmat!');
@@ -637,9 +639,9 @@ function SupportPage() {
 function AdminPage() {
   const { user, isAuthenticated } = useAuth();
   const isAdmin = Boolean(isAuthenticated && user?.role === 'admin');
-  const statsQuery = trpc.admin.getStats.useQuery(undefined, { enabled: isAdmin, staleTime: 15_000 });
-  const pendingQuery = trpc.admin.getPendingAccounts.useQuery(undefined, { enabled: isAdmin, staleTime: 10_000 });
-  const disputesQuery = trpc.admin.getDisputes.useQuery(undefined, { enabled: isAdmin, staleTime: 10_000 });
+  const statsQuery = trpc.admin.getStats.useQuery(undefined, { enabled: isAdmin, staleTime: 15_000, refetchOnWindowFocus: false });
+  const pendingQuery = trpc.admin.getPendingAccounts.useQuery(undefined, { enabled: isAdmin, staleTime: 10_000, refetchOnWindowFocus: false });
+  const disputesQuery = trpc.admin.getDisputes.useQuery(undefined, { enabled: isAdmin, staleTime: 10_000, refetchOnWindowFocus: false });
   const utils = trpc.useUtils();
   const [broadcastText, setBroadcastText] = React.useState('');
   const [resolutionText, setResolutionText] = React.useState<Record<number, string>>({});

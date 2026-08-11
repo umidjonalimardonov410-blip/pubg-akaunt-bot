@@ -159,3 +159,40 @@ describe("owner notification events", () => {
     }));
   });
 });
+
+describe("persistence boundary order flow", () => {
+  it("tracks a protected order from payment freeze through Completed settlement", async () => {
+    state.account = { id: 21, sellerId: 3, playerName: "Inferno Warrior", price: "1499000", status: "available" };
+    const buyer = appRouter.createCaller(makeContext(2));
+    const { orderId } = await buyer.orders.create({ accountId: 21 });
+
+    state.order = {
+      id: orderId,
+      accountId: 21,
+      buyerId: 2,
+      sellerId: 3,
+      price: "1499000",
+      status: "pending",
+      escrowStage: "payment_frozen",
+    };
+    const seller = appRouter.createCaller(makeContext(3));
+    await seller.orders.updateStatus({ orderId, status: "in_escrow", escrowStage: "account_verification" });
+
+    state.order = { ...state.order, status: "in_escrow", escrowStage: "account_verification" };
+    await seller.orders.updateStatus({ orderId, status: "in_escrow", escrowStage: "buyer_confirmation" });
+
+    state.order = { ...state.order, escrowStage: "buyer_confirmation" };
+    await buyer.orders.confirmBuyer(orderId);
+
+    expect(state.updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      buyerConfirmed: true,
+      status: "completed",
+    }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 3,
+      type: "seller_payout",
+      orderId,
+      status: "completed",
+    }));
+  });
+});

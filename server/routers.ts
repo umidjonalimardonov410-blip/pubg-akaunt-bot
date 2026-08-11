@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts } from "./db";
+import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows } from "./db";
 import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes } from "../drizzle/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
@@ -101,7 +101,7 @@ export const appRouter = router({
           status: 'pending_verification',
         });
 
-        const accountId = (result as any).insertId;
+        const accountId = getInsertId(result);
         await notifyOwner({
           title: "Yangi PUBG akkaunt e'loni",
           content: `${input.playerName} (${input.region}) e'loni admin ko'rigiga yuborildi. Narx: ${input.price} so'm.`,
@@ -169,14 +169,14 @@ export const appRouter = router({
           const balanceResult = await tx.update(users)
             .set({ walletBalance: sql`walletBalance - ${price}` })
             .where(and(eq(users.id, ctx.user.id), gte(users.walletBalance, price)));
-          if (!balanceResult || Number(balanceResult.affectedRows ?? 0) !== 1) {
+          if (!balanceResult || getAffectedRows(balanceResult) !== 1) {
             throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Hamyon balansida mablag‘ yetarli emas' });
           }
 
           const reservationResult = await tx.update(pubgAccounts)
             .set({ status: 'pending_verification' })
             .where(and(eq(pubgAccounts.id, input.accountId), eq(pubgAccounts.status, 'available')));
-          if (!reservationResult || Number(reservationResult.affectedRows ?? 0) !== 1) {
+          if (!reservationResult || getAffectedRows(reservationResult) !== 1) {
             throw new TRPCError({ code: 'CONFLICT', message: 'Bu akkaunt hozirgina boshqa xaridor tomonidan band qilindi' });
           }
 
@@ -188,7 +188,7 @@ export const appRouter = router({
             status: 'pending',
             escrowStage: 'payment_frozen',
           });
-          const orderId = Number((result as any).insertId);
+          const orderId = getInsertId(result);
           await tx.insert(transactions).values({
             userId: ctx.user.id,
             type: 'order_payment',
@@ -327,7 +327,7 @@ export const appRouter = router({
           const completed = await tx.update(orders)
             .set({ buyerConfirmed: true, buyerConfirmedAt: new Date(), status: 'completed', completedAt: new Date() })
             .where(and(eq(orders.id, input), eq(orders.status, 'in_escrow'), eq(orders.escrowStage, 'buyer_confirmation')));
-          if (!completed || Number(completed.affectedRows ?? 0) !== 1) {
+          if (!completed || getAffectedRows(completed) !== 1) {
             throw new TRPCError({ code: 'CONFLICT', message: 'Buyurtma boshqa jarayon tomonidan yakunlandi' });
           }
           await tx.update(pubgAccounts)
@@ -366,7 +366,7 @@ export const appRouter = router({
           const cancelled = await tx.update(orders)
             .set({ status: 'cancelled' })
             .where(and(eq(orders.id, input.orderId), eq(orders.status, order.status)));
-          if (!cancelled || Number(cancelled.affectedRows ?? 0) !== 1) {
+          if (!cancelled || getAffectedRows(cancelled) !== 1) {
             throw new TRPCError({ code: 'CONFLICT', message: 'Buyurtma statusi o‘zgargan, qayta urinib ko‘ring' });
           }
           await tx.update(pubgAccounts).set({ status: 'available' }).where(eq(pubgAccounts.id, order.accountId));
@@ -413,7 +413,7 @@ export const appRouter = router({
           comment: input.comment,
         });
 
-        return { reviewId: (result as any).insertId };
+        return { reviewId: getInsertId(result) };
       }),
 
     getSellerReviews: publicProcedure
@@ -461,7 +461,7 @@ export const appRouter = router({
           const balanceResult = await tx.update(users)
             .set({ walletBalance: sql`walletBalance - ${input.amount}` })
             .where(and(eq(users.id, ctx.user.id), gte(users.walletBalance, input.amount.toString())));
-          if (!balanceResult || Number(balanceResult.affectedRows ?? 0) !== 1) {
+          if (!balanceResult || getAffectedRows(balanceResult) !== 1) {
             throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Yechib olish uchun balans yetarli emas' });
           }
           await tx.insert(transactions).values({
@@ -500,11 +500,16 @@ export const appRouter = router({
 
     markAsRead: protectedProcedure
       .input(z.number())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
 
-        await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, input));
+        const updated = await db.update(notifications)
+          .set({ isRead: true })
+          .where(and(eq(notifications.id, input), eq(notifications.userId, ctx.user.id)));
+        if (!updated || getAffectedRows(updated) !== 1) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bu bildirishnomani o‘qilgan deb belgilash huquqi yo‘q' });
+        }
         return { success: true };
       }),
   }),
@@ -537,7 +542,7 @@ export const appRouter = router({
             userId: owner.id,
             type: 'dispute_alert',
             title: 'Yangi nizo ochildi',
-            message: `#${(result as any).insertId} nizo: ${input.reason}`,
+            message: `#${getInsertId(result)} nizo: ${input.reason}`,
             orderId: input.orderId,
           });
         }
@@ -545,7 +550,7 @@ export const appRouter = router({
           title: 'Yangi savdo nizosi',
           content: `#${input.orderId} buyurtma bo‘yicha nizo ochildi: ${input.reason}`,
         }).catch(() => undefined);
-        return { disputeId: (result as any).insertId };
+        return { disputeId: getInsertId(result) };
       }),
   }),
 
