@@ -11,16 +11,16 @@ export default function ProTools() {
   const dashboard = trpc.pro.sellerDashboard.useQuery(undefined, { enabled: isAuthenticated });
 
   return (
-    <main className="min-h-screen bg-background text-foreground pb-24">
-      <div className="container max-w-6xl py-8 space-y-8">
-        <div className="flex items-center justify-between gap-4">
+    <main className="min-h-screen bg-background text-foreground pb-28">
+      <div className="container max-w-6xl px-3 py-6 sm:px-6 space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary">Inferno Stealth Pro</p>
-            <h1 className="mt-2 text-3xl md:text-5xl font-black tracking-tight">Savdo vositalari</h1>
-            <p className="mt-3 max-w-2xl text-muted-foreground">Akkauntingizni to‘g‘ri baholang, ishonchni oshiring va savdo bo‘yicha yordamni bitta joydan boshqaring.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Inferno Stealth Pro</p>
+            <h1 className="mt-1 text-2xl sm:text-4xl font-black tracking-tight">Savdo vositalari</h1>
+            <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">Akkauntingizni to‘g‘ri baholang, ishonchni oshiring va savdo bo‘yicha yordamni bitta joydan boshqaring.</p>
           </div>
-          <Button variant="outline" asChild className="border-border/60">
-            <Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Bozorga qaytish</Link>
+          <Button variant="outline" size="sm" asChild className="self-start sm:self-auto border-border/60">
+            <Link href="/"><ArrowLeft className="mr-1.5 h-4 w-4" /> Bozorga qaytish</Link>
           </Button>
         </div>
 

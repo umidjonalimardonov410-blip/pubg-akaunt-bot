@@ -38,43 +38,40 @@ export function AiPriceEstimatorModal() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="text-xs text-muted-foreground">Daraja (Level): {level}</label>
-            <Input type="range" min="30" max="100" value={level} onChange={(e) => setLevel(Number(e.target.value))} />
+            <label className="text-xs text-muted-foreground font-semibold">Daraja (Level): {level}</label>
+            <Input type="range" min="30" max="100" value={level} onChange={(e) => setLevel(Number(e.target.value))} className="mt-1" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">K/D Koeffitsiyenti: {kd}</label>
-            <Input type="range" min="1" max="8" step="0.1" value={kd} onChange={(e) => setKd(Number(e.target.value))} />
+            <label className="text-xs text-muted-foreground font-semibold">K/D Koeffitsiyenti: {kd}</label>
+            <Input type="range" min="1" max="8" step="0.1" value={kd} onChange={(e) => setKd(Number(e.target.value))} className="mt-1" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Afsonaviy Skinlar: {skins}</label>
-            <Input type="range" min="1" max="100" value={skins} onChange={(e) => setSkins(Number(e.target.value))} />
+            <label className="text-xs text-muted-foreground font-semibold">Afsonaviy Skinlar: {skins}</label>
+            <Input type="range" min="1" max="100" value={skins} onChange={(e) => setSkins(Number(e.target.value))} className="mt-1" />
           </div>
         </div>
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={hasGlacier} onChange={(e) => setHasGlacier(e.target.checked)} />
-            M416 Muz (Glacier) bor
+        <div className="flex flex-col sm:flex-row gap-3 pt-1">
+          <label className="flex items-center gap-3 text-sm cursor-pointer rounded-xl border border-white/10 bg-black/20 p-3 flex-1">
+            <input type="checkbox" checked={hasGlacier} onChange={(e) => setHasGlacier(e.target.checked)} className="h-4 w-4 rounded accent-red-500" />
+            <span className="font-medium text-white">M416 Muz (Glacier)</span>
           </label>
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={hasXSuit} onChange={(e) => setHasXSuit(e.target.checked)} />
-            X-Suit bor
+          <label className="flex items-center gap-3 text-sm cursor-pointer rounded-xl border border-white/10 bg-black/20 p-3 flex-1">
+            <input type="checkbox" checked={hasXSuit} onChange={(e) => setHasXSuit(e.target.checked)} className="h-4 w-4 rounded accent-red-500" />
+            <span className="font-medium text-white">X-Suit</span>
           </label>
         </div>
         {estimateQuery.data && (
-          <div className="p-4 bg-muted/40 rounded-xl border border-border/40 flex items-center justify-between gap-3">
+          <div className="p-4 bg-muted/40 rounded-xl border border-border/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className="text-xs text-muted-foreground">Tavsiya etilgan bozor narxi:</p>
               <p className="text-2xl font-black text-primary">{estimateQuery.data.recommended.toLocaleString()} so'm</p>
-            </div>
-            <div className="text-right">
-              <Button size="sm" disabled={!isAuthenticated || saveEstimate.isPending} onClick={() => saveEstimate.mutate({ level, kd, skinsCount: skins, hasM416Glacier: hasGlacier, hasXSuit })}>Tarixga saqlash</Button>
-              <p className="mt-2 text-xs text-muted-foreground">Baholash oralig'i:</p>
-              <p className="text-sm font-semibold text-foreground">
-                {estimateQuery.data.minPrice.toLocaleString()} - {estimateQuery.data.maxPrice.toLocaleString()} so'm
+              <p className="text-xs text-muted-foreground mt-1">
+                Oraliq: {estimateQuery.data.minPrice.toLocaleString()} - {estimateQuery.data.maxPrice.toLocaleString()} so'm
               </p>
             </div>
+            <Button size="sm" className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold" disabled={!isAuthenticated || saveEstimate.isPending} onClick={() => saveEstimate.mutate({ level, kd, skinsCount: skins, hasM416Glacier: hasGlacier, hasXSuit })}>Tarixga saqlash</Button>
           </div>
         )}
         {isAuthenticated && (history.data ?? []).length > 0 && <div className="border-t border-white/10 pt-3"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Oxirgi baholashlar</p><div className="mt-2 flex flex-wrap gap-2">{(history.data ?? []).slice(0, 3).map((item) => <Badge key={item.id} variant="secondary">{Number(item.recommended).toLocaleString()} so‘m</Badge>)}</div></div>}

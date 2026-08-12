@@ -46,3 +46,9 @@
 - [x] Add functional Vitest coverage for pro.messages.list history retrieval and user/admin access control
 - [x] Add a stateful Vitest that calls pro.promotions.create then pro.promotions.mine and verifies seller scoping
 - [x] Add a pro.messages.list test proving admin retrieval is allowed while an unrelated user is forbidden
+# Mobile-First Telegram Mini App Optimization
+- [x] Replace desktop sidebar/header navigation with a touch-friendly bottom navigation bar and mobile top bar
+- [x] Optimize account listing cards, image galleries, and filter drawers for 360-430px phone viewports
+- [x] Make account detail pages, escrow steps, and seller forms single-column and thumb-reachable
+- [x] Adapt Pro Tools, AI pricing estimator, and Telegram command simulator for compact mobile screens
+- [x] Verify responsive layouts with mobile viewport screenshots and save checkpoint
