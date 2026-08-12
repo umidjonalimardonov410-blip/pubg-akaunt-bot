@@ -243,7 +243,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
         <div className="flex items-center gap-10">
           <Brand />
           <nav className="hidden items-center gap-6 text-sm font-semibold text-white/55 lg:flex">
-            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Yordam', '/support']].map(([label, path]) => (
+            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Pro vositalar', '/pro'], ['Yordam', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => onNavigate(path)} className="transition hover:text-white">{label}</button>
             ))}
           </nav>
@@ -290,7 +290,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
       {menuOpen && (
         <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3 lg:hidden">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-1">
-            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
+            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Pro vositalar', '/pro'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{label}</button>
             ))}
           </div>

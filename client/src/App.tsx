@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import ProTools from "./pages/ProTools";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -21,6 +22,8 @@ function Router() {
       <Route path={"/profile"} component={Home} />
       <Route path={"/reviews"} component={Home} />
       <Route path={"/support"} component={Home} />
+      <Route path={"/pro"} component={ProTools} />
+      <Route path={"/pro-tools"} component={ProTools} />
       <Route path={"/admin"} component={Home} />
       <Route path={"/account/:id"} component={Home} />
       <Route path={"/404"} component={NotFound} />

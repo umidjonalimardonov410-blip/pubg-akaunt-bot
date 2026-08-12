@@ -10,9 +10,11 @@ import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
+import { proRouter } from "./ProRouters";
 
 export const appRouter = router({
   system: systemRouter,
+  pro: proRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
