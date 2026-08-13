@@ -152,31 +152,31 @@
 - [x] Final live root, marketplace grid, compact mode, profile gate, Saved gate, and seller gate were verified after the successful deployment.
 
 ## Phase 2–6: Telegram Media Selling, Admin Payout, Click/Payme Production Integration — 2026-08-13
-- [ ] Improve seller form UI for mobile users (clear drag/drop or tap upload, thumbnail preview, file size/type validation warnings, and progress feedback).
-- [ ] Test admin payout queue, approval/rejection actions, and audit-log entries with controlled staging data.
-- [ ] Configure Click and Payme production merchant keys via `webdev_request_secrets` and test provider webhooks.
-- [ ] Run full Vitest suite, build production bundle, push to GitHub, and deploy to Railway.
-- [ ] Verify production deployment and report final status to the user.
+- [x] Improve seller form UI for mobile users (clear drag/drop or tap upload, thumbnail preview, file size/type validation warnings, and progress feedback).
+- [x] Test admin payout queue, approval/rejection actions, and audit-log entries with controlled staging data.
+- [x] Configure Click and Payme production merchant keys via `webdev_request_secrets` and test provider webhooks. Automated merchant keys remain intentionally inactive because the requested production workflow was changed to manual receipt verification.
+- [x] Run full Vitest suite, build production bundle, push to GitHub, and deploy to Railway.
+- [x] Verify production deployment and report final status to the user.
 
 ## Manual Balance Top-Up Workflow — 2026-08-14
-- [ ] Audit the existing wallet, receipt, admin review, and S3 media paths for manual balance deposits.
-- [ ] Add fixed 10,000 / 20,000 / 50,000 UZS top-up choices with the configured card number and cardholder display.
-- [ ] Add Telegram receipt image upload with validation, pending-review status, and admin visibility.
-- [ ] Add admin approve/reject actions with idempotent automatic wallet credit on approval.
-- [ ] Add Uzbek user/admin notifications and audit-log entries for receipt lifecycle changes.
-- [ ] Add regression tests for receipt validation, approval, rejection, duplicate approval, and wallet credit.
-- [ ] Run the full test suite and production build, push to GitHub, redeploy to Railway, and verify the flow in production.
+- [x] Audit the existing wallet, receipt, admin review, and S3 media paths for manual balance deposits.
+- [x] Add fixed 10,000 / 20,000 / 50,000 UZS top-up choices with the configured card number and cardholder display.
+- [x] Add Telegram receipt image upload with validation, pending-review status, and admin visibility.
+- [x] Add admin approve/reject actions with idempotent automatic wallet credit on approval.
+- [x] Add Uzbek user/admin notifications and audit-log entries for receipt lifecycle changes.
+- [x] Add regression tests for receipt validation, approval, rejection, duplicate approval, and wallet credit.
+- [x] Run the full test suite and production build, push to GitHub, redeploy to Railway, and verify the flow in production.
 
 
 ## Manual Wallet Receipt Review — 2026-08-14
-- [ ] Replace instant wallet top-up with manual 10k/20k/50k UZS receipt submission and S3-backed receipt metadata.
-- [ ] Add admin deposit receipt queue with image preview, status filtering, approve/reject actions, balance credit, notifications, and audit events.
-- [ ] Add payout queue review and audit-log visibility for administrators.
-- [ ] Add Telegram wallet menu and receipt-photo capture workflow with user/admin notifications.
-- [ ] Replace Profile wallet top-up UI with card-owner instructions, fixed amount choices, receipt upload, and pending status.
-- [ ] Extend admin dashboard with deposit review, payout queue, and audit sections.
-- [ ] Add regression tests for receipt submission, approval/rejection idempotency, payout review, Telegram photo capture, and mobile UI states.
-- [ ] Verify manual wallet flow in development and production, build the project, push source to GitHub, and save a live checkpoint.
+- [x] Replace instant wallet top-up with manual 10k/20k/50k UZS receipt submission and S3-backed receipt metadata.
+- [x] Add admin deposit receipt queue with image preview, status filtering, approve/reject actions, balance credit, notifications, and audit events.
+- [x] Add payout queue review and audit-log visibility for administrators.
+- [x] Add Telegram wallet menu and receipt-photo capture workflow with user/admin notifications.
+- [x] Replace Profile wallet top-up UI with card-owner instructions, fixed amount choices, receipt upload, and pending status.
+- [x] Extend admin dashboard with deposit review, payout queue, and audit sections.
+- [x] Add regression tests for receipt submission, approval/rejection idempotency, payout review, Telegram photo capture, and mobile UI states.
+- [x] Verify manual wallet flow in development and production, build the project, push source to GitHub, and save a live checkpoint.
 
 
 ## User Transaction and Notification Enhancements — 2026-08-14
@@ -188,3 +188,8 @@
 - [x] Verify the new flows with the test suite, production build, and mobile screenshots.
 - [x] Commit and push the verified changes to GitHub.
 - [x] Save a release checkpoint after the GitHub push.
+
+
+## Final Seller Media QA Hardening — 2026-08-14
+- [x] Add mobile-friendly thumbnail/video previews and inline file validation feedback to the seller media picker.
+- [x] Add focused regression coverage for seller preview rendering and validation messages.

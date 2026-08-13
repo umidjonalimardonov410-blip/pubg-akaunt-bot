@@ -4,6 +4,8 @@ const state = vi.hoisted(() => ({
   account: undefined as any,
   order: undefined as any,
   existingReview: undefined as any,
+  selectRows: [] as any[],
+  transactionRows: [] as any[],
   owner: { id: 99 } as any,
   insertValues: vi.fn(),
   updateSet: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock("./db", async () => {
     getOrderById: vi.fn(async () => state.order),
     getOrderReview: vi.fn(async () => state.existingReview),
     getUserByOpenId: vi.fn(async () => state.owner),
+    getUserById: vi.fn(async (id: number) => ({ id, openId: `manual:${id}` })),
     getPendingAccounts: vi.fn(async () => []),
     getAdminDisputes: vi.fn(async () => []),
   };
@@ -69,6 +72,8 @@ beforeEach(() => {
   state.account = undefined;
   state.order = undefined;
   state.existingReview = undefined;
+  state.selectRows = [{ id: 1 }, { id: 2 }];
+  state.transactionRows = [];
   state.owner = { id: 99 };
   state.insertValues.mockReset();
   state.insertValues.mockResolvedValue({ insertId: 31 });
@@ -83,9 +88,23 @@ beforeEach(() => {
   state.db.update.mockReset();
   state.db.update.mockReturnValue({ set: state.updateSet });
   state.db.select.mockReset();
-  state.db.select.mockReturnValue({ from: state.selectFrom });
+  state.db.select.mockReturnValue({
+    from: vi.fn(() => {
+      const query: any = {
+        where: vi.fn(() => ({ limit: vi.fn(async () => state.selectRows) })),
+        orderBy: vi.fn(async () => state.selectRows),
+      };
+      query.then = (resolve: (rows: any[]) => unknown) => Promise.resolve(resolve(state.selectRows));
+      return query;
+    }),
+  });
   state.db.transaction.mockReset();
   state.db.transaction.mockImplementation(async (callback: (tx: any) => unknown) => callback({
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({ limit: vi.fn(async () => state.transactionRows) })),
+      })),
+    })),
     update: vi.fn(() => ({ set: state.updateSet })),
     insert: vi.fn(() => ({ values: state.insertValues })),
   }));
@@ -151,6 +170,83 @@ describe("critical marketplace procedures", () => {
 
     state.updateWhere.mockResolvedValueOnce({ affectedRows: 0 });
     await expect(caller.wallet.withdraw({ amount: 10000, destination: "8600 1234" })).rejects.toThrow("balans yetarli emas");
+  });
+
+  it("submits only supported receipt amounts, persists a pending transaction, and blocks duplicate receipt keys", async () => {
+    const caller = appRouter.createCaller(makeContext(2));
+    state.selectRows = [];
+
+    const result = await caller.wallet.submitReceipt({
+      amount: 20000,
+      receiptKey: "users/2/receipts/proof-1.jpg",
+      receiptUrl: "https://storage.test/proof-1.jpg",
+    });
+
+    expect(result).toMatchObject({ success: true, receiptId: 31, transactionId: 31 });
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 2,
+      type: "topup",
+      amount: "20000",
+      status: "pending",
+    }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 2,
+      receiptKey: "users/2/receipts/proof-1.jpg",
+      status: "pending",
+      transactionId: 31,
+    }));
+
+    state.selectRows = [{ id: 31 }];
+    await expect(caller.wallet.submitReceipt({
+      amount: 20000,
+      receiptKey: "users/2/receipts/proof-1.jpg",
+      receiptUrl: "https://storage.test/proof-1.jpg",
+    })).rejects.toThrow("allaqachon yuborilgan");
+    await expect(caller.wallet.submitReceipt({
+      amount: 15000 as 20000,
+      receiptKey: "users/2/receipts/proof-2.jpg",
+      receiptUrl: "https://storage.test/proof-2.jpg",
+    })).rejects.toBeTruthy();
+  });
+
+  it("approves a pending receipt exactly once, credits the wallet, and writes approval notification/audit events", async () => {
+    const admin = appRouter.createCaller(makeContext(1, "admin"));
+    state.transactionRows = [{ id: 31, userId: 2, amount: "20000", status: "pending", transactionId: 31 }];
+
+    await expect(admin.admin.reviewDepositReceipt({ receiptId: 31, approved: true })).resolves.toEqual({ success: true, status: "approved" });
+    expect(state.updateSet).toHaveBeenCalledWith(expect.objectContaining({ status: "approved", reviewedBy: 1 }));
+    expect(state.updateSet).toHaveBeenCalledWith(expect.objectContaining({ walletBalance: expect.anything() }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "deposit_receipt_approved",
+      userId: 2,
+    }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Balans to‘ldirildi",
+      userId: 2,
+    }));
+
+    state.transactionRows = [{ id: 31, userId: 2, amount: "20000", status: "approved", transactionId: 31 }];
+    await expect(admin.admin.reviewDepositReceipt({ receiptId: 31, approved: true })).rejects.toThrow("allaqachon ko‘rib chiqilgan");
+  });
+
+  it("rejects a pending payout, records the audit trail, and notifies the account owner", async () => {
+    const admin = appRouter.createCaller(makeContext(1, "admin"));
+    state.transactionRows = [{ id: 77, userId: 2, amount: "15000", status: "pending", type: "withdrawal", description: "Yechib olish so‘rovi" }];
+
+    await expect(admin.admin.processPayout({ transactionId: 77, approved: false, note: "Karta ma’lumoti mos emas" })).resolves.toEqual({ success: true, status: "failed" });
+    expect(state.updateSet).toHaveBeenCalledWith(expect.objectContaining({ status: "failed" }));
+    expect(state.updateSet).toHaveBeenCalledWith(expect.objectContaining({ walletBalance: expect.anything() }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "payout_rejected",
+      userId: 2,
+    }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Yechib olish rad etildi",
+      userId: 2,
+    }));
+
+    state.transactionRows = [{ id: 77, userId: 2, amount: "15000", status: "failed", type: "withdrawal" }];
+    await expect(admin.admin.processPayout({ transactionId: 77, approved: false })).rejects.toThrow("allaqachon ko‘rib chiqilgan");
   });
 
   it("restricts admin actions and broadcasts to every registered user", async () => {

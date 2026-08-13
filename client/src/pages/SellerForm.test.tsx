@@ -43,6 +43,39 @@ describe('SellPage upload and submit flow', () => {
 
   afterEach(() => cleanup());
 
+  it('shows an inline warning and blocks unsupported seller media', () => {
+    const { container } = render(<SellPage onNavigate={vi.fn()} />);
+    const fileInput = container.querySelector('input[type="file"]');
+    fireEvent.change(fileInput!, {
+      target: { files: [new File(['bad'], 'notes.txt', { type: 'text/plain' })] },
+    });
+
+    expect(screen.getByRole('alert').textContent).toContain('Faqat JPG, PNG, WEBP, MP4 yoki WEBM');
+    expect(state.upload).not.toHaveBeenCalled();
+  });
+
+  it('renders a mobile thumbnail for images and a video preview for video media', async () => {
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:match-video'),
+      revokeObjectURL: vi.fn(),
+    });
+    const { container } = render(<SellPage onNavigate={vi.fn()} />);
+    const fileInput = container.querySelector('input[type="file"]');
+    fireEvent.change(fileInput!, {
+      target: { files: [
+        new File(['image-bytes'], 'screenshot.png', { type: 'image/png' }),
+        new File(['video-bytes'], 'match.mp4', { type: 'video/mp4' }),
+      ] },
+    });
+
+    expect(await screen.findByAltText('screenshot.png')).toBeTruthy();
+    expect(await screen.findByLabelText('match.mp4')).toBeTruthy();
+    expect(screen.getAllByText('Rasm').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Video').length).toBeGreaterThan(0);
+    vi.unstubAllGlobals();
+  });
+
   it('selects media, shows pending upload progress, and submits the listing after upload completes', async () => {
     const uploadRequest = deferred<{ url: string }>();
     state.upload.mockReturnValue(uploadRequest.promise);
