@@ -120,15 +120,15 @@ export function isIgnorableSchemaConflict(error: unknown, statement: string) {
 }
 
 /**
- * TiDB rejects MySQL's parenthesized JSON string defaults in some versions
- * (for example DEFAULT ('[]')). Keep the compatibility rewrite deliberately
- * narrow and activate it only after TiDB reports a parse error.
+ * TiDB versions can reject JSON defaults entirely (including DEFAULT ('[]')
+ * and DEFAULT '[]'). Keep the compatibility rewrite deliberately narrow and
+ * activate it only after TiDB reports the corresponding schema error.
  */
 export function rewriteTiDbJsonDefaults(error: unknown, statement: string) {
-  if (!hasErrorCode(error, ["ER_PARSE_ERROR", "1064"])) return statement;
+  if (!hasErrorCode(error, ["ER_PARSE_ERROR", "1064", "ER_BLOB_CANT_HAVE_DEFAULT", "1101"])) return statement;
   return statement.replace(
-    /(`(?:featuredSkins|galleryUrls)`\s+json\s+NOT NULL\s+)DEFAULT\s*\(\s*'\[\]'\s*\)/gi,
-    "$1DEFAULT '[]'",
+    /(`(?:featuredSkins|galleryUrls)`\s+json\s+NOT NULL)\s+DEFAULT\s*(?:\(\s*'\[\]'\s*\)|'\[\]')/gi,
+    "$1",
   );
 }
 

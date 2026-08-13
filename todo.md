@@ -138,3 +138,9 @@
 - [x] Add regression coverage for the JSON default syntax conflict and rerun the full test/build verification.
 - [ ] Push the TiDB-compatible repair to GitHub and redeploy the exact commit to Railway.
 - [ ] Confirm the Railway runtime startup probe is healthy and recheck the live Mini App after the repair.
+
+## TiDB JSON Default Restriction — 2026-08-13
+- [x] TiDB rejects defaults on the observed `pubg_accounts.featuredSkins` and `pubg_accounts.galleryUrls` JSON columns (`ER_BLOB_CANT_HAVE_DEFAULT`); strip those migration DEFAULT clauses during recovery.
+- [x] Add regression coverage for the stripped JSON default and rerun tests/build.
+- [ ] Push the stripped-default repair to GitHub and redeploy the exact commit to Railway.
+- [ ] Confirm the Railway runtime startup probe is healthy and recheck the live Mini App after the repair.

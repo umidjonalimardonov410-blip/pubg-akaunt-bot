@@ -36,7 +36,7 @@ function makeRecoveryConnection(statementError?: unknown, emulateTiDbJsonDefault
     if (emulateTiDbJsonDefaultError && normalized.includes("DEFAULT ('[]')")) {
       throw { code: "ER_PARSE_ERROR", errno: 1064 };
     }
-    if (emulateTiDbJsonDefaultError && normalized.includes("DEFAULT '[]'")) return [[], []];
+    if (emulateTiDbJsonDefaultError && normalized.includes("`galleryUrls` json NOT NULL") && !normalized.includes("DEFAULT")) return [[], []];
     if (normalized.includes("GET_LOCK")) return [[{ lock_result: 1 }], []];
     if (normalized.includes("RELEASE_LOCK")) return [[], []];
     if (normalized.includes("information_schema.tables")) {
@@ -86,10 +86,13 @@ describe("production database migration bootstrap", () => {
     expect(isIgnorableSchemaConflict({ code: "ER_TABLE_EXISTS_ERROR" }, "ALTER TABLE `users` MODIFY COLUMN `name` text")).toBe(false);
   });
 
-  it("rewrites only TiDB's parenthesized JSON array defaults after a parse error", () => {
+  it("strips TiDB-incompatible JSON array defaults only after the matching schema error", () => {
     const statement = "CREATE TABLE `pubg_accounts` (`galleryUrls` json NOT NULL DEFAULT ('[]'))";
-    expect(rewriteTiDbJsonDefaults({ code: "ER_PARSE_ERROR", errno: 1064 }, statement)).toContain("DEFAULT '[]'");
+    const rewritten = rewriteTiDbJsonDefaults({ code: "ER_PARSE_ERROR", errno: 1064 }, statement);
+    expect(rewritten).toContain("`galleryUrls` json NOT NULL");
+    expect(rewritten).not.toContain("DEFAULT");
     expect(rewriteTiDbJsonDefaults({ code: "ER_DUP_ENTRY", errno: 1062 }, statement)).toBe(statement);
+    expect(rewriteTiDbJsonDefaults({ code: "ER_BLOB_CANT_HAVE_DEFAULT", errno: 1101 }, "CREATE TABLE `pubg_accounts` (`galleryUrls` json NOT NULL DEFAULT '[]')")).not.toContain("DEFAULT");
     expect(rewriteTiDbJsonDefaults({ code: "ER_PARSE_ERROR", errno: 1064 }, "CREATE TABLE `users` (`name` text)")).toBe("CREATE TABLE `users` (`name` text)");
   });
 
@@ -106,7 +109,7 @@ describe("production database migration bootstrap", () => {
     expect(connection.end).toHaveBeenCalledTimes(2);
   });
 
-  it("recovers a TiDB-incompatible JSON default before journaling the migration", async () => {
+  it("strips a TiDB-incompatible JSON default before journaling the migration", async () => {
     const jsonStatement = "CREATE TABLE `pubg_accounts` (`galleryUrls` json NOT NULL DEFAULT ('[]'))";
     const connection = makeRecoveryConnection(undefined, true);
     const dependencies = makeDependencies(connection, { code: "DRIZZLE_QUERY_ERROR", cause: { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 } }, jsonStatement);
@@ -114,7 +117,7 @@ describe("production database migration bootstrap", () => {
     const result = await withProductionEnv(() => ensureProductionDatabaseSchema(dependencies));
 
     expect(result).toMatchObject({ status: "ready", recovered: true });
-    expect(connection.query.mock.calls.some(([sql]) => String(sql).trim().includes("DEFAULT '[]'"))).toBe(true);
+    expect(connection.query.mock.calls.some(([sql]) => String(sql).trim().includes("`galleryUrls` json NOT NULL") && !String(sql).trim().includes("DEFAULT"))).toBe(true);
   });
 
   it("does not hide a non-ignorable SQL error during recovery", async () => {
