@@ -109,5 +109,5 @@ export function useLanguage() {
 
 export function LanguageSelect() {
   const { language, setLanguage, t } = useLanguage();
-  return <label className="sr-only">{t("language")}<select aria-label={t("language")} value={language} onChange={event => setLanguage(event.target.value as Language)} className="not-sr-only ml-1 min-h-10 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-bold text-white outline-none focus:border-red-400/60"><option value="uz">UZ</option><option value="en">EN</option><option value="ru">RU</option></select></label>;
+  return <label className="flex min-h-10 items-center gap-1 rounded-xl border border-cyan-300/20 bg-cyan-300/5 px-1.5 text-[10px] font-black text-cyan-200"><span className="sr-only">{t("language")}</span><select aria-label={t("language")} value={language} onChange={event => setLanguage(event.target.value as Language)} className="min-h-9 bg-transparent px-1 text-[11px] font-black text-cyan-100 outline-none"><option className="bg-[#0d0f12]" value="uz">UZ</option><option className="bg-[#0d0f12]" value="en">EN</option><option className="bg-[#0d0f12]" value="ru">RU</option></select></label>;
 }
