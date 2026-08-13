@@ -68,3 +68,27 @@
 - [x] Verify the live Railway root route `/` after deployment `71396c32-9e8c-4eac-bff7-31c6babec934` serves the SPA instead of `Not Found`.
 - [x] If the root route still fails, fix the production route/static fallback and re-verify both `/` and `/accounts`.
 - [x] Deliver the verified checkpoint/result to the user with the checkpoint attachment.
+
+## Favorite Accounts and Toggle Animation
+- [x] Make favorite/save work persistently for authenticated users and reflect active state in both 3-column cards and compact rows.
+- [x] Verify the saved/favorites view shows the user’s saved accounts and handles empty/loading states cleanly.
+- [x] Add a polished phone-first transition animation when switching between 3-column and 5-row compact modes, respecting reduced-motion preferences.
+- [x] Add or update focused Vitest coverage for favorite toggling and layout-state behavior.
+- [ ] Run tests, production build, mobile screenshots, then push GitHub and redeploy the exact commit to Railway.
+
+## Saved Favorites UI Verification
+- [ ] Verify `/saved` in the browser for unauthenticated, loading, empty, and populated favorite states.
+- [ ] Add focused UI coverage for the saved/favorites page empty and loading states if the existing tests do not cover them.
+
+## Mobile Readability and Seller Flow Repair
+- [x] Increase phone-sized marketplace card readability: larger level labels, larger favorite heart hit targets, readable price/action controls, and less wasted/awkward space while preserving the three-column browse intent.
+- [x] Verify the compact list mode remains readable and that the view toggle does not leave a visually broken intermediate state.
+- [x] Make the profile page clearly require and use Telegram Mini App login, with a usable login prompt outside Telegram.
+- [x] Repair seller image and video selection/upload flow and show clear upload progress, success, and error states.
+- [x] Add focused regression coverage for profile Telegram gating and seller media upload behavior.
+- [ ] Run tests, build, mobile verification, GitHub push, and exact Railway redeploy after these repairs.
+
+## Seller Upload Verification Gaps
+- [ ] Add a visible seller upload progress/loading state that is clearly shown while image/video files are being uploaded.
+- [ ] Add focused seller media regression coverage for invalid type, size limit, successful image/video selection, and upload submission states.
+- [ ] Re-verify the seller flow after the new upload-state test and only then finalize the release checklist.

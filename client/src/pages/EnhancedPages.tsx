@@ -23,10 +23,38 @@ export function FavoriteButton({ accountId, compact = false }: { accountId: numb
   const { isAuthenticated } = useAuth();
   const idsQuery = trpc.favorites.ids.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
   const utils = trpc.useUtils();
-  const toggle = trpc.favorites.toggle.useMutation({ onSuccess: result => { telegramHaptic(result.saved ? 'success' : 'light'); utils.favorites.ids.invalidate(); utils.favorites.list.invalidate(); toast.success(result.saved ? 'Akkaunt saqlanganlar ro‘yxatiga qo‘shildi' : 'Akkaunt saqlanganlardan olib tashlandi'); }, onError: error => toast.error(error.message) });
-  const saved = Boolean(idsQuery.data?.includes(accountId));
-  const handleClick = () => { if (!isAuthenticated) { toast.info('Saqlash uchun avval tizimga kiring.'); return; } toggle.mutate({ accountId }); };
-  return <button onClick={handleClick} disabled={toggle.isPending} className={`${compact ? 'h-10 w-10' : 'h-11 w-11'} grid place-items-center rounded-xl border transition ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300' : 'border-white/10 bg-black/30 text-white/65 hover:border-red-400/40 hover:text-white'}`} aria-label={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'} aria-pressed={saved}><Heart className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} ${saved ? 'fill-current' : ''}`} /></button>;
+  const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null);
+  const toggle = trpc.favorites.toggle.useMutation({
+    onSuccess: result => {
+      setOptimisticSaved(result.saved);
+      telegramHaptic(result.saved ? 'success' : 'light');
+      utils.favorites.ids.invalidate();
+      utils.favorites.list.invalidate();
+      toast.success(result.saved ? 'Akkaunt saqlanganlar ro‘yxatiga qo‘shildi' : 'Akkaunt saqlanganlardan olib tashlandi');
+    },
+    onError: error => {
+      setOptimisticSaved(null);
+      utils.favorites.ids.invalidate();
+      utils.favorites.list.invalidate();
+      toast.error(error.message || 'Saqlash vaqtida xatolik yuz berdi');
+    },
+  });
+  const serverSaved = Boolean(idsQuery.data?.includes(accountId));
+  const saved = optimisticSaved ?? serverSaved;
+  const handleClick = () => {
+    if (!isAuthenticated) {
+      toast.info('Saqlash uchun avval Telegram orqali tizimga kiring.');
+      return;
+    }
+    const nextSaved = !saved;
+    setOptimisticSaved(nextSaved);
+    utils.favorites.ids.setData(undefined, current => {
+      const ids = current ?? [];
+      return nextSaved ? Array.from(new Set([...ids, accountId])) : ids.filter(id => id !== accountId);
+    });
+    toggle.mutate({ accountId });
+  };
+  return <button type="button" onClick={handleClick} disabled={toggle.isPending} className={`${compact ? 'h-11 w-11' : 'h-12 w-12'} grid place-items-center rounded-xl border transition duration-200 active:scale-90 ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300 shadow-[0_0_18px_rgba(239,68,68,.18)]' : 'border-white/10 bg-black/30 text-white/65 hover:border-red-400/40 hover:text-white'}`} aria-label={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'} aria-pressed={saved}><Heart className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} transition duration-200 ${saved ? 'fill-current scale-110' : ''}`} /></button>;
 }
 
 export function SavedPage({ onNavigate }: { onNavigate: (path: string) => void }) {
