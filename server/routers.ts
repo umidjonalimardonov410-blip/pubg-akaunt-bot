@@ -4,14 +4,15 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
-import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals } from "../drizzle/schema";
-import { eq, and, gte, sql } from "drizzle-orm";
+import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, payoutCards, withdrawalRequests } from "../drizzle/schema";
+import { eq, and, gte, sql, desc } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { proRouter } from "./ProRouters";
 import { expansionRouter } from "./ExpansionRouters";
+import { getAdminPayoutCardStatus } from "./payoutCard";
 
 export const appRouter = router({
   system: systemRouter,
@@ -151,6 +152,9 @@ export const appRouter = router({
     getSellerAccounts: protectedProcedure
       .input(z.number().optional())
       .query(async ({ ctx, input }) => {
+        if (input && input !== ctx.user.id && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bu sotuvchi profiliga kirish huquqi yo‘q' });
+        }
         const sellerId = input || ctx.user.id;
         return await getSellerAccounts(sellerId);
       }),
@@ -456,6 +460,27 @@ export const appRouter = router({
         return { balance: user?.walletBalance || 0 };
       }),
 
+    getTopupCard: protectedProcedure.query(async () => {
+      const card = getAdminPayoutCardStatus();
+      if (!card.configured) return { configured: false as const };
+      return { configured: true as const, cardNumber: card.maskedNumber, cardHolder: card.holder, bankName: 'Uzcard/Humo' };
+    }),
+
+    getPayoutCard: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const rows = await db.select().from(payoutCards).where(and(eq(payoutCards.userId, ctx.user.id), eq(payoutCards.isDefault, true))).limit(1);
+      const card = rows[0];
+      return card ? { configured: true, cardNumber: `${card.cardNumber.slice(0, 4)} **** **** ${card.cardNumber.slice(-4)}`, cardHolder: card.cardHolderName, bankName: card.bankName } : { configured: false };
+    }),
+
+    getWithdrawals: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const rows = await db.select().from(withdrawalRequests).where(eq(withdrawalRequests.userId, ctx.user.id));
+      return rows.map(row => ({ ...row, cardNumber: `${row.cardNumber.slice(0, 4)} **** **** ${row.cardNumber.slice(-4)}` }));
+    }),
+
     topup: protectedProcedure
       .input(z.object({ amount: z.number().int().positive().min(1000).max(100000000) }))
       .mutation(async ({ ctx, input }) => {
@@ -477,32 +502,26 @@ export const appRouter = router({
       }),
 
     withdraw: protectedProcedure
-      .input(z.object({ amount: z.number().int().positive().min(10000).max(100000000), destination: z.string().min(4).max(255) }))
+      .input(z.object({ amount: z.number().int().positive().min(10000).max(100000000), cardNumber: z.string().min(12).max(32), cardHolderName: z.string().min(3).max(128) }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-
+        const normalizedCard = input.cardNumber.replace(/\\D/g, '');
+        if (normalizedCard.length < 12 || normalizedCard.length > 19) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Karta raqami noto‘g‘ri' });
+        let requestId = 0;
         await db.transaction(async (tx: any) => {
           const balanceResult = await tx.update(users)
             .set({ walletBalance: sql`walletBalance - ${input.amount}` })
             .where(and(eq(users.id, ctx.user.id), gte(users.walletBalance, input.amount.toString())));
-          if (!balanceResult || getAffectedRows(balanceResult) !== 1) {
-            throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Yechib olish uchun balans yetarli emas' });
-          }
-          await tx.insert(transactions).values({
-            userId: ctx.user.id,
-            type: 'withdrawal',
-            amount: input.amount.toString(),
-            description: `Yechib olish so‘rovi: ${input.destination}`,
-            status: 'pending',
-          });
+          if (!balanceResult || getAffectedRows(balanceResult) !== 1) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Yechib olish uchun balans yetarli emas' });
+          const cardRows = await tx.select().from(payoutCards).where(and(eq(payoutCards.userId, ctx.user.id), eq(payoutCards.cardNumber, normalizedCard))).limit(1);
+          if (!cardRows[0]) await tx.insert(payoutCards).values({ userId: ctx.user.id, cardNumber: normalizedCard, cardHolderName: input.cardHolderName.trim(), bankName: 'Uzcard/Humo', isDefault: true });
+          const requestResult = await tx.insert(withdrawalRequests).values({ userId: ctx.user.id, amount: input.amount.toString(), cardNumber: normalizedCard, cardHolderName: input.cardHolderName.trim(), status: 'pending' });
+          requestId = getInsertId(requestResult);
+          await tx.insert(transactions).values({ userId: ctx.user.id, type: 'withdrawal', amount: input.amount.toString(), description: `Yechib olish #${requestId} — ${normalizedCard.slice(0, 4)} **** **** ${normalizedCard.slice(-4)}`, status: 'pending' });
         });
-
-        await notifyOwner({
-          title: 'Yangi yechib olish so‘rovi',
-          content: `Foydalanuvchi #${ctx.user.id} ${input.amount} so‘m yechib olishni so‘radi.`,
-        }).catch(() => undefined);
-        return { success: true };
+        await notifyOwner({ title: 'Yangi yechib olish so‘rovi', content: `Foydalanuvchi #${ctx.user.id} ${input.amount} so‘m yechib olishni so‘radi. So‘rov #${requestId} admin panelda kutmoqda.` }).catch(() => undefined);
+        return { success: true, requestId };
       }),
 
     getTransactions: protectedProcedure
@@ -731,6 +750,41 @@ export const appRouter = router({
       .query(async ({ ctx }) => {
         if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
         return await getAdminDisputes();
+      }),
+
+    getWithdrawalRequests: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        return await db.select().from(withdrawalRequests).orderBy(desc(withdrawalRequests.createdAt)).limit(100);
+      }),
+
+    reviewWithdrawal: protectedProcedure
+      .input(z.object({ requestId: z.number().int().positive(), approved: z.boolean(), notes: z.string().max(1000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        let userId = 0;
+        let amount = '0';
+        await db.transaction(async (tx: any) => {
+          const rows = await tx.select().from(withdrawalRequests).where(eq(withdrawalRequests.id, input.requestId)).limit(1);
+          const request = rows[0];
+          if (!request) throw new TRPCError({ code: 'NOT_FOUND', message: 'Yechib olish so‘rovi topilmadi' });
+          if (request.status !== 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Bu so‘rov allaqachon ko‘rib chiqilgan' });
+          userId = request.userId;
+          amount = String(request.amount);
+          const nextStatus = input.approved ? 'approved' : 'rejected';
+          await tx.update(withdrawalRequests).set({ status: nextStatus, adminNotes: input.notes?.trim() || (input.approved ? 'Admin tomonidan tasdiqlandi.' : 'Admin tomonidan rad etildi.') }).where(and(eq(withdrawalRequests.id, input.requestId), eq(withdrawalRequests.status, 'pending')));
+          await tx.update(transactions).set({ status: input.approved ? 'completed' : 'failed' }).where(and(eq(transactions.userId, request.userId), eq(transactions.type, 'withdrawal'), eq(transactions.status, 'pending'), sql`description like ${`Yechib olish #${input.requestId}%`}`));
+          if (!input.approved) {
+            await tx.update(users).set({ walletBalance: sql`walletBalance + ${request.amount}` }).where(eq(users.id, request.userId));
+            await tx.insert(transactions).values({ userId: request.userId, type: 'topup', amount: String(request.amount), description: `Yechib olish #${input.requestId} rad etildi — balans qaytarildi`, status: 'completed' });
+          }
+        });
+        await db.insert(notifications).values({ userId, type: 'admin_message', title: input.approved ? 'Pul yechish tasdiqlandi' : 'Pul yechish rad etildi', message: input.notes?.trim() || (input.approved ? `#${input.requestId} so‘rov tasdiqlandi. Mablag‘ kartaga yuboriladi.` : `#${input.requestId} so‘rov rad etildi va balansingiz qaytarildi.`) });
+        return { success: true, requestId: input.requestId, approved: input.approved, amount };
       }),
 
     broadcast: protectedProcedure

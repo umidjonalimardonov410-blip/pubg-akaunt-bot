@@ -156,7 +156,7 @@ describe("critical marketplace procedures", () => {
     }));
 
     state.updateWhere.mockResolvedValueOnce({ affectedRows: 0 });
-    await expect(caller.wallet.withdraw({ amount: 10000, destination: "8600 1234" })).rejects.toThrow("balans yetarli emas");
+    await expect(caller.wallet.withdraw({ amount: 10000, cardNumber: "8600123412345678", cardHolderName: "Test User" })).rejects.toThrow("balans yetarli emas");
   });
 
   it("restricts admin actions and broadcasts to every registered user", async () => {

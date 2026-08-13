@@ -220,6 +220,37 @@ export type Favorite = typeof favorites.$inferSelect;
 export type InsertFavorite = typeof favorites.$inferInsert;
 
 /**
+ * Payout cards and withdrawal requests
+ */
+export const payoutCards = mysqlTable("payout_cards", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  cardNumber: varchar("cardNumber", { length: 32 }).notNull(), // e.g. 56143600xxxx7758
+  cardHolderName: varchar("cardHolderName", { length: 128 }).notNull(), // e.g. Alimardonov U
+  bankName: varchar("bankName", { length: 64 }).default("Uzcard/Humo").notNull(),
+  isDefault: boolean("isDefault").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PayoutCard = typeof payoutCards.$inferSelect;
+export type InsertPayoutCard = typeof payoutCards.$inferInsert;
+
+export const withdrawalRequests = mysqlTable("withdrawal_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  cardNumber: varchar("cardNumber", { length: 32 }).notNull(),
+  cardHolderName: varchar("cardHolderName", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  adminNotes: text("adminNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type InsertWithdrawalRequest = typeof withdrawalRequests.$inferInsert;
+
+/**
  * Private buyer/seller thread attached to an account or order.
  */
 export const chatThreads = mysqlTable("chat_threads", {
