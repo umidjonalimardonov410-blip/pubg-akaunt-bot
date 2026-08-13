@@ -177,3 +177,14 @@
 - [ ] Extend admin dashboard with deposit review, payout queue, and audit sections.
 - [ ] Add regression tests for receipt submission, approval/rejection idempotency, payout review, Telegram photo capture, and mobile UI states.
 - [ ] Verify manual wallet flow in development and production, build the project, push source to GitHub, and save a live checkpoint.
+
+
+## User Transaction and Notification Enhancements — 2026-08-14
+- [x] Add a mobile-first transaction history page showing all wallet top-ups, withdrawals, refunds, purchases, and seller payouts.
+- [x] Add transaction history navigation from Profile and the main mobile menu.
+- [x] Show receipt review pending status and loading animation during receipt upload/submission.
+- [x] Surface approval and rejection notifications in the user-facing app with unread/read handling.
+- [x] Add regression tests for transaction history, pending receipt UI, and notification display.
+- [x] Verify the new flows with the test suite, production build, and mobile screenshots.
+- [x] Commit and push the verified changes to GitHub.
+- [x] Save a release checkpoint after the GitHub push.

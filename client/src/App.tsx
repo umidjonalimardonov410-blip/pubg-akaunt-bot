@@ -20,6 +20,7 @@ function Router() {
       <Route path={"/chat/:id"} component={Home} />
       <Route path={"/order/:id"} component={Home} />
       <Route path={"/profile"} component={Home} />
+      <Route path={"/transactions"} component={Home} />
       <Route path={"/reviews"} component={Home} />
       <Route path={"/support"} component={Home} />
 
