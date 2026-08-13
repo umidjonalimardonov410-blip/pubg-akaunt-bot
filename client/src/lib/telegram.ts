@@ -108,3 +108,27 @@ export function autoClaimTelegramReferral({
   });
   return true;
 }
+
+
+export async function authenticateTelegramWebApp(webApp = getTelegramWebApp()) {
+  const initData = webApp?.initData;
+  const userId = webApp?.initDataUnsafe?.user?.id;
+  if (!initData || !userId) return { ok: false as const, status: 'not_available' as const };
+  try {
+    const response = await fetch('/api/telegram/auth', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ initData }),
+    });
+    if (!response.ok) return { ok: false as const, status: 'failed' as const };
+    return { ok: true as const, status: 'active' as const };
+  } catch {
+    return { ok: false as const, status: 'failed' as const };
+  }
+}
+
+export function getTelegramMiniAppLaunchUrl() {
+  const username = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
+  return username ? `https://t.me/${username}?startapp=market` : 'https://t.me/';
+}

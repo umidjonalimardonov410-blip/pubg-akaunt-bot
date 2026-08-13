@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
+import { authenticateTelegramWebApp, getTelegramWebApp } from "./lib/telegram";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,8 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
+  // Telegram Mini Apps authenticate with signed initData, not the Manus OAuth redirect.
+  if (getTelegramWebApp()?.initData) return;
   startLogin();
 };
 
@@ -72,10 +75,18 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </trpc.Provider>
-);
+async function bootstrapTelegramAuth() {
+  const webApp = getTelegramWebApp();
+  if (!webApp?.initData || !webApp.initDataUnsafe?.user?.id) return;
+  await authenticateTelegramWebApp(webApp);
+}
+
+void bootstrapTelegramAuth().finally(() => {
+  createRoot(document.getElementById("root")!).render(
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </trpc.Provider>
+  );
+});

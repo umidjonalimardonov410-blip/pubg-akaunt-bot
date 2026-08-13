@@ -10,12 +10,10 @@ import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
-import { proRouter } from "./ProRouters";
 import { expansionRouter } from "./ExpansionRouters";
 
 export const appRouter = router({
   system: systemRouter,
-  pro: proRouter,
   expansion: expansionRouter,
   
   auth: router({

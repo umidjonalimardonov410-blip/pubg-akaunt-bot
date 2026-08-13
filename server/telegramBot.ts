@@ -16,7 +16,6 @@ export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
   { command: "orders", description: "Buyurtmalarni ko‘rish", title: "Buyurtmalarim", text: "Escrow bosqichlari, to‘lov holati, topshirish tasdig‘i va nizo jarayonini shu bo‘limda kuzating.", path: "/orders" },
   { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "Ichki balans, escrow himoyasi va tranzaksiyalar tarixini ko‘ring. Tashqi to‘lov provayderlari faqat sozlangandan keyin faol bo‘ladi.", path: "/profile" },
   { command: "support", description: "Yordam markazi", title: "Yordam markazi", text: "Muammo bo‘lsa, buyurtma raqami va dalillar bilan ticket yuboring. Login yoki parolni hech qachon chatga yozmang.", path: "/support" },
-  { command: "pro", description: "Pro vositalar", title: "Inferno Stealth Pro", text: "AI narx bahosi, sotuvchi analitikasi, ishonch profili, referral va xavfsizlik vositalarini oching.", path: "/pro-tools" },
   { command: "admin", description: "Admin nazorati", title: "Admin nazorati", text: "E’lonlar, escrow, nizolar va support navbatini tartibli ravishda boshqaring.", path: "/admin", adminOnly: true },
 ];
 
@@ -91,7 +90,7 @@ export function getTelegramCommandResponse(command: string, userId?: number | st
   if (!item) {
     return {
       title: "Inferno Stealth yordam",
-      text: "Buyruqni tanlang: /buy — bozor, /sell — sotish, /orders — buyurtmalar, /wallet — wallet, /support — yordam, /pro — Pro vositalar.",
+      text: "Buyruqni tanlang: /buy — bozor, /sell — sotish, /orders — buyurtmalar, /wallet — wallet yoki /support — yordam.",
       path: "/",
     };
   }
