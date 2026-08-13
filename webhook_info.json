@@ -1,0 +1,1 @@
+{"ok":true,"result":{"url":"https://inferno-stealth-production.up.railway.app/api/telegram/webhook","has_custom_certificate":false,"pending_update_count":4,"last_error_date":1786630985,"last_error_message":"Wrong response from the webhook: 401 Unauthorized","max_connections":40,"ip_address":"69.46.46.66","allowed_updates":["message","callback_query"]}}
