@@ -1,6 +1,58 @@
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { getMigrationsFolder, shouldRunProductionMigrations } from "./databaseMigrations";
+import { describe, expect, it, vi } from "vitest";
+import {
+  ensureProductionDatabaseSchema,
+  getMigrationsFolder,
+  isExistingTableMigrationError,
+  isIgnorableSchemaConflict,
+  type MigrationDependencies,
+  shouldRunProductionMigrations,
+} from "./databaseMigrations";
+
+const EXPECTED_TABLES = [
+  "users", "pubg_accounts", "orders", "reviews", "transactions", "notifications", "disputes", "favorites",
+  "chat_threads", "chat_messages", "admin_audit_logs", "recently_viewed", "referrals", "negotiations",
+  "auctions", "auction_bids", "promo_codes", "support_tickets", "seller_verifications", "premium_promotions",
+  "support_ticket_messages", "seller_badge_audits", "price_estimates", "price_evaluation_rules", "security_audits",
+];
+
+function withProductionEnv<T>(callback: () => Promise<T>) {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.NODE_ENV = "production";
+  process.env.DATABASE_URL = "mysql://example";
+  return callback().finally(() => {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
+  });
+}
+
+function makeRecoveryConnection(statementError?: unknown) {
+  const query = vi.fn(async (sql: string) => {
+    const normalized = sql.trim();
+    if (normalized.includes("GET_LOCK")) return [[{ lock_result: 1 }], []];
+    if (normalized.includes("RELEASE_LOCK")) return [[], []];
+    if (normalized.includes("information_schema.tables")) {
+      return [EXPECTED_TABLES.map(TABLE_NAME => ({ TABLE_NAME })), []];
+    }
+    if (normalized.includes("SELECT hash, created_at")) return [[], []];
+    if (normalized.startsWith("CREATE TABLE IF NOT EXISTS") || normalized.startsWith("INSERT INTO `__drizzle_migrations`")) return [[], []];
+    if (statementError) throw statementError;
+    throw { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 };
+  });
+  return { query, end: vi.fn(async () => undefined) };
+}
+
+function makeDependencies(connection: ReturnType<typeof makeRecoveryConnection>, migrationError: unknown): MigrationDependencies {
+  return {
+    connect: vi.fn(async () => connection as never),
+    createDrizzle: vi.fn(() => ({}) as never),
+    migrate: vi.fn(async () => { throw migrationError; }),
+    readMigrationFiles: vi.fn(() => [{ sql: ["CREATE TABLE `disputes` (id int)"], folderMillis: 123, hash: "hash-123", bps: false }]),
+  };
+}
 
 describe("production database migration bootstrap", () => {
   it("enables migrations for a production DATABASE_URL by default", () => {
@@ -15,5 +67,39 @@ describe("production database migration bootstrap", () => {
 
   it("resolves the committed drizzle folder from the server working directory", () => {
     expect(getMigrationsFolder("/app")).toBe(path.resolve("/app", "drizzle"));
+  });
+
+  it("recognizes nested MySQL existing-table errors for recovery", () => {
+    expect(isExistingTableMigrationError({ code: "DRIZZLE_QUERY_ERROR", cause: { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 } })).toBe(true);
+    expect(isExistingTableMigrationError({ code: "ER_DUP_ENTRY", errno: 1062 })).toBe(false);
+  });
+
+  it("ignores only duplicate schema statements during recovery", () => {
+    expect(isIgnorableSchemaConflict({ code: "ER_TABLE_EXISTS_ERROR" }, "CREATE TABLE `disputes` (id int)")).toBe(true);
+    expect(isIgnorableSchemaConflict({ code: "ER_DUP_FIELDNAME" }, "ALTER TABLE `users` ADD `walletBalance` decimal(15,2)")).toBe(true);
+    expect(isIgnorableSchemaConflict({ code: "ER_DUP_ENTRY" }, "INSERT INTO users (openId) VALUES ('x')")).toBe(false);
+    expect(isIgnorableSchemaConflict({ code: "ER_TABLE_EXISTS_ERROR" }, "ALTER TABLE `users` MODIFY COLUMN `name` text")).toBe(false);
+  });
+
+  it("runs the actual locked recovery path and journals a previously-created schema", async () => {
+    const connection = makeRecoveryConnection();
+    const dependencies = makeDependencies(connection, { code: "DRIZZLE_QUERY_ERROR", cause: { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 } });
+
+    const result = await withProductionEnv(() => ensureProductionDatabaseSchema(dependencies));
+
+    expect(result).toMatchObject({ status: "ready", recovered: true });
+    expect(dependencies.migrate).toHaveBeenCalledTimes(1);
+    expect(dependencies.connect).toHaveBeenCalledTimes(2);
+    expect(connection.query.mock.calls.some(([sql]) => String(sql).trim().startsWith("INSERT INTO `__drizzle_migrations`"))).toBe(true);
+    expect(connection.end).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not hide a non-ignorable SQL error during recovery", async () => {
+    const databaseError = { code: "ER_DUP_ENTRY", errno: 1062 };
+    const connection = makeRecoveryConnection(databaseError);
+    const dependencies = makeDependencies(connection, { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 });
+
+    await expect(withProductionEnv(() => ensureProductionDatabaseSchema(dependencies))).rejects.toMatchObject(databaseError);
+    expect(connection.end).toHaveBeenCalledTimes(2);
   });
 });

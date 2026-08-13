@@ -122,3 +122,13 @@
 - [x] Add a real `SellPage` jsdom flow test covering file selection, pending upload progress, duplicate-submit prevention, upload completion, and account creation payload.
 - [x] Re-check the live `/saved` route after the regression update; production shows the expected Telegram login gate.
 - [x] Use existing `SavedPage.test.tsx` coverage for authenticated loading, empty, and populated states because those states require an authenticated Telegram session in the browser.
+
+## Railway Restart Migration Repair — 2026-08-13
+- [x] Make the production Drizzle migration bootstrap safe to retry when a previous deployment has already created one or more tables.
+- [x] Add regression coverage for an existing-table migration retry and rerun the full test/build verification.
+- [ ] Push the idempotent migration fix to GitHub and redeploy the exact commit to Railway.
+- [ ] Confirm the Railway startup probe is healthy and recheck the live Mini App after the retry-safe migration fix.
+
+- [x] Correct over-escaped Drizzle migration-table identifiers that prevented the retry recovery SQL from executing.
+- [x] Exercise the real `ensureProductionDatabaseSchema()` recovery path and prove non-ignorable SQL errors still fail startup.
+- [x] Re-run final verification: 69 tests passed, 2 integration tests skipped, and production build succeeded.
