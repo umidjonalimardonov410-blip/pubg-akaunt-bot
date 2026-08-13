@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerTelegramBot, registerTelegramWebhook } from "../telegramBot";
 import { registerTelegramAuthRoute } from "../telegramAuth";
+import { ensureProductionDatabaseSchema } from "../databaseMigrations";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -31,6 +32,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  await ensureProductionDatabaseSchema();
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

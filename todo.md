@@ -92,3 +92,19 @@
 - [ ] Add a visible seller upload progress/loading state that is clearly shown while image/video files are being uploaded.
 - [ ] Add focused seller media regression coverage for invalid type, size limit, successful image/video selection, and upload submission states.
 - [ ] Re-verify the seller flow after the new upload-state test and only then finalize the release checklist.
+
+## Production Mismatch Reported After Railway Deployment
+- [ ] Audit Railway runtime environment, deployed commit, Telegram webhook, Mini App URL, and bot command registration against GitHub main.
+- [ ] Reproduce the reported Telegram bot and Mini App flows that appear unchanged or non-functional.
+- [ ] Repair any runtime configuration, webhook, authentication, or production build mismatch discovered during the audit.
+- [ ] Re-run tests and production build after the repair.
+- [ ] Push the corrected commit to GitHub and redeploy that exact commit to Railway.
+- [ ] Verify the real Telegram entry flow, profile, seller, favorites, payments, and admin-facing routes in production.
+
+## Single Source of Truth and Full Railway Release
+- [ ] Reconcile the complete Inferno Stealth source in this repository with GitHub main and remove any stale or split deployment path.
+- [ ] Repair every production blocker found in Telegram bot registration, Mini App authentication, webhook delivery, and Railway runtime configuration.
+- [x] Run the full test suite and production build after the repairs.
+- [ ] Push one complete release commit to the configured GitHub repository.
+- [ ] Redeploy that exact release commit to the existing Inferno Stealth Railway project and confirm the service is online.
+- [ ] Verify the real bot webhook, Mini App launch, profile, seller, favorites, payment, and admin flows from production.

@@ -25,6 +25,7 @@ export type TelegramUpdate = {
     text?: string;
     chat?: { id?: number | string; type?: string };
     from?: { id?: number | string; language_code?: string };
+    contact?: { phone_number?: string; user_id?: number | string; first_name?: string };
   };
 };
 
@@ -54,6 +55,25 @@ export function getTelegramMiniAppUrl(path = "/") {
 
 function commandByName(command: string) {
   return TELEGRAM_BOT_COMMANDS.find(item => item.command === command) ?? null;
+}
+
+function webAppButton(text: string, path: string) {
+  const url = getTelegramMiniAppUrl(path);
+  return url ? { text, web_app: { url } } : { text };
+}
+
+function buildMainKeyboard() {
+  return {
+    keyboard: [
+      [webAppButton("🛒 Akkaunt olish", "/accounts"), webAppButton("➕ Akkaunt sotish", "/sell")],
+      [webAppButton("📦 Buyurtmalarim", "/orders"), webAppButton("👤 Profilim", "/profile")],
+      [webAppButton("🆘 Yordam", "/support")],
+      [{ text: "📱 Telefon raqam orqali kirish", request_contact: true }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+    input_field_placeholder: "Kerakli bo‘limni tanlang",
+  };
 }
 
 function buildInlineKeyboard(path?: string) {
@@ -108,6 +128,22 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const chatId = message?.chat?.id;
   if (chatId === undefined) return { handled: false as const, status: "ignored" as const };
 
+  await telegramApiRequest("sendChatAction", { chat_id: chatId, action: "typing" });
+
+  const contact = message?.contact;
+  if (contact) {
+    const ownsContact = contact.user_id !== undefined && String(contact.user_id) === String(message?.from?.id);
+    const sent = await telegramApiRequest("sendMessage", {
+      chat_id: chatId,
+      text: ownsContact
+        ? "<b>Telefon raqamingiz tasdiqlandi</b>\n\nQuyidagi menyudan kerakli bo‘limni bosing. Mini App sizni Telegram profilingiz orqali xavfsiz kiritadi."
+        : "<b>Bu boshqa foydalanuvchining raqami</b>\n\nKirish uchun pastdagi tugma orqali o‘zingizning telefon raqamingizni yuboring.",
+      parse_mode: "HTML",
+      reply_markup: buildMainKeyboard(),
+    });
+    return { handled: true as const, command: "contact", status: sent.status, sent: sent.ok };
+  }
+
   const command = parseTelegramCommand(message?.text);
   const response = getTelegramCommandResponse(command, message?.from?.id);
   const sent = await telegramApiRequest("sendMessage", {
@@ -115,7 +151,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     text: `<b>${response.title}</b>\n\n${response.text}`,
     parse_mode: "HTML",
     disable_web_page_preview: true,
-    reply_markup: buildInlineKeyboard(response.path),
+    reply_markup: command === "start" || !command ? buildMainKeyboard() : buildInlineKeyboard(response.path),
   });
 
   return { handled: true as const, command, status: sent.status, sent: sent.ok };
@@ -127,7 +163,7 @@ export async function registerTelegramBot() {
   }
 
   const commands = await telegramApiRequest("setMyCommands", {
-    commands: TELEGRAM_BOT_COMMANDS.filter(item => !item.adminOnly).map(({ command, description }) => ({ command, description })),
+    commands: TELEGRAM_BOT_COMMANDS.filter(item => item.command === "start").map(({ command, description }) => ({ command, description })),
   });
 
   const menuUrl = getTelegramMiniAppUrl("/");
@@ -153,15 +189,12 @@ export function registerTelegramWebhook(app: Express) {
   app.post("/api/telegram/webhook", async (req: Request, res: Response) => {
     console.log(`[Telegram Webhook] Received update:`, JSON.stringify(req.body));
     
-    // Temporarily disabled secret check to ensure immediate functionality
-    /*
     const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
     if (expectedSecret && req.header("x-telegram-bot-api-secret-token") !== expectedSecret) {
-      console.warn(`[Telegram Webhook] Secret mismatch. Expected: ${expectedSecret}, Got: ${req.header("x-telegram-bot-api-secret-token")}`);
+      console.warn("[Telegram Webhook] Secret mismatch");
       res.status(401).json({ ok: false, message: "Webhook signature tekshiruvi muvaffaqiyatsiz." });
       return;
     }
-    */
 
     const result = await handleTelegramUpdate(req.body as TelegramUpdate);
     console.log(`[Telegram Webhook] Result:`, JSON.stringify(result));
