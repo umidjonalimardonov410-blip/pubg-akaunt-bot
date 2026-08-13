@@ -35,7 +35,7 @@
 ## Compact 4-5 Row View and GitHub Sync
 - [x] Implement compact 4-5 row card mode triggered by marketplace layout button
 - [x] Ensure all key details fit cleanly without vertical overflow
-- [ ] Run test suite and production build, and push to GitHub
+- [x] Run test suite and production build, and push to GitHub
 
 ## Final Compact Marketplace Polish
 - [x] Replace the current expanded list card with a phone-first compact 4–5-row account view showing Level, K/D, Win Rate, Skins, and Price.

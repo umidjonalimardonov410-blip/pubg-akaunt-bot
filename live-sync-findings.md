@@ -13,3 +13,7 @@ Local development, by contrast, rendered the new compact 5-row component and the
 The local `/accounts` page exposed the updated button hints `3 ta ustunli ko'rinish` and `5 qatorli ixcham ko'rinish`. Clicking the compact button switched each listing into a dense card with a header row, then explicit `Daraja`, `Statistika`, `Skinlar`, and `Narx` rows, plus the `Ko‘rish` action. The extracted content confirmed Level/rank/region, K/D, Win Rate, match count, all demo skins, and price are present. The local preview showed no horizontal overflow at 375px; the full page extends vertically as expected for multiple listings.
 
 The local test/build command completed successfully with 52 passing tests, 2 intentionally skipped integration tests, and a successful Vite/esbuild production build.
+
+## Post-GitHub-Push Railway Check — 2026-08-13
+
+The public Railway URL `https://inferno-stealth-production.up.railway.app/accounts` was checked after GitHub main moved to commit `c73595b`. It still rendered the previous build, including `Pro markaz` and `Pro vositalar` navigation, while the compact toggle remained the old behavior. This proves the Railway service did not automatically redeploy from the GitHub push. The sandbox has a `RAILWAY_TOKEN` environment variable, but the Railway CLI rejected it as invalid; no Railway project/service identifier is available in the environment, and no Railway connector is configured in the current Manus session.
