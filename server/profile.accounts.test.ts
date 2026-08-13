@@ -40,7 +40,7 @@ describe("seller profile account history", () => {
 
     state.getSellerAccounts.mockResolvedValue([{ id: 21, sellerId: 8, status: "sold" }]);
     await expect(appRouter.createCaller(context(1, "admin")).accounts.getSellerAccounts(8)).resolves.toEqual([
-      { id: 21, sellerId: 8, status: "sold" },
+      expect.objectContaining({ id: 21, sellerId: 8, status: "sold", favoriteCount: 0, sellerViewCount: 0 }),
     ]);
   });
 });

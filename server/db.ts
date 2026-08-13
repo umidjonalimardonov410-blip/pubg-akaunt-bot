@@ -1,4 +1,4 @@
-import { eq, and, or, like, gte, lte, desc, inArray } from "drizzle-orm";
+import { eq, and, or, like, gte, lte, desc, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -189,6 +189,16 @@ export async function getSellerAccounts(sellerId: number) {
   return await db.select().from(pubgAccounts)
     .where(eq(pubgAccounts.sellerId, sellerId))
     .orderBy(desc(pubgAccounts.createdAt));
+}
+
+export async function getFavoriteCounts(accountIds: number[]) {
+  const db = await getDb();
+  if (!db || accountIds.length === 0) return new Map<number, number>();
+  const rows = await db.select({ accountId: favorites.accountId, count: sql<number>`count(*)` })
+    .from(favorites)
+    .where(inArray(favorites.accountId, accountIds))
+    .groupBy(favorites.accountId);
+  return new Map(rows.map(row => [row.accountId, Number(row.count)]));
 }
 
 // Orders queries

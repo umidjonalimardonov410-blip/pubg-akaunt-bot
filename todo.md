@@ -48,3 +48,15 @@
 - [x] Build Telegram Mini App admin audit log and payout status history table
 - [x] Verify responsive 3-column account grid layout at desktop and mobile breakpoints
 - [x] Add an explicit admin-only mock/test balance toggle with server enforcement, UI state, and tests proving real wallet balances are never mutated in test mode.
+
+## Phone-First & User Feature Repairs (2026-08-13)
+- [x] Convert marketplace layout strictly to phone-first single-column width (remove desktop 3-column grid constraints)
+- [x] Fix account filtering responsiveness so lists filter instantly without hanging or freezing on mobile
+- [x] Implement robust Telegram Mini App login state handling with clear in-app auth actions
+- [x] Build profile editing (avatar, bio, display name, Telegram handle) and profile photo upload via S3
+- [x] Add seller view-count and cart-addition analytics per account listing in the seller dashboard
+- [x] Build card top-up and deposit flow with receipt submission (image upload/text ref) and admin confirmation queue
+- [x] Run full test suite, build verification, and phone viewport visual inspection (68 passed, 2 skipped; 390x844 screenshots verified)
+- [x] Add focused regression coverage proving mobile filter changes update query inputs without refetch loops or hanging behavior.
+- [x] Inspect and test the profile avatar upload path end to end, including storagePut/S3 URL integration and editor wiring.
+- [x] Inspect and test the server media.upload path used by profile avatars, confirming storagePut/S3 execution and returned URL behavior.

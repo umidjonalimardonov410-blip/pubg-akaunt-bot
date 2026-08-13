@@ -21,6 +21,8 @@ export const users = mysqlTable("users", {
   twoFactorSecret: varchar("twoFactorSecret", { length: 64 }),
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
   profileBio: text("profileBio"),
+  avatarUrl: varchar("avatarUrl", { length: 500 }),
+  telegramUsername: varchar("telegramUsername", { length: 128 }),
   referralCode: varchar("referralCode", { length: 32 }),
   alertPreferences: text("alertPreferences"),
   
@@ -158,6 +160,24 @@ export const transactions = mysqlTable("transactions", {
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = typeof transactions.$inferInsert;
+
+/**
+ * Card top-up requests awaiting receipt verification by an admin.
+ */
+export const depositRequests = mysqlTable("deposit_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  receiptUrl: varchar("receiptUrl", { length: 500 }),
+  receiptReference: varchar("receiptReference", { length: 255 }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  adminNotes: text("adminNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DepositRequest = typeof depositRequests.$inferSelect;
+export type InsertDepositRequest = typeof depositRequests.$inferInsert;
 
 /**
  * Notifications

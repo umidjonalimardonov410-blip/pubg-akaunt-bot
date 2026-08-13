@@ -21,3 +21,12 @@ The latest GitHub commit [e708aa5](https://github.com/umidjonalimardonov410-blip
 ## 2026-08-13 three-column correction
 
 The featured homepage account section now uses `md:grid-cols-2 xl:grid-cols-3`, and the live preview confirms three cards per row at 1280px. At 390px, the same section collapses to one card per row with readable controls and no horizontal overflow. The full marketplace route already uses the responsive `lg:grid-cols-3` grid for desktop browsing.
+
+## 2026-08-13 phone-first repair verification
+
+- Captured `/`, `/accounts`, `/profile`, and `/admin` at 390x844 with the current dev preview.
+- Marketplace account cards render as a single vertical column; no three-column desktop layout appears in the phone canvas.
+- Search and filter controls are stacked, touch-sized, and the filter sheet remains bounded to the viewport.
+- Profile shows the authenticated identity card, edit action, wallet/deposit area, account history, sold history, and activity sections.
+- Admin view shows receipt/payment desk, payout status history, staging Mock Balance controls, withdrawal checklist, and audit-log sections.
+- The captured routes stay inside the mobile-width shell without visible horizontal overflow.

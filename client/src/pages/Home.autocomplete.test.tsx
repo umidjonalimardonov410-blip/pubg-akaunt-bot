@@ -89,3 +89,18 @@ describe("SearchPanel autocomplete", () => {
     expect(screen.getByText("Mos tavsiya topilmadi. Filtrlarni sinab ko‘ring.")).toBeTruthy();
   });
 });
+
+  it("updates phone filters without a refetch loop when the query changes", () => {
+    const onFilters = vi.fn();
+    render(<SearchPanel onFilters={onFilters} />);
+    const input = screen.getByPlaceholderText("Akkaunt ID, skin yoki o'yinchi nomini qidiring...");
+
+    fireEvent.change(input, { target: { value: "M4" } });
+    const callsAfterFirstInput = useSuggestionsQuery.mock.calls.length;
+    fireEvent.change(input, { target: { value: "M416" } });
+
+    expect(onFilters).toHaveBeenCalledTimes(2);
+    expect(onFilters).toHaveBeenLastCalledWith(expect.objectContaining({ search: "M416" }));
+    expect(useSuggestionsQuery.mock.calls.length).toBe(callsAfterFirstInput + 1);
+    expect(useSuggestionsQuery.mock.calls.length).toBeLessThan(5);
+  });
