@@ -497,3 +497,25 @@ export const securityAudits = mysqlTable("security_audits", {
 
 export type SecurityAudit = typeof securityAudits.$inferSelect;
 export type InsertSecurityAudit = typeof securityAudits.$inferInsert;
+
+
+/**
+ * Manual wallet top-up receipts awaiting admin verification.
+ * Receipt bytes live in S3; this table stores only metadata and review state.
+ */
+export const depositReceipts = mysqlTable("deposit_receipts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  receiptKey: varchar("receiptKey", { length: 500 }).notNull(),
+  receiptUrl: varchar("receiptUrl", { length: 700 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  transactionId: int("transactionId"),
+  reviewedBy: int("reviewedBy"),
+  reviewNote: text("reviewNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+
+export type DepositReceipt = typeof depositReceipts.$inferSelect;
+export type InsertDepositReceipt = typeof depositReceipts.$inferInsert;

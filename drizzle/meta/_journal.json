@@ -85,6 +85,13 @@
       "when": 1786590092854,
       "tag": "0011_ambitious_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1786647984048,
+      "tag": "0012_silky_thor",
+      "breakpoints": true
     }
   ]
 }

@@ -144,16 +144,10 @@ describe("critical marketplace procedures", () => {
     })).rejects.toThrow("Sharh allaqachon qoldirilgan");
   });
 
-  it("records wallet top-ups and blocks withdrawals without sufficient balance", async () => {
+  it("requires manual receipt upload for wallet top-ups and blocks withdrawals without sufficient balance", async () => {
     const caller = appRouter.createCaller(makeContext(2));
 
-    await expect(caller.wallet.topup({ amount: 100000 })).resolves.toEqual({ success: true });
-    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 2,
-      type: "topup",
-      amount: "100000",
-      status: "completed",
-    }));
+    await expect(caller.wallet.topup({ amount: 100000 })).rejects.toThrow("chek yuboring");
 
     state.updateWhere.mockResolvedValueOnce({ affectedRows: 0 });
     await expect(caller.wallet.withdraw({ amount: 10000, destination: "8600 1234" })).rejects.toThrow("balans yetarli emas");

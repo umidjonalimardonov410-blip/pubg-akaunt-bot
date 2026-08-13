@@ -1,5 +1,10 @@
 import type { Express, Request, Response } from "express";
 
+import { getDb, getUserByOpenId, getInsertId } from './db';
+import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
+import { storagePut } from './storage';
+import { eq } from 'drizzle-orm';
+
 export type TelegramCommand = {
   command: string;
   description: string;
@@ -14,18 +19,26 @@ export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
   { command: "buy", description: "Akkauntlarni ko‘rish", title: "Akkauntlar bozori", text: "Region, level, K/D, skinlar va narx bo‘yicha mos akkauntni tanlang. Har bir e’lon admin tekshiruvidan o‘tadi.", path: "/accounts" },
   { command: "sell", description: "Akkaunt sotish", title: "Akkaunt sotish", text: "PUBG ID, statistika, inventar va media ma’lumotlarini to‘liq kiriting. E’lon xaridorlarga chiqishidan oldin tekshiriladi.", path: "/sell" },
   { command: "orders", description: "Buyurtmalarni ko‘rish", title: "Buyurtmalarim", text: "Escrow bosqichlari, to‘lov holati, topshirish tasdig‘i va nizo jarayonini shu bo‘limda kuzating.", path: "/orders" },
-  { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "Ichki balans, escrow himoyasi va tranzaksiyalar tarixini ko‘ring. Tashqi to‘lov provayderlari faqat sozlangandan keyin faol bo‘ladi.", path: "/profile" },
+  { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "10 000 / 20 000 / 50 000 so‘mdan birini tanlang, kartaga o‘tkazing va chek rasmini yuboring. Admin tasdiqlagach balansingizga qo‘shiladi.", path: "/profile" },
   { command: "support", description: "Yordam markazi", title: "Yordam markazi", text: "Muammo bo‘lsa, buyurtma raqami va dalillar bilan ticket yuboring. Login yoki parolni hech qachon chatga yozmang.", path: "/support" },
   { command: "admin", description: "Admin nazorati", title: "Admin nazorati", text: "E’lonlar, escrow, nizolar va support navbatini tartibli ravishda boshqaring.", path: "/admin", adminOnly: true },
 ];
 
 export type TelegramUpdate = {
   update_id?: number;
+  callback_query?: {
+    id: string;
+    data?: string;
+    from?: { id?: number | string };
+    message?: { chat?: { id?: number | string } };
+  };
   message?: {
     text?: string;
     chat?: { id?: number | string; type?: string };
     from?: { id?: number | string; language_code?: string };
     contact?: { phone_number?: string; user_id?: number | string; first_name?: string };
+    photo?: Array<{ file_id: string; file_size?: number; width?: number; height?: number }>;
+    caption?: string;
   };
 };
 
@@ -39,6 +52,28 @@ export function getTelegramAdminIds() {
     .split(",")
     .map(value => value.trim())
     .filter(Boolean);
+}
+
+const MANUAL_TOPUP_AMOUNTS = [10000, 20000, 50000] as const;
+const pendingWalletSelections = new Map<string, number>();
+
+function formatUzAmount(amount: number) {
+  return amount.toLocaleString('uz-UZ');
+}
+
+function walletMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      MANUAL_TOPUP_AMOUNTS.map(amount => ({ text: `💳 ${formatUzAmount(amount)} so‘m`, callback_data: `wallet_amount:${amount}` })),
+      [{ text: '📱 Mini App profilini ochish', web_app: { url: getTelegramMiniAppUrl('/profile') || process.env.PUBLIC_APP_URL || '/' } }],
+    ],
+  };
+}
+
+function manualWalletText() {
+  const cardNumber = process.env.ADMIN_PAYOUT_CARD_NUMBER || 'Admin kartasi sozlanmagan';
+  const cardHolder = process.env.ADMIN_PAYOUT_CARD_HOLDER || 'Admin karta egasi sozlanmagan';
+  return `<b>Inferno Wallet — manual to‘ldirish</b>\n\n1) Summani tanlang: 10 000 / 20 000 / 50 000 so‘m.\n2) Quyidagi karta ma’lumotiga o‘tkazing:\n💳 Karta: <code>${cardNumber}</code>\n👤 Karta egasi: <b>${cardHolder}</b>\n3) To‘lov chekini shu chatga rasm qilib yuboring.\n\nChek admin tekshiruviga tushadi; tasdiqlangach balans avtomatik qo‘shiladi.`;
 }
 
 export function isTelegramAdmin(userId?: number | string) {
@@ -67,6 +102,7 @@ function buildMainKeyboard() {
     keyboard: [
       [webAppButton("🛒 Akkaunt olish", "/accounts"), webAppButton("➕ Akkaunt sotish", "/sell")],
       [webAppButton("📦 Buyurtmalarim", "/orders"), webAppButton("👤 Profilim", "/profile")],
+      [{ text: "💳 Balans to‘ldirish" }],
       [webAppButton("🆘 Yordam", "/support")],
       [{ text: "📱 Telefon raqam orqali kirish", request_contact: true }],
     ],
@@ -123,35 +159,171 @@ export function getTelegramCommandResponse(command: string, userId?: number | st
   return item;
 }
 
-export async function handleTelegramUpdate(update: TelegramUpdate) {
-  const message = update.message;
-  const chatId = message?.chat?.id;
-  if (chatId === undefined) return { handled: false as const, status: "ignored" as const };
+async function answerTelegramCallback(callbackQueryId: string, text: string) {
+  return await telegramApiRequest('answerCallbackQuery', { callback_query_id: callbackQueryId, text, show_alert: false });
+}
 
-  await telegramApiRequest("sendChatAction", { chat_id: chatId, action: "typing" });
+async function sendWalletMenu(chatId: number | string) {
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: manualWalletText(),
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: walletMenuKeyboard(),
+  });
+}
 
-  const contact = message?.contact;
-  if (contact) {
-    const ownsContact = contact.user_id !== undefined && String(contact.user_id) === String(message?.from?.id);
-    const sent = await telegramApiRequest("sendMessage", {
-      chat_id: chatId,
-      text: ownsContact
-        ? "<b>Telefon raqamingiz tasdiqlandi</b>\n\nQuyidagi menyudan kerakli bo‘limni bosing. Mini App sizni Telegram profilingiz orqali xavfsiz kiritadi."
-        : "<b>Bu boshqa foydalanuvchining raqami</b>\n\nKirish uchun pastdagi tugma orqali o‘zingizning telefon raqamingizni yuboring.",
-      parse_mode: "HTML",
-      reply_markup: buildMainKeyboard(),
-    });
-    return { handled: true as const, command: "contact", status: sent.status, sent: sent.ok };
+async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['message']>) {
+  const chatId = message.chat?.id;
+  const telegramUserId = message.from?.id;
+  const photo = message.photo?.[message.photo.length - 1];
+  if (chatId === undefined || telegramUserId === undefined || !photo) return { handled: false as const, status: 'ignored' as const };
+
+  const selectedFromCaption = Number((message.caption || '').replace(/[^0-9]/g, ''));
+  const amount = pendingWalletSelections.get(String(chatId)) ?? (MANUAL_TOPUP_AMOUNTS.includes(selectedFromCaption as typeof MANUAL_TOPUP_AMOUNTS[number]) ? selectedFromCaption : undefined);
+  if (!amount) {
+    await sendWalletMenu(chatId);
+    return { handled: true as const, command: 'wallet_receipt_missing_amount', status: 'active' as const, sent: true };
   }
 
-  const command = parseTelegramCommand(message?.text);
-  const response = getTelegramCommandResponse(command, message?.from?.id);
-  const sent = await telegramApiRequest("sendMessage", {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const user = await getUserByOpenId(`telegram:${telegramUserId}`);
+  if (!token || !user) {
+    return { handled: true as const, command: 'wallet_receipt', status: 'setup_required' as const, sent: false };
+  }
+  if (photo.file_size && photo.file_size > 8 * 1024 * 1024) {
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: '❌ Chek hajmi 8 MB dan oshmasin. Kichikroq rasm yuboring.' });
+    return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok };
+  }
+
+  const fileResult = await telegramApiRequest<{ file_path?: string }>('getFile', { file_id: photo.file_id });
+  const filePath = fileResult.ok ? fileResult.result?.file_path : undefined;
+  if (!filePath) {
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: '❌ Chekni yuklab bo‘lmadi. Iltimos, qayta urinib ko‘ring.' });
+    return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok };
+  }
+
+  try {
+    const fileResponse = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+    if (!fileResponse.ok) throw new Error(`Telegram file download failed: ${fileResponse.status}`);
+    const bytes = Buffer.from(await fileResponse.arrayBuffer());
+    if (bytes.length > 8 * 1024 * 1024) throw new Error('receipt_too_large');
+    const uploaded = await storagePut(`users/${user.id}/receipts/telegram-${Date.now()}.jpg`, bytes, 'image/jpeg');
+    const db = await getDb();
+    if (!db) throw new Error('database_unavailable');
+
+    const result = await db.transaction(async (tx: any) => {
+      const transactionResult = await tx.insert(transactions).values({
+        userId: user.id,
+        type: 'topup',
+        amount: amount.toString(),
+        description: 'Telegram orqali manual chek tekshiruvi kutilmoqda',
+        status: 'pending',
+      });
+      const transactionId = getInsertId(transactionResult);
+      const receiptResult = await tx.insert(depositReceipts).values({
+        userId: user.id,
+        amount: amount.toString(),
+        receiptKey: uploaded.key,
+        receiptUrl: uploaded.url,
+        status: 'pending',
+        transactionId,
+      });
+      const receiptId = getInsertId(receiptResult);
+      await tx.insert(securityAudits).values({
+        userId: user.id,
+        eventType: 'deposit_receipt_submitted_telegram',
+        riskScore: 0,
+        details: JSON.stringify({ receiptId, amount, chatId }),
+      });
+      return { receiptId };
+    });
+
+    pendingWalletSelections.delete(String(chatId));
+    await Promise.all(getTelegramAdminIds().map(adminId => telegramApiRequest('sendMessage', {
+      chat_id: adminId,
+      text: `📥 <b>Yangi balans cheki</b>\n\nFoydalanuvchi: #${user.id}\nSumma: <b>${formatUzAmount(amount)} so‘m</b>\nChek: ${uploaded.url}`,
+      parse_mode: 'HTML',
+      disable_web_page_preview: false,
+      reply_markup: buildInlineKeyboard('/admin'),
+    })));
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `✅ <b>Chek qabul qilindi</b>\n\n${formatUzAmount(amount)} so‘m uchun so‘rovingiz #${result.receiptId} admin tekshiruviga yuborildi. Tasdiqlangach balansingizga qo‘shiladi.`,
+      parse_mode: 'HTML',
+      reply_markup: buildInlineKeyboard('/profile'),
+    });
+    return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok, receiptId: result.receiptId };
+  } catch (error) {
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: error instanceof Error && error.message === 'receipt_too_large' ? '❌ Chek hajmi 8 MB dan oshmasin.' : '❌ Chekni qabul qilishda xatolik yuz berdi. Qayta urinib ko‘ring.' });
+    return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok };
+  }
+}
+
+export async function handleTelegramUpdate(update: TelegramUpdate) {
+  const callback = update.callback_query;
+  if (callback) {
+    const callbackChatId = callback.message?.chat?.id;
+    if (callbackChatId === undefined) return { handled: false as const, status: 'ignored' as const };
+    const data = callback.data || '';
+    if (data === 'wallet_menu') {
+      await answerTelegramCallback(callback.id, 'Wallet menyusi ochildi');
+      const sent = await sendWalletMenu(callbackChatId);
+      return { handled: true as const, command: 'wallet_menu', status: sent.status, sent: sent.ok };
+    }
+    const amountMatch = /^wallet_amount:(10000|20000|50000)$/.exec(data);
+    if (amountMatch) {
+      const amount = Number(amountMatch[1]);
+      pendingWalletSelections.set(String(callbackChatId), amount);
+      await answerTelegramCallback(callback.id, `${formatUzAmount(amount)} so‘m tanlandi`);
+      const sent = await telegramApiRequest('sendMessage', {
+        chat_id: callbackChatId,
+        text: `✅ <b>${formatUzAmount(amount)} so‘m tanlandi</b>\n\nKartaga o‘tkazmani amalga oshiring, so‘ng to‘lov chekini shu chatga rasm qilib yuboring. Rasm ostiga summa yozsangiz ham bo‘ladi.`,
+        parse_mode: 'HTML',
+      });
+      return { handled: true as const, command: 'wallet_amount', status: sent.status, sent: sent.ok, amount };
+    }
+    await answerTelegramCallback(callback.id, 'Bu tugma eskirgan. Wallet menyusini qayta oching.');
+    return { handled: true as const, command: 'callback', status: 'active' as const, sent: true };
+  }
+
+  const message = update.message;
+  const chatId = message?.chat?.id;
+  if (!message || chatId === undefined) return { handled: false as const, status: 'ignored' as const };
+
+  await telegramApiRequest('sendChatAction', { chat_id: chatId, action: 'typing' });
+
+  if (message.photo?.length) {
+    return await handleTelegramReceiptPhoto(message);
+  }
+
+  const contact = message.contact;
+  if (contact) {
+    const ownsContact = contact.user_id !== undefined && String(contact.user_id) === String(message.from?.id);
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: ownsContact
+        ? '<b>Telefon raqamingiz tasdiqlandi</b>\n\nQuyidagi menyudan kerakli bo‘limni bosing. Mini App sizni Telegram profilingiz orqali xavfsiz kiritadi.'
+        : '<b>Bu boshqa foydalanuvchining raqami</b>\n\nKirish uchun pastdagi tugma orqali o‘zingizning telefon raqamingizni yuboring.',
+      parse_mode: 'HTML',
+      reply_markup: buildMainKeyboard(),
+    });
+    return { handled: true as const, command: 'contact', status: sent.status, sent: sent.ok };
+  }
+
+  const command = parseTelegramCommand(message.text);
+  if (command === 'wallet' || message.text?.trim() === '💳 Balans to‘ldirish') {
+    const sent = await sendWalletMenu(chatId);
+    return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };
+  }
+
+  const response = getTelegramCommandResponse(command, message.from?.id);
+  const sent = await telegramApiRequest('sendMessage', {
     chat_id: chatId,
     text: `<b>${response.title}</b>\n\n${response.text}`,
-    parse_mode: "HTML",
+    parse_mode: 'HTML',
     disable_web_page_preview: true,
-    reply_markup: command === "start" || !command ? buildMainKeyboard() : buildInlineKeyboard(response.path),
+    reply_markup: command === 'start' || !command ? buildMainKeyboard() : buildInlineKeyboard(response.path),
   });
 
   return { handled: true as const, command, status: sent.status, sent: sent.ok };

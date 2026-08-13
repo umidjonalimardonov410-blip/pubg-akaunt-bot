@@ -81,8 +81,8 @@ describe('Telegram Bot Server Helper Tests', () => {
 
     expect(result.command).toBe('contact');
     const sendBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
-    expect(sendBody.reply_markup.keyboard).toHaveLength(4);
-    expect(sendBody.reply_markup.keyboard[3][0].request_contact).toBe(true);
+    expect(sendBody.reply_markup.keyboard).toHaveLength(5);
+    expect(sendBody.reply_markup.keyboard[4][0].request_contact).toBe(true);
 
   });
 });

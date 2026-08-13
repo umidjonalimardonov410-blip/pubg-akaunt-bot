@@ -4,13 +4,21 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
-import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals } from "../drizzle/schema";
-import { eq, and, gte, sql } from "drizzle-orm";
+import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
+import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
+import { sendTelegramNotification } from "./telegramBot";
+
+async function notifyTelegramUser(userId: number, text: string, path = '/profile') {
+  const user = await getUserById(userId);
+  if (!user?.openId.startsWith('telegram:')) return;
+  const chatId = user.openId.slice('telegram:'.length);
+  await sendTelegramNotification(chatId, text, path).catch(() => undefined);
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -454,24 +462,92 @@ export const appRouter = router({
         return { balance: user?.walletBalance || 0 };
       }),
 
-    topup: protectedProcedure
-      .input(z.object({ amount: z.number().int().positive().min(1000).max(100000000) }))
+    getTopupInstructions: protectedProcedure.query(() => ({
+      amounts: [10000, 20000, 50000] as const,
+      cardNumber: ENV.adminPayoutCardNumber,
+      cardHolder: ENV.adminPayoutCardHolder,
+      instructions: 'Kartaga tanlangan summani o‘tkazing, keyin to‘lov chekini shu yerga yuboring. Admin tasdiqlagach balans avtomatik qo‘shiladi.',
+    })),
+
+    uploadReceipt: protectedProcedure
+      .input(z.object({
+        fileName: z.string().min(1).max(180),
+        contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+        dataBase64: z.string().min(1).max(12_000_000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const bytes = Buffer.from(input.dataBase64, 'base64');
+        if (bytes.length > 8 * 1024 * 1024) {
+          throw new TRPCError({ code: 'PAYLOAD_TOO_LARGE', message: 'Chek hajmi 8 MB dan oshmasin' });
+        }
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, '-');
+        return await storagePut(`users/${ctx.user.id}/receipts/${Date.now()}-${safeName}`, bytes, input.contentType);
+      }),
+
+    submitReceipt: protectedProcedure
+      .input(z.object({
+        amount: z.union([z.literal(10000), z.literal(20000), z.literal(50000)]),
+        receiptKey: z.string().min(1).max(500),
+        receiptUrl: z.string().min(1).max(700),
+      }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        if (!input.receiptKey.startsWith(`users/${ctx.user.id}/receipts/`)) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Chek fayli noto‘g‘ri xotira yo‘lida' });
+        }
+        const duplicate = await db.select({ id: depositReceipts.id })
+          .from(depositReceipts)
+          .where(eq(depositReceipts.receiptKey, input.receiptKey))
+          .limit(1);
+        if (duplicate.length > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Bu chek allaqachon yuborilgan' });
 
-        await db.transaction(async (tx: any) => {
-          await tx.update(users).set({ walletBalance: sql`walletBalance + ${input.amount}` }).where(eq(users.id, ctx.user.id));
-          await tx.insert(transactions).values({
+        const result = await db.transaction(async (tx: any) => {
+          const transactionResult = await tx.insert(transactions).values({
             userId: ctx.user.id,
             type: 'topup',
             amount: input.amount.toString(),
-            description: 'Hamyon to‘ldirildi',
-            status: 'completed',
+            description: 'Manual chek tekshiruvi kutilmoqda',
+            status: 'pending',
           });
+          const transactionId = getInsertId(transactionResult);
+          const receiptResult = await tx.insert(depositReceipts).values({
+            userId: ctx.user.id,
+            amount: input.amount.toString(),
+            receiptKey: input.receiptKey,
+            receiptUrl: input.receiptUrl,
+            status: 'pending',
+            transactionId,
+          });
+          await tx.insert(securityAudits).values({
+            userId: ctx.user.id,
+            eventType: 'deposit_receipt_submitted',
+            riskScore: 0,
+            details: JSON.stringify({ receiptId: getInsertId(receiptResult), amount: input.amount }),
+          });
+          return { receiptId: getInsertId(receiptResult), transactionId };
         });
 
-        return { success: true };
+        await notifyOwner({
+          title: 'Yangi balans cheki',
+          content: `Foydalanuvchi #${ctx.user.id} ${input.amount.toLocaleString('uz-UZ')} so‘m uchun chek yubordi. Admin paneldan tekshiring.`,
+        }).catch(() => undefined);
+        return { success: true, ...result };
+      }),
+
+    getDepositReceipts: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return await db.select().from(depositReceipts)
+        .where(eq(depositReceipts.userId, ctx.user.id))
+        .orderBy(desc(depositReceipts.createdAt));
+    }),
+
+    // Kept as a compatibility guard: no route may credit a wallet without an approved receipt.
+    topup: protectedProcedure
+      .input(z.object({ amount: z.number().int().positive() }))
+      .mutation(() => {
+        throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Balansni to‘ldirish uchun karta to‘lovidan keyin chek yuboring.' });
       }),
 
     withdraw: protectedProcedure
@@ -487,12 +563,18 @@ export const appRouter = router({
           if (!balanceResult || getAffectedRows(balanceResult) !== 1) {
             throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Yechib olish uchun balans yetarli emas' });
           }
-          await tx.insert(transactions).values({
+          const transactionResult = await tx.insert(transactions).values({
             userId: ctx.user.id,
             type: 'withdrawal',
             amount: input.amount.toString(),
             description: `Yechib olish so‘rovi: ${input.destination}`,
             status: 'pending',
+          });
+          await tx.insert(securityAudits).values({
+            userId: ctx.user.id,
+            eventType: 'payout_requested',
+            riskScore: 0,
+            details: JSON.stringify({ transactionId: getInsertId(transactionResult), amount: input.amount, destination: input.destination }),
           });
         });
 
@@ -700,6 +782,165 @@ export const appRouter = router({
         return await getPendingAccounts();
       }),
 
+    getDepositReceipts: protectedProcedure
+      .input(z.object({ status: z.enum(['all', 'pending', 'approved', 'rejected']).default('all') }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const status = input?.status ?? 'all';
+        const fields = {
+          receipt: depositReceipts,
+          userName: users.name,
+          userOpenId: users.openId,
+        };
+        if (status === 'all') {
+          return await db.select(fields).from(depositReceipts)
+            .leftJoin(users, eq(users.id, depositReceipts.userId))
+            .orderBy(desc(depositReceipts.createdAt));
+        }
+        return await db.select(fields).from(depositReceipts)
+          .leftJoin(users, eq(users.id, depositReceipts.userId))
+          .where(eq(depositReceipts.status, status))
+          .orderBy(desc(depositReceipts.createdAt));
+      }),
+
+    reviewDepositReceipt: protectedProcedure
+      .input(z.object({ receiptId: z.number().int().positive(), approved: z.boolean(), note: z.string().trim().max(1000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const result = await db.transaction(async (tx: any) => {
+          const rows = await tx.select().from(depositReceipts).where(eq(depositReceipts.id, input.receiptId)).limit(1);
+          const receipt = rows[0];
+          if (!receipt) throw new TRPCError({ code: 'NOT_FOUND', message: 'Chek topilmadi' });
+          if (receipt.status !== 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Bu chek allaqachon ko‘rib chiqilgan' });
+
+          const nextStatus = input.approved ? 'approved' : 'rejected';
+          const updateResult = await tx.update(depositReceipts).set({
+            status: nextStatus,
+            reviewedBy: ctx.user.id,
+            reviewNote: input.note?.trim() || null,
+            reviewedAt: new Date(),
+          }).where(and(eq(depositReceipts.id, input.receiptId), eq(depositReceipts.status, 'pending')));
+          if (!updateResult || getAffectedRows(updateResult) !== 1) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Chek boshqa admin tomonidan ko‘rib chiqildi' });
+          }
+
+          if (receipt.transactionId) {
+            await tx.update(transactions).set({
+              status: input.approved ? 'completed' : 'failed',
+              description: input.approved ? 'Manual chek tasdiqlandi' : `Manual chek rad etildi${input.note ? `: ${input.note.trim()}` : ''}`,
+            }).where(and(eq(transactions.id, receipt.transactionId), eq(transactions.status, 'pending')));
+          }
+          if (input.approved) {
+            await tx.update(users).set({ walletBalance: sql`walletBalance + ${receipt.amount}` }).where(eq(users.id, receipt.userId));
+          }
+          await tx.insert(securityAudits).values({
+            userId: receipt.userId,
+            eventType: input.approved ? 'deposit_receipt_approved' : 'deposit_receipt_rejected',
+            riskScore: input.approved ? 0 : 10,
+            details: JSON.stringify({ receiptId: receipt.id, amount: receipt.amount, reviewedBy: ctx.user.id, note: input.note?.trim() || null }),
+          });
+          await tx.insert(notifications).values({
+            userId: receipt.userId,
+            type: 'admin_message',
+            title: input.approved ? 'Balans to‘ldirildi' : 'Chek rad etildi',
+            message: input.approved
+              ? `${Number(receipt.amount).toLocaleString('uz-UZ')} so‘m balansingizga qo‘shildi.`
+              : (input.note?.trim() || 'Chek ma’lumotlari tasdiqlanmadi. To‘g‘ri chek bilan qayta yuboring.'),
+          });
+          return { userId: receipt.userId, amount: Number(receipt.amount), status: nextStatus };
+        });
+
+        await notifyTelegramUser(
+          result.userId,
+          result.status === 'approved'
+            ? `✅ <b>Balans tasdiqlandi</b>\n\n${result.amount.toLocaleString('uz-UZ')} so‘m balansingizga qo‘shildi.`
+            : `❌ <b>Chek rad etildi</b>\n\n${input.note?.trim() || 'Chek ma’lumotlari tasdiqlanmadi. To‘g‘ri chek bilan qayta yuboring.'}`,
+        );
+        return { success: true, status: result.status };
+      }),
+
+    getPayoutQueue: protectedProcedure
+      .input(z.object({ status: z.enum(['pending', 'completed', 'failed', 'all']).default('pending') }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const status = input?.status ?? 'pending';
+        const fields = { transaction: transactions, userName: users.name, userOpenId: users.openId };
+        if (status === 'all') {
+          return await db.select(fields).from(transactions)
+            .leftJoin(users, eq(users.id, transactions.userId))
+            .where(eq(transactions.type, 'withdrawal'))
+            .orderBy(desc(transactions.createdAt));
+        }
+        return await db.select(fields).from(transactions)
+          .leftJoin(users, eq(users.id, transactions.userId))
+          .where(and(eq(transactions.type, 'withdrawal'), eq(transactions.status, status)))
+          .orderBy(desc(transactions.createdAt));
+      }),
+
+    processPayout: protectedProcedure
+      .input(z.object({ transactionId: z.number().int().positive(), approved: z.boolean(), note: z.string().trim().max(1000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const result = await db.transaction(async (tx: any) => {
+          const rows = await tx.select().from(transactions).where(and(eq(transactions.id, input.transactionId), eq(transactions.type, 'withdrawal'))).limit(1);
+          const transaction = rows[0];
+          if (!transaction) throw new TRPCError({ code: 'NOT_FOUND', message: 'Yechib olish so‘rovi topilmadi' });
+          if (transaction.status !== 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Bu payout allaqachon ko‘rib chiqilgan' });
+          const updateResult = await tx.update(transactions).set({
+            status: input.approved ? 'completed' : 'failed',
+            description: `${transaction.description || 'Yechib olish so‘rovi'}${input.note?.trim() ? ` | ${input.note.trim()}` : ''}`,
+          }).where(and(eq(transactions.id, input.transactionId), eq(transactions.status, 'pending')));
+          if (!updateResult || getAffectedRows(updateResult) !== 1) throw new TRPCError({ code: 'CONFLICT', message: 'Payout boshqa admin tomonidan ko‘rib chiqildi' });
+          if (!input.approved) {
+            await tx.update(users).set({ walletBalance: sql`walletBalance + ${transaction.amount}` }).where(eq(users.id, transaction.userId));
+          }
+          await tx.insert(securityAudits).values({
+            userId: transaction.userId,
+            eventType: input.approved ? 'payout_approved' : 'payout_rejected',
+            riskScore: input.approved ? 0 : 5,
+            details: JSON.stringify({ transactionId: transaction.id, amount: transaction.amount, reviewedBy: ctx.user.id, note: input.note?.trim() || null }),
+          });
+          await tx.insert(notifications).values({
+            userId: transaction.userId,
+            type: 'admin_message',
+            title: input.approved ? 'Yechib olish tasdiqlandi' : 'Yechib olish rad etildi',
+            message: input.approved
+              ? `${Number(transaction.amount).toLocaleString('uz-UZ')} so‘m payout tasdiqlandi.`
+              : `Balans qaytarildi. ${input.note?.trim() || 'Payout so‘rovi rad etildi.'}`,
+          });
+          return { userId: transaction.userId, amount: Number(transaction.amount), status: input.approved ? 'completed' : 'failed' };
+        });
+        await notifyTelegramUser(
+          result.userId,
+          result.status === 'completed'
+            ? `✅ <b>Payout tasdiqlandi</b>\n\n${result.amount.toLocaleString('uz-UZ')} so‘m so‘rovingiz tasdiqlandi.`
+            : `↩️ <b>Payout rad etildi</b>\n\nBalans qaytarildi. ${input.note?.trim() || 'Admin izoh qoldirmadi.'}`,
+        );
+        return { success: true, status: result.status };
+      }),
+
+    getAuditLogs: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(200).default(100) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        return await db.select({ audit: securityAudits, userName: users.name })
+          .from(securityAudits)
+          .leftJoin(users, eq(users.id, securityAudits.userId))
+          .orderBy(desc(securityAudits.createdAt))
+          .limit(input?.limit ?? 100);
+      }),
+
     verifyAccount: protectedProcedure
       .input(z.object({ accountId: z.number(), approved: z.boolean(), notes: z.string().max(2000).optional() }))
       .mutation(async ({ ctx, input }) => {
@@ -782,11 +1023,13 @@ export const appRouter = router({
         if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-        const [userRows, accountRows, orderRows, payoutRows, disputeRows] = await Promise.all([
+        const [userRows, accountRows, orderRows, payoutRows, pendingDepositRows, pendingPayoutRows, disputeRows] = await Promise.all([
           db.select().from(users),
           db.select().from(pubgAccounts),
           db.select().from(orders),
           db.select().from(transactions).where(eq(transactions.type, 'seller_payout')),
+          db.select().from(depositReceipts).where(eq(depositReceipts.status, 'pending')),
+          db.select().from(transactions).where(and(eq(transactions.type, 'withdrawal'), eq(transactions.status, 'pending'))),
           getAdminDisputes(),
         ]);
         return {
@@ -795,6 +1038,8 @@ export const appRouter = router({
           pendingAccounts: accountRows.filter(row => row.status === 'pending_verification').length,
           totalSales: orderRows.filter(row => row.status === 'completed').length,
           totalRevenue: payoutRows.reduce((sum, row) => sum + Number(row.amount), 0),
+          pendingDeposits: pendingDepositRows.length,
+          pendingPayouts: pendingPayoutRows.length,
           openDisputes: disputeRows.length,
         };
       }),
