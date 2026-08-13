@@ -23,3 +23,9 @@
 - [x] Verify the GitHub tree and final Railway deployment after the authorized push
 - [x] Update RAILWAY.md to separate core Mini App requirements from optional Telegram bot/webhook setup
 - [x] Re-verify the deployed core Mini App without TELEGRAM_BOT_TOKEN and document the optional bot status
+- [x] Configure TELEGRAM_BOT_TOKEN and admin IDs (8801986213 / 8787603995) in Railway and project secrets
+- [x] Refine Uzbek Telegram bot menus, escrow trust copy, and trustworthy user-facing messaging
+- [x] Set up Telegram bot webhook and verify live bot response on Railway
+- [x] Send a signed /start webhook payload to the live Railway endpoint and verify handled=true (deployed handler returned handled=true; Telegram delivery requires the admin chat to start the bot)
+- [x] Document the live Telegram command-processing result before the final checkpoint (Railway returned handled=true; Telegram getChat reported chat not found until the admin opens the bot)
+- [ ] Have the administrator open @PUBG_TradeBot and send /start once so Telegram recognizes the admin chat for outbound replies

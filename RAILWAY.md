@@ -38,12 +38,19 @@ The following variables are required for the marketplace server, authentication,
 - `VITE_OAUTH_PORTAL_URL` = the frontend OAuth portal URL
 - `VITE_ANALYTICS_ENDPOINT` and `VITE_ANALYTICS_WEBSITE_ID` = analytics configuration, if analytics is enabled
 
-The core Mini App is deployable and usable without a Telegram BotFather token. In that mode, in-app marketplace flows and authenticated notifications remain available, while external Telegram bot delivery reports `setup_required`.
+The core Mini App remains deployable without a Telegram BotFather token. In that fallback mode, in-app marketplace flows remain available and external Telegram delivery reports `setup_required`.
 
-### Optional Telegram bot and webhook variables
-Only add these after creating a bot with [@BotFather](https://t.me/BotFather):
+### Active Telegram bot and webhook variables
+The verified `PUBG_TradeBot` configuration uses these Railway variables; never commit their values to GitHub:
 - `TELEGRAM_BOT_TOKEN` = the BotFather token used for outbound bot messages
-- `TELEGRAM_WEBHOOK_URL` = `https://your-app-domain.railway.app/api/telegram/webhook`, if webhook delivery is enabled by the bot integration
+- `TELEGRAM_ADMIN_IDS` = comma-separated Telegram numeric IDs allowed to use `/admin`
+- `VITE_TELEGRAM_BOT_USERNAME` = `PUBG_TradeBot` for referral and share links
+- `TELEGRAM_MINI_APP_URL` = the public Mini App URL
+- `TELEGRAM_WEBHOOK_URL` = `<public-url>/api/telegram/webhook`
+- `TELEGRAM_WEBHOOK_SECRET` = a private random value sent in Telegram’s `X-Telegram-Bot-Api-Secret-Token` header
+- `PUBLIC_APP_URL` = the canonical public app URL used in bot buttons
+
+The server registers Uzbek commands, the Telegram Mini App menu button, and the webhook on startup. It accepts only requests with the configured webhook secret, and non-admin users receive a safe permission message rather than admin data.
 
 ---
 
@@ -56,11 +63,14 @@ Only add these after creating a bot with [@BotFather](https://t.me/BotFather):
 
 ## Step 5: Telegram BotFather & Webhook Setup
 1. Message [@BotFather](https://t.me/BotFather) on Telegram.
-2. Use `/setwebapp` to link your bot to your Railway public domain (`https://your-app-domain.railway.app`).
-3. Set your bot menu buttons using `/setcommands`:
-   - `/start` - Asosiy menyu va bozor
+2. The server automatically calls Telegram `setMyCommands`, `setChatMenuButton`, and `setWebhook` after startup. If you change the public domain, update `TELEGRAM_MINI_APP_URL` and `TELEGRAM_WEBHOOK_URL` in Railway.
+3. The active Uzbek command menu is:
+   - `/start` - Inferno Stealth menyusi va bozor
    - `/buy` - Akkauntlarni izlash
    - `/sell` - Akkaunt sotish
    - `/orders` - Buyurtmalar va escrow
-   - `/wallet` - Hamyon
+   - `/wallet` - Wallet va tranzaksiyalar
    - `/support` - Yordam markazi
+   - `/pro` - Pro vositalar
+   - `/admin` - Faqat tasdiqlangan adminlar uchun
+4. Ishonch qoidasi: platforma login yoki parolni chat orqali so‘ramaydi; escrow holati buyurtma ichida ko‘rsatiladi; nizo bo‘lsa buyurtma raqami va dalillar bilan support ticket ochiladi.

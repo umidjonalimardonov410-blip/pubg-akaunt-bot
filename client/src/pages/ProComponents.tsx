@@ -90,7 +90,7 @@ export function SupportTicketsSection() {
   const ticketsQuery = trpc.pro.tickets.list.useQuery(undefined, { enabled: isAuthenticated });
   const createMutation = trpc.pro.tickets.create.useMutation({
     onSuccess: () => {
-      toast.success("Murojaatingiz yuborildi! Tez orada admin javob beradi.");
+      toast.success("Murojaatingiz qabul qilindi. Admin navbat asosida javob beradi.");
       setSubject("");
       setMessage("");
       utils.pro.tickets.list.invalidate();
@@ -113,7 +113,7 @@ export function SupportTicketsSection() {
           <textarea
             disabled={!isAuthenticated}
             className="w-full p-3 rounded-md bg-background border border-input text-foreground text-sm resize-none h-24"
-            placeholder="Muammo yoki savolingizni batafsil yozing..."
+            placeholder="Muammo yoki savolingizni batafsil yozing. Login va parolni yubormang."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
@@ -132,13 +132,13 @@ export function SupportTicketsSection() {
           </Button>
         </div>
         <div className="space-y-2 mt-4">
-          <h4 className="text-sm font-semibold text-muted-foreground">Sizning murojaatlaringiz:</h4>
+          <h4 className="text-sm font-semibold text-muted-foreground">Murojaatlaringiz va admin javoblari:</h4>
           {ticketsQuery.data?.map((t) => (
             <div key={t.id} className="p-3 bg-muted/30 rounded-lg border border-border/40 flex justify-between items-center text-sm">
               <div>
                 <p className="font-bold text-foreground">{t.subject}</p>
                 <p className="text-xs text-muted-foreground">{t.message}</p>
-                {t.adminReply && <p className="text-xs text-emerald-400 mt-1">Admin javobi: {t.adminReply}</p>}
+                {t.adminReply && <p className="text-xs text-emerald-400 mt-1">Inferno admini javobi: {t.adminReply}</p>}
               </div>
               <Badge variant={t.status === 'resolved' ? 'default' : 'secondary'}>{t.status}</Badge>
             </div>
@@ -171,14 +171,14 @@ export function SellerVerificationSection() {
         <CardTitle className="flex items-center gap-2 text-emerald-300"><CheckCircle className="h-5 w-5" /> Sotuvchi verifikatsiyasi</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm leading-6 text-muted-foreground">Tasdiqlangan sotuvchi belgisi xaridorlarga sizning ma’lumotlaringiz tekshirilganini ko‘rsatadi. Hujjat URL manzilini xavfsiz S3 upload’dan keyin kiriting.</p>
+        <p className="text-sm leading-6 text-muted-foreground">Tasdiqlangan sotuvchi belgisi faqat admin ko‘rib chiqqan profilga beriladi. Hujjatlar S3’da saqlanadi; login yoki parol bu yerda hech qachon so‘ralmaydi.</p>
         {status ? (
           <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-4"><span className="text-sm text-muted-foreground">Ariza holati</span><Badge variant={status === 'approved' ? 'default' : 'secondary'}>{status === 'pending' ? 'Ko‘rib chiqilmoqda' : status === 'approved' ? 'Tasdiqlangan' : 'Rad etilgan'}</Badge></div>
         ) : (
           <div className="grid gap-3 md:grid-cols-3">
             <Input disabled={!isAuthenticated} placeholder="To‘liq ism" value={fullName} onChange={(event) => setFullName(event.target.value)} />
             <Input disabled={!isAuthenticated} placeholder="Telegram username" value={telegramUsername} onChange={(event) => setTelegramUsername(event.target.value)} />
-            <Input disabled={!isAuthenticated} placeholder="ID karta rasmi S3 URL" value={idCardPhotoUrl} onChange={(event) => setIdCardPhotoUrl(event.target.value)} />
+            <Input disabled={!isAuthenticated} placeholder="Tasdiqlash hujjati S3 URL" value={idCardPhotoUrl} onChange={(event) => setIdCardPhotoUrl(event.target.value)} />
             <Button disabled={!isAuthenticated || submit.isPending} className="md:col-span-3" onClick={() => submit.mutate({ fullName, telegramUsername, idCardPhotoUrl })}>Verifikatsiyaga yuborish</Button>
           </div>
         )}
@@ -287,13 +287,15 @@ export function TelegramBotCommandSection() {
   const [showWebhook, setShowWebhook] = useState(false);
   const [sent, setSent] = useState(false);
   const commands: Record<string, { title: string; text: string }> = {
-    '/start': { title: 'Inferno Stealth bilan xush kelibsiz', text: 'Akkauntlarni ko‘ring, xavfsiz escrow orqali xarid qiling yoki o‘zingizning e’loningizni joylang.' },
-    '/buy': { title: 'Akkaunt izlash', text: 'Region, level, K/D, skinlar va narx bo‘yicha qidiruvni ochish.' },
-    '/sell': { title: 'Akkaunt sotish', text: 'Media, PUBG ID va narxni bosqichma-bosqich yuborib e’lon yarating.' },
-    '/orders': { title: 'Buyurtmalarim', text: 'Escrow bosqichlari, taymer va dispute holatini ko‘rish.' },
-    '/wallet': { title: 'Hamyon', text: 'Balans, to‘lovlar va yechib olish so‘rovlarini boshqarish.' },
-    '/support': { title: 'Yordam markazi', text: 'Ticket ochish va admin bilan jonli suhbatga o‘tish.' },
+    '/start': { title: 'Inferno Stealth bilan xush kelibsiz', text: 'PUBG akkauntlarini ko‘ring, xavfsiz escrow orqali xarid qiling yoki o‘zingizning e’loningizni joylang.' },
+    '/buy': { title: 'Akkaunt izlash', text: 'Region, level, K/D, skinlar va narx bo‘yicha mos akkauntni tanlang. E’lonlar admin tekshiruvidan o‘tadi.' },
+    '/sell': { title: 'Akkaunt sotish', text: 'PUBG ID, statistika, inventar va media ma’lumotlarini yuboring. E’lon xaridorga chiqishidan oldin tekshiriladi.' },
+    '/orders': { title: 'Buyurtmalarim', text: 'Escrow bosqichlari, topshirish tasdig‘i va nizo holatini bitta joyda kuzating.' },
+    '/wallet': { title: 'Inferno Wallet', text: 'Balans, ichki escrow to‘lovi va tranzaksiyalar tarixini ko‘ring. Tashqi to‘lovlar faqat sozlangandan keyin faol bo‘ladi.' },
+    '/support': { title: 'Yordam markazi', text: 'Buyurtma raqami va dalillar bilan murojaat qiling. Login yoki parolni hech qachon chatga yubormang.' },
+    '/pro': { title: 'Inferno Stealth Pro', text: 'AI narx bahosi, sotuvchi analitikasi, ishonch profili va xavfsizlik vositalarini oching.' },
+    '/admin': { title: 'Admin nazorati', text: 'Faqat tasdiqlangan adminlar uchun: e’lonlar, escrow, nizolar va support navbatini boshqaring.' },
   };
   const payload = JSON.stringify({ update_id: 10001, message: { chat: { id: 777001, type: 'private' }, text: selected, from: { language_code: 'uz' } }, web_app: { path: selected === '/start' ? '/' : selected.replace('/', '') } }, null, 2);
-  return <Card className="overflow-hidden border-red-500/20 bg-red-500/[0.04] text-card-foreground"><CardHeader><CardTitle className="flex items-center gap-2 text-red-300"><Bot className="h-5 w-5" /> Telegram bot komandalar</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm leading-6 text-muted-foreground">Quyidagi komandalar Telegram bot menyusida foydalanuvchini to‘g‘ri Mini App bo‘limiga olib kiradi.</p><div className="mobile-scroll-row gap-2 pb-1">{Object.keys(commands).map((command) => <Button key={command} size="sm" variant={selected === command ? 'default' : 'outline'} className="min-h-11 shrink-0" onClick={() => { setSelected(command); setSent(false); }}>{command}</Button>)}</div><div className="rounded-xl border border-white/10 bg-black/20 p-4"><p className="font-semibold text-foreground">{commands[selected].title}</p><p className="mt-2 text-sm leading-6 text-muted-foreground">{commands[selected].text}</p></div><div className="grid gap-2 sm:flex sm:flex-wrap"><Button className="min-h-11 w-full sm:w-auto" variant="outline" onClick={() => setShowWebhook(!showWebhook)}>{showWebhook ? 'Webhook previewni yopish' : 'Webhook previewni ko‘rish'}</Button>{showWebhook && <Button className="min-h-11 w-full sm:w-auto" onClick={() => { setSent(true); toast.success('Webhook simulyatsiyasi muvaffaqiyatli yuborildi'); }}>Test webhook yuborish</Button>}</div>{showWebhook && <div className="rounded-xl border border-red-300/20 bg-black/30 p-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="break-all text-xs font-bold uppercase tracking-wider text-red-200">POST /api/telegram/webhook</p><Badge className="self-start">{sent ? '200 OK' : 'Preview'}</Badge></div><pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[10px] leading-5 text-white/60 sm:text-[11px]">{payload}</pre></div>}<p className="text-xs leading-5 text-muted-foreground">Production webhook uchun BotFather tokeni va webhook domeni ulanadi; bu karta esa buyruq oqimi va Telegram update payloadini Mini App ichida xavfsiz ko‘rsatadi.</p></CardContent></Card>;
+  return <Card className="overflow-hidden border-red-500/20 bg-red-500/[0.04] text-card-foreground"><CardHeader><CardTitle className="flex items-center gap-2 text-red-300"><Bot className="h-5 w-5" /> Telegram bot menyusi va buyruqlar</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm leading-6 text-muted-foreground">Buyruqlar foydalanuvchini kerakli Mini App bo‘limiga olib boradi. Escrow pulni bitim shartlari bajarilguncha himoya qiladi; platforma login va parolni chat orqali so‘ramaydi.</p><div className="mobile-scroll-row gap-2 pb-1">{Object.keys(commands).map((command) => <Button key={command} size="sm" variant={selected === command ? 'default' : 'outline'} className="min-h-11 shrink-0" onClick={() => { setSelected(command); setSent(false); }}>{command}</Button>)}</div><div className="rounded-xl border border-white/10 bg-black/20 p-4"><p className="font-semibold text-foreground">{commands[selected].title}</p><p className="mt-2 text-sm leading-6 text-muted-foreground">{commands[selected].text}</p></div><div className="grid gap-2 sm:flex sm:flex-wrap"><Button className="min-h-11 w-full sm:w-auto" variant="outline" onClick={() => setShowWebhook(!showWebhook)}>{showWebhook ? 'Webhook previewni yopish' : 'Webhook previewni ko‘rish'}</Button>{showWebhook && <Button className="min-h-11 w-full sm:w-auto" onClick={() => { setSent(true); toast.success('Webhook test payloadi qabul qilindi'); }}>Webhook testini yuborish</Button>}</div>{showWebhook && <div className="rounded-xl border border-red-300/20 bg-black/30 p-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="break-all text-xs font-bold uppercase tracking-wider text-red-200">POST /api/telegram/webhook</p><Badge className="self-start">{sent ? '200 OK' : 'Preview'}</Badge></div><pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[10px] leading-5 text-white/60 sm:text-[11px]">{payload}</pre></div>}<p className="text-xs leading-5 text-muted-foreground">Production webhook Railway domeniga ulangan. Bu karta buyruq oqimi va Telegram update payloadini xavfsiz ko‘rsatadi; haqiqiy bot javobi faqat Telegram webhook orqali yuboriladi.</p></CardContent></Card>;
 }
