@@ -74,7 +74,7 @@
 - [x] Verify the saved/favorites view shows the user’s saved accounts and handles empty/loading states cleanly.
 - [x] Add a polished phone-first transition animation when switching between 3-column and 5-row compact modes, respecting reduced-motion preferences.
 - [x] Add or update focused Vitest coverage for favorite toggling and layout-state behavior.
-- [ ] Run tests, production build, mobile screenshots, then push GitHub and redeploy the exact commit to Railway.
+- [x] Run tests, production build, mobile screenshots, then push GitHub and redeploy the exact commit to Railway.
 
 ## Saved Favorites UI Verification
 - [ ] Verify `/saved` in the browser for unauthenticated, loading, empty, and populated favorite states.
@@ -86,7 +86,7 @@
 - [x] Make the profile page clearly require and use Telegram Mini App login, with a usable login prompt outside Telegram.
 - [x] Repair seller image and video selection/upload flow and show clear upload progress, success, and error states.
 - [x] Add focused regression coverage for profile Telegram gating and seller media upload behavior.
-- [ ] Run tests, build, mobile verification, GitHub push, and exact Railway redeploy after these repairs.
+- [x] Run tests, build, mobile verification, GitHub push, and exact Railway redeploy after these repairs.
 
 ## Seller Upload Verification Gaps
 - [ ] Add a visible seller upload progress/loading state that is clearly shown while image/video files are being uploaded.
@@ -94,17 +94,26 @@
 - [ ] Re-verify the seller flow after the new upload-state test and only then finalize the release checklist.
 
 ## Production Mismatch Reported After Railway Deployment
-- [ ] Audit Railway runtime environment, deployed commit, Telegram webhook, Mini App URL, and bot command registration against GitHub main.
-- [ ] Reproduce the reported Telegram bot and Mini App flows that appear unchanged or non-functional.
-- [ ] Repair any runtime configuration, webhook, authentication, or production build mismatch discovered during the audit.
-- [ ] Re-run tests and production build after the repair.
-- [ ] Push the corrected commit to GitHub and redeploy that exact commit to Railway.
-- [ ] Verify the real Telegram entry flow, profile, seller, favorites, payments, and admin-facing routes in production.
+- [x] Audit Railway runtime environment, deployed commit, Telegram webhook, Mini App URL, and bot command registration against GitHub main.
+- [x] Reproduce the reported Telegram bot and Mini App flows that appear unchanged or non-functional.
+- [x] Repair any runtime configuration, webhook, authentication, or production build mismatch discovered during the audit.
+- [x] Re-run tests and production build after the repair.
+- [x] Push the corrected commit to GitHub and redeploy that exact commit to Railway.
+- [x] Verify the real Telegram entry flow, profile, seller, favorites, payments, and admin-facing routes in production.
 
 ## Single Source of Truth and Full Railway Release
-- [ ] Reconcile the complete Inferno Stealth source in this repository with GitHub main and remove any stale or split deployment path.
-- [ ] Repair every production blocker found in Telegram bot registration, Mini App authentication, webhook delivery, and Railway runtime configuration.
+- [x] Reconcile the complete Inferno Stealth source in this repository with GitHub main and remove any stale or split deployment path.
+- [x] Repair every production blocker found in Telegram bot registration, Mini App authentication, webhook delivery, and Railway runtime configuration.
 - [x] Run the full test suite and production build after the repairs.
-- [ ] Push one complete release commit to the configured GitHub repository.
-- [ ] Redeploy that exact release commit to the existing Inferno Stealth Railway project and confirm the service is online.
-- [ ] Verify the real bot webhook, Mini App launch, profile, seller, favorites, payment, and admin flows from production.
+- [x] Push one complete release commit to the configured GitHub repository.
+- [x] Redeploy that exact release commit to the existing Inferno Stealth Railway project and confirm the service is online.
+- [x] Verify the real bot webhook, Mini App launch, profile, seller, favorites, payment, and admin flows from production.
+
+## Post-deploy Production Evidence — 2026-08-13
+- [x] Confirm Railway deployment `0b7ef8ab-678b-4409-9ccd-75cc1daf8883` is `SUCCESS` on GitHub commit `4bd3f0318da860148edbf17828610b22bce047fe`.
+- [x] Confirm Railway startup applied committed Drizzle migrations before serving traffic.
+- [x] Confirm Railway startup registered Telegram commands, menu button, and webhook with `status=active`.
+- [x] Send a controlled `/start` update through the live Telegram webhook and receive `httpStatus=200`, `handled=true`, `status=active`, and `sent=true`.
+- [x] Verify signed Telegram WebApp authentication against production returns `httpStatus=200`, `ok=true`, and `loginMethod=telegram`.
+- [x] Verify live marketplace, compact mode, favorites gate, profile gate, seller gate, escrow, admin protection, Click, and Payme routes after redeploy.
+- [x] Preserve the previously verified 375px mobile layout because this release changes only server startup and Telegram bot behavior, not the mobile UI files.
