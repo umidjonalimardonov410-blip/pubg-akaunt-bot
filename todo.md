@@ -41,3 +41,10 @@
 - [x] Implement wallet withdrawal requests with admin notification, user check/receipt verification guidance, and admin approval/rejection workflow
 - [x] Connect all Telegram start menu commands and web app buttons to the updated marketplace flows
 - [x] Run full test suite, production build, and redeploy to Railway
+
+## User-Requested Additions (Staging Withdrawals, Uzbek Checklist & Audit Logs)
+- [x] Add staging-safe withdrawal test utility with clearly labeled non-mutating staging data for admin verification
+- [x] Expand Uzbek notification messages and admin withdrawal verification checklist
+- [x] Build Telegram Mini App admin audit log and payout status history table
+- [x] Verify responsive 3-column account grid layout at desktop and mobile breakpoints
+- [x] Add an explicit admin-only mock/test balance toggle with server enforcement, UI state, and tests proving real wallet balances are never mutated in test mode.

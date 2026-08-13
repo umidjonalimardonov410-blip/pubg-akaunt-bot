@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
-import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, payoutCards, withdrawalRequests } from "../drizzle/schema";
+import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, payoutCards, withdrawalRequests, adminAuditLogs } from "../drizzle/schema";
 import { eq, and, gte, sql, desc } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
@@ -13,6 +13,30 @@ import { ENV } from "./_core/env";
 import { proRouter } from "./ProRouters";
 import { expansionRouter } from "./ExpansionRouters";
 import { getAdminPayoutCardStatus } from "./payoutCard";
+
+const withdrawalCopy = {
+  pending: (requestId: number, amount: string) => ({
+    title: 'Pul yechish so‘rovi qabul qilindi',
+    message: `#${requestId} so‘rovingiz ${amount} so‘m miqdorida qabul qilindi. Admin chek, karta egasi va summa mosligini tekshiradi. Natija tayyor bo‘lganda sizga bildirishnoma yuboriladi.`,
+  }),
+  approved: (requestId: number, amount: string) => ({
+    title: 'Pul yechish tasdiqlandi',
+    message: `#${requestId} so‘rov ${amount} so‘m miqdorida tasdiqlandi. Mablag‘ ko‘rsatilgan kartaga yuborish uchun admin tomonidan qayd etildi.`,
+  }),
+  rejected: (requestId: number, reason: string) => ({
+    title: 'Pul yechish rad etildi',
+    message: `#${requestId} so‘rov rad etildi. Balansingiz qaytarildi. Sabab: ${reason}`,
+  }),
+} as const;
+
+const withdrawalChecklist = [
+  'Foydalanuvchi Telegram ID/username va so‘rov raqamini solishtiring.',
+  'Karta raqami, karta egasi va summa chek bilan bir xil ekanini tekshiring.',
+  'Faqat platforma ichidagi so‘rov uchun to‘lovni ko‘rib chiqing; tashqi chatdagi dalilni alohida qayd eting.',
+  'Tasdiqlashdan oldin chek yoki to‘lov tasdig‘ini admin izohiga yozing.',
+  'Rad etilganda sababni aniq kiriting; tizim balansni avtomatik qaytaradi.',
+  'Har bir qarordan keyin payout status history va audit log’da yozuv paydo bo‘lganini tekshiring.',
+] as const;
 
 export const appRouter = router({
   system: systemRouter,
@@ -520,6 +544,8 @@ export const appRouter = router({
           requestId = getInsertId(requestResult);
           await tx.insert(transactions).values({ userId: ctx.user.id, type: 'withdrawal', amount: input.amount.toString(), description: `Yechib olish #${requestId} — ${normalizedCard.slice(0, 4)} **** **** ${normalizedCard.slice(-4)}`, status: 'pending' });
         });
+        const copy = withdrawalCopy.pending(requestId, String(input.amount));
+        await db.insert(notifications).values({ userId: ctx.user.id, type: 'admin_message', title: copy.title, message: copy.message });
         await notifyOwner({ title: 'Yangi yechib olish so‘rovi', content: `Foydalanuvchi #${ctx.user.id} ${input.amount} so‘m yechib olishni so‘radi. So‘rov #${requestId} admin panelda kutmoqda.` }).catch(() => undefined);
         return { success: true, requestId };
       }),
@@ -752,12 +778,48 @@ export const appRouter = router({
         return await getAdminDisputes();
       }),
 
+    getWithdrawalChecklist: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        return { environment: ENV.isProduction ? 'production' : 'staging', stagingTestEnabled: !ENV.isProduction, items: [...withdrawalChecklist] };
+      }),
+
+    createTestWithdrawal: protectedProcedure
+      .input(z.object({ amount: z.number().int().positive().min(10000).max(100000000).default(25000), useMockBalance: z.boolean().default(true) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        if (ENV.isProduction) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Staging testi production muhitida o‘chirilgan.' });
+        if (!input.useMockBalance) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Avval admin panelida Mock balans rejimini yoqing.' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const result = await db.insert(withdrawalRequests).values({
+          userId: ctx.user.id,
+          amount: String(input.amount),
+          cardNumber: '0000000000000000',
+          cardHolderName: 'STAGING TEST',
+          status: 'pending',
+          isTest: true,
+          adminNotes: 'STAGING_TEST + MOCK_BALANCE: haqiqiy balans yechilmaydi; faqat admin oqimini tekshirish uchun.',
+        });
+        const requestId = getInsertId(result);
+        await db.insert(adminAuditLogs).values({ adminId: ctx.user.id, action: 'staging_withdrawal_created', targetType: 'withdrawal', targetId: requestId, details: `Staging test + mock balans so‘rovi yaratildi: ${input.amount} so‘m. Real wallet o‘zgarmadi.` });
+        return { success: true, requestId, isTest: true, mockBalance: true };
+      }),
+
     getWithdrawalRequests: protectedProcedure
       .query(async ({ ctx }) => {
         if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
         return await db.select().from(withdrawalRequests).orderBy(desc(withdrawalRequests.createdAt)).limit(100);
+      }),
+
+    getAuditLogs: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        return await db.select().from(adminAuditLogs).orderBy(desc(adminAuditLogs.createdAt)).limit(100);
       }),
 
     reviewWithdrawal: protectedProcedure
@@ -778,12 +840,22 @@ export const appRouter = router({
           const nextStatus = input.approved ? 'approved' : 'rejected';
           await tx.update(withdrawalRequests).set({ status: nextStatus, adminNotes: input.notes?.trim() || (input.approved ? 'Admin tomonidan tasdiqlandi.' : 'Admin tomonidan rad etildi.') }).where(and(eq(withdrawalRequests.id, input.requestId), eq(withdrawalRequests.status, 'pending')));
           await tx.update(transactions).set({ status: input.approved ? 'completed' : 'failed' }).where(and(eq(transactions.userId, request.userId), eq(transactions.type, 'withdrawal'), eq(transactions.status, 'pending'), sql`description like ${`Yechib olish #${input.requestId}%`}`));
-          if (!input.approved) {
+          if (!input.approved && !request.isTest) {
             await tx.update(users).set({ walletBalance: sql`walletBalance + ${request.amount}` }).where(eq(users.id, request.userId));
             await tx.insert(transactions).values({ userId: request.userId, type: 'topup', amount: String(request.amount), description: `Yechib olish #${input.requestId} rad etildi — balans qaytarildi`, status: 'completed' });
           }
+          await tx.insert(adminAuditLogs).values({
+            adminId: ctx.user.id,
+            action: request.isTest ? 'staging_withdrawal_reviewed' : 'withdrawal_reviewed',
+            targetType: 'withdrawal',
+            targetId: input.requestId,
+            details: `${request.isTest ? 'STAGING TEST. ' : ''}${input.approved ? 'Tasdiqlandi' : 'Rad etildi'}: ${input.notes?.trim() || 'Izoh kiritilmagan.'}`,
+          });
         });
-        await db.insert(notifications).values({ userId, type: 'admin_message', title: input.approved ? 'Pul yechish tasdiqlandi' : 'Pul yechish rad etildi', message: input.notes?.trim() || (input.approved ? `#${input.requestId} so‘rov tasdiqlandi. Mablag‘ kartaga yuboriladi.` : `#${input.requestId} so‘rov rad etildi va balansingiz qaytarildi.`) });
+        const copy = input.approved
+          ? withdrawalCopy.approved(input.requestId, amount)
+          : withdrawalCopy.rejected(input.requestId, input.notes?.trim() || 'Admin tasdig‘i yetarli emas.');
+        await db.insert(notifications).values({ userId, type: 'admin_message', title: copy.title, message: copy.message });
         return { success: true, requestId: input.requestId, approved: input.approved, amount };
       }),
 

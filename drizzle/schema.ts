@@ -242,6 +242,7 @@ export const withdrawalRequests = mysqlTable("withdrawal_requests", {
   cardNumber: varchar("cardNumber", { length: 32 }).notNull(),
   cardHolderName: varchar("cardHolderName", { length: 128 }).notNull(),
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  isTest: boolean("isTest").default(false).notNull(),
   adminNotes: text("adminNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -249,6 +250,18 @@ export const withdrawalRequests = mysqlTable("withdrawal_requests", {
 
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
 export type InsertWithdrawalRequest = typeof withdrawalRequests.$inferInsert;
+
+export const auditLogs = mysqlTable("audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  action: varchar("action", { length: 128 }).notNull(),
+  details: text("details").notNull(),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
 /**
  * Private buyer/seller thread attached to an account or order.
