@@ -46,11 +46,15 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
+export function getStaticDistPath(cwd = process.cwd()) {
+  return path.resolve(cwd, "dist", "public");
+}
+
 export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(process.cwd(), "dist", "public")
-      : path.resolve(process.cwd(), "public");
+  // Vite writes the client bundle to dist/public in both local production builds
+  // and Railway's RAILPACK build container. Keeping the same absolute path avoids
+  // serving a missing /public directory after deployment.
+  const distPath = getStaticDistPath();
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`

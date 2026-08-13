@@ -54,3 +54,12 @@
 - [x] Verify the unauthenticated Mini App fallback or open-in-Telegram prompt from the actual code path.
 - [ ] Capture an actual Railway deployment identifier or log record rather than inferring deployment state only from the live page.
 - [ ] Only mark the compact marketplace release and deployment synchronization complete after the exact GitHub and Railway source states are reconciled.
+
+## Railway Target Discovery
+- [ ] Discover the Railway project/service/deployment target from available public metadata, repository integration, or authorized API responses without requiring manual identifier lookup.
+- [ ] Attempt a targeted redeploy of the exact GitHub commit and verify the public Mini App after the redeploy attempt.
+- [ ] If Railway access cannot be obtained, document the precise credential-scope limitation and keep the deployment item explicitly unresolved.
+
+## Railway Static Serving Fix
+- [ ] Fix production static serving to use the actual Vite output directory `dist/public` instead of missing `/app/public`.
+- [ ] Add regression coverage for the production static path and verify the rebuilt Railway deployment serves `/` and `/accounts`.
