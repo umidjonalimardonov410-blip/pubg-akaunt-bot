@@ -60,3 +60,16 @@
 - [x] Add focused regression coverage proving mobile filter changes update query inputs without refetch loops or hanging behavior.
 - [x] Inspect and test the profile avatar upload path end to end, including storagePut/S3 URL integration and editor wiring.
 - [x] Inspect and test the server media.upload path used by profile avatars, confirming storagePut/S3 execution and returned URL behavior.
+
+## Comprehensive Phone-First & Notification Enhancements (2026-08-13)
+- [x] Add explicit seller sales history ("Sotuv tarixi") and current balance widget in the mobile profile page.
+- [x] Implement automatic Telegram bot notification sending to users when their deposit is approved or rejected.
+- [x] Enhance admin panel with receipt zoom modal (kattalashtirib ko'rish) and status filtering for deposits and withdrawals.
+- [x] Add external Telegram Mini App menu buttons and professional emoji-enhanced Uzbek copy.
+- [x] Ensure the phone-only shell prevents viewport scrolling outside the Mini App frame and renders smoothly on mobile.
+- [x] Create a reusable skill (`telegram-mini-app-marketplace`) using the `/skill-creator` process.
+- [x] Push complete source to GitHub (`umidjonalimardonov410-blip/pubg-akaunt-bot`) and verify Railway redeployment.
+- [x] Add withdrawal status filter controls in AdminPage and cover both deposit and withdrawal filtering with tests (covered by server/admin.filters.test.ts).
+- [x] Implement and verify viewport/body overflow locking for the phone-only Mini App shell, then add a focused regression or documented code evidence (#root max-width 480px, overscroll-behavior-y none).
+- [x] Create the reusable skill `telegram-mini-app-marketplace` conforming to the skill-creator format (`/home/ubuntu/skills/telegram-mini-app-marketplace/SKILL.md`).
+- [x] Push the latest source changes to GitHub and verify a fresh Railway deployment of this exact revision.

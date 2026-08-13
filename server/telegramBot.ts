@@ -162,3 +162,15 @@ export function registerTelegramWebhook(app: Express) {
     res.status(200).json({ ok: true, ...result });
   });
 }
+
+export async function sendTelegramNotification(telegramChatId: string | number, text: string, path = "/") {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return { ok: false as const, status: "setup_required" as const };
+  return telegramApiRequest("sendMessage", {
+    chat_id: telegramChatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: buildInlineKeyboard(path),
+  });
+}

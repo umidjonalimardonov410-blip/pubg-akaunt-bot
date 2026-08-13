@@ -13,6 +13,7 @@ import { ENV } from "./_core/env";
 import { proRouter } from "./ProRouters";
 import { expansionRouter } from "./ExpansionRouters";
 import { getAdminPayoutCardStatus } from "./payoutCard";
+import { sendTelegramNotification } from "./telegramBot";
 
 const withdrawalCopy = {
   pending: (requestId: number, amount: string) => ({
@@ -812,6 +813,7 @@ export const appRouter = router({
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
         let userId = 0;
         let amount = '0';
+        let userTelegramId: string | null = null;
         await db.transaction(async (tx: any) => {
           const rows = await tx.select().from(depositRequests).where(eq(depositRequests.id, input.depositId)).limit(1);
           const deposit = rows[0];
@@ -819,15 +821,31 @@ export const appRouter = router({
           if (deposit.status !== 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Bu chek allaqachon ko‘rib chiqilgan' });
           userId = deposit.userId;
           amount = String(deposit.amount);
+
+          const userRows = await tx.select().from(users).where(eq(users.id, userId)).limit(1);
+          if (userRows[0]) {
+            userTelegramId = userRows[0].telegramId || userRows[0].openId;
+          }
+
           const nextStatus = input.approved ? 'approved' : 'rejected';
           await tx.update(depositRequests).set({ status: nextStatus, adminNotes: input.notes?.trim() || (input.approved ? 'Chek tasdiqlandi.' : 'Chek rad etildi.') }).where(and(eq(depositRequests.id, input.depositId), eq(depositRequests.status, 'pending')));
           if (input.approved) {
-            await tx.update(users).set({ walletBalance: sql`walletBalance + ${deposit.amount}` }).where(eq(users.id, deposit.userId));
-            await tx.insert(transactions).values({ userId: deposit.userId, type: 'topup', amount: String(deposit.amount), description: `Karta cheki tasdiqlandi #${input.depositId}`, status: 'completed' });
+            await tx.update(users).set({ walletBalance: sql`walletBalance + ${deposit.amount}` }).where(eq(users.id, userId));
+            await tx.insert(transactions).values({ userId, type: 'topup', amount: String(deposit.amount), description: `Karta cheki tasdiqlandi #${input.depositId}`, status: 'completed' });
           }
           await tx.insert(adminAuditLogs).values({ adminId: ctx.user.id, action: input.approved ? 'deposit_approved' : 'deposit_rejected', targetType: 'deposit', targetId: input.depositId, details: `${input.approved ? 'Tasdiqlandi' : 'Rad etildi'}: ${input.notes?.trim() || 'Izoh kiritilmagan.'}` });
         });
-        await db.insert(notifications).values({ userId, type: 'admin_message', title: input.approved ? 'To‘lov tasdiqlandi' : 'To‘lov rad etildi', message: input.approved ? `#${input.depositId} chekingiz tasdiqlandi. ${amount} so‘m balansingizga qo‘shildi.` : `#${input.depositId} chekingiz rad etildi. Sabab: ${input.notes?.trim() || 'Chek ma’lumotlari mos kelmadi.'}` });
+
+        const depositMsg = input.approved
+          ? `<b>✅ To'lovingiz muvaffaqiyatli tasdiqlandi!</b>\n\nChek raqami: #${input.depositId}\nSumma: <b>${amount} so'm</b>\nHolat: Balansingizga qo'shildi va xarid qilishga tayyor. 🚀`
+          : `<b>❌ To'lov chekingiz rad etildi</b>\n\nChek raqami: #${input.depositId}\nSabab: ${input.notes?.trim() || 'Chek ma\'lumotlari mos kelmadi yoki tasdiqlanmadi.'}\n\nIltimos, qo'llab-quvvatlash bo'limiga murojaat qiling.`;
+
+        await db.insert(notifications).values({ userId, type: 'admin_message', title: input.approved ? 'To‘lov tasdiqlandi' : 'To‘lov rad etildi', message: depositMsg });
+
+        if (userTelegramId) {
+          await sendTelegramNotification(userTelegramId, depositMsg, '/profile').catch(() => undefined);
+        }
+
         return { success: true, depositId: input.depositId, approved: input.approved, amount };
       }),
 

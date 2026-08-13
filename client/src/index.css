@@ -54,18 +54,31 @@
     border-color: hsl(var(--border));
   }
 
-  html {
-    background: #08090b;
+  html, body {
+    background: #060709;
     color-scheme: dark;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    height: 100%;
   }
 
   body {
     min-width: 320px;
     margin: 0;
-    background: #08090b;
+    background: #060709;
     color: #f7f7f8;
     font-family: 'Inter', sans-serif;
     text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: #08090b;
+    box-shadow: 0 0 50px rgba(0,0,0,0.85);
+    position: relative;
+    overflow-x: hidden;
   }
 
   button, input, textarea, select {
