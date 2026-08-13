@@ -19,3 +19,9 @@
 - [x] Implement and commit the actual bot fix if needed, then verify `handleTelegramUpdate` returns `sent:true` for `/start`
 - [x] Add a focused test covering POST `/api/telegram/webhook` with a `/start` payload
 - [x] Verify live bot reply after pushing and deploying
+
+## Three-Across Marketplace Cards
+- [ ] Update marketplace account grid in Home.tsx / EnhancedPages.tsx to use grid-cols-3 (three items horizontally per row) with compact padding, smaller fonts, and concise badges
+- [ ] Verify touch readability and layout alignment on mobile viewport
+- [ ] Run test suite and production build verification
+- [ ] Save checkpoint and deliver result
