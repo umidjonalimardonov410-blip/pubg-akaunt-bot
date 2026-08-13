@@ -127,7 +127,7 @@
 - [x] Make the production Drizzle migration bootstrap safe to retry when a previous deployment has already created one or more tables.
 - [x] Add regression coverage for an existing-table migration retry and rerun the full test/build verification.
 - [x] Push the idempotent migration fix to GitHub and redeploy the exact commit to Railway.
-- [ ] Confirm the Railway startup probe is healthy and recheck the live Mini App after the retry-safe migration fix.
+- [x] Implement and locally verify the retry-safe existing-table migration; production startup was confirmed only after the later TiDB compatibility repairs.
 
 - [x] Correct over-escaped Drizzle migration-table identifiers that prevented the retry recovery SQL from executing.
 - [x] Exercise the real `ensureProductionDatabaseSchema()` recovery path and prove non-ignorable SQL errors still fail startup.
@@ -136,11 +136,17 @@
 ## TiDB Recovery SQL Compatibility — 2026-08-13
 - [x] Make migration recovery retry-safe for the observed TiDB JSON default syntax error without masking unrelated schema errors.
 - [x] Add regression coverage for the JSON default syntax conflict and rerun the full test/build verification.
-- [ ] Push the TiDB-compatible repair to GitHub and redeploy the exact commit to Railway.
-- [ ] Confirm the Railway runtime startup probe is healthy and recheck the live Mini App after the repair.
+- [x] Push and test commit `3a9df8e`; production startup was not healthy until the later stripped-default TiDB repair.
 
 ## TiDB JSON Default Restriction — 2026-08-13
 - [x] TiDB rejects defaults on the observed `pubg_accounts.featuredSkins` and `pubg_accounts.galleryUrls` JSON columns (`ER_BLOB_CANT_HAVE_DEFAULT`); strip those migration DEFAULT clauses during recovery.
 - [x] Add regression coverage for the stripped JSON default and rerun tests/build.
-- [ ] Push the stripped-default repair to GitHub and redeploy the exact commit to Railway.
-- [ ] Confirm the Railway runtime startup probe is healthy and recheck the live Mini App after the repair.
+- [x] Push the stripped-default repair to GitHub and redeploy the exact commit to Railway.
+- [x] Confirm the Railway runtime startup probe is healthy and recheck the live Mini App after the repair.
+
+## Final TiDB-Compatible Production Verification — 2026-08-13
+- [x] Final verified source: GitHub main commit `d584bc7b9514b779e702658193054e6a80d5a1f9`.
+- [x] Final verified Railway deployment: `3e553782-8f60-4dc1-bf02-1f4724d1f9e5`, status `SUCCESS`.
+- [x] Final startup logs show migrations applied, server running, and Telegram commands/menu/webhook active.
+- [x] Final live `/start` webhook returned HTTP 200 with `sent=true`; signed Telegram auth returned HTTP 200 with `loginMethod=telegram`.
+- [x] Final live root, marketplace grid, compact mode, profile gate, Saved gate, and seller gate were verified after the successful deployment.
