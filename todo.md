@@ -86,33 +86,33 @@
 - [x] Run full tests, production build, mobile screenshots, sync latest source to GitHub, trigger Railway deployment, and verify live endpoints without mutating real funds or sending an unapproved broadcast.
 
 ## New Scope: Wishlist, Neon Theme & Multilingual UI (2026-08-13)
-- [ ] Persist wishlist price snapshots and per-account price-drop alert preferences.
-- [ ] Create notifications when an authorized listing price decreases for opted-in wishlist users.
-- [ ] Add a visible wishlist price-drop toggle and translated saved-account states.
-- [ ] Enable a persistent neon dark/light mode toggle and synchronize Telegram WebApp colors.
-- [ ] Add Uzbek, English, and Russian language selection for core navigation, notifications, and wishlist UI.
+- [x] Persist wishlist price snapshots and per-account price-drop alert preferences.
+- [x] Create notifications when an authorized listing price decreases for opted-in wishlist users.
+- [x] Add a visible wishlist price-drop toggle and translated saved-account states.
+- [x] Enable a persistent neon dark/light mode toggle and synchronize Telegram WebApp colors.
+- [x] Add Uzbek, English, and Russian language selection for core navigation, notifications, and wishlist UI.
 - [ ] Update and validate the reusable `telegram-mini-app-marketplace` skill through the skill-creator workflow.
 - [ ] Add focused regression coverage and run full Vitest/build/mobile checks.
 - [ ] Sync the verified revision to GitHub and redeploy the same revision to Railway; report exact status without claiming unverified features.
 
 ## User Screenshot Audit & Repair Scope (2026-08-13)
-- [ ] Fix profile balance display so unauthenticated or zero balance clearly shows `0 so‘m` instead of broken symbol
-- [ ] Ensure profile edit dialog opens properly and allows saving Telegram handle, display name, bio, and avatar
-- [ ] Ensure deposit card flow clearly displays admin payment card details (`5614 3600 **** 7758 / Alimardonov U`) for copying and receipt upload
-- [ ] Verify account cards layout on mobile for compact 3-row touch ergonomics
-- [ ] Push verified fixes to GitHub and Railway deployment
+- [x] Fix profile balance display so unauthenticated or zero balance clearly shows `0 so‘m` instead of broken symbol
+- [x] Ensure profile edit dialog opens properly and allows saving Telegram handle, display name, bio, and avatar
+- [x] Ensure deposit card flow clearly displays admin payment card details (`5614 3600 **** 7758 / Alimardonov U`) for copying and receipt upload
+- [x] Verify account cards layout on mobile for compact 3-row touch ergonomics
+- [x] Push verified fixes to GitHub and Railway deployment
 
 ## Telegram Bot Audit & Repair Scope (2026-08-13)
-- [ ] Inspect server/telegramBot.ts and webhook handlers to verify command handling (`/start`, `/market`, `/wallet`, `/profile`, `/support`, `/help`)
-- [ ] Verify reply keyboard markup and Mini App web_app button bindings in the Telegram bot
-- [ ] Verify outbound notification helper (`sendTelegramNotification`) and admin alerts for deposits/withdrawals
-- [ ] Push verified bot code to GitHub and trigger Railway update
+- [x] Inspect server/telegramBot.ts and webhook handlers to verify command handling (`/start`, `/market`, `/wallet`, `/profile`, `/support`, `/help`)
+- [x] Verify reply keyboard markup and Mini App web_app button bindings in the Telegram bot
+- [x] Verify outbound notification helper (`sendTelegramNotification`) and admin alerts for deposits/withdrawals
+- [x] Push verified bot code to GitHub and trigger Railway update
 
 ## Telegram Bot Live Diagnosis & Repair (2026-08-13)
-- [ ] Check server startup logs for TELEGRAM_BOT_TOKEN initialization and webhook endpoint registration
-- [ ] Verify whether server/routers.ts or server/_core/index.ts registers POST `/api/telegram/webhook`
-- [ ] Test bot getMe and webhook status programmatically against Telegram Bot API
-- [ ] Ensure Railway receives the exact commit that registers the webhook and handles updates
+- [x] Check server startup logs for TELEGRAM_BOT_TOKEN initialization and webhook endpoint registration
+- [x] Verify whether server/routers.ts or server/_core/index.ts registers POST `/api/telegram/webhook`
+- [x] Test bot getMe and webhook status programmatically against Telegram Bot API
+- [x] Ensure Railway receives the exact commit that registers the webhook and handles updates
 
 ## Destructive Railway Rebuild Scope (User Confirmed: IKKALASINI O'CHIR)
 - [ ] Delete both confirmed Railway projects (`Inferno Stealth` and `comfortable-ambition`) using the Railway API or manual instructions
