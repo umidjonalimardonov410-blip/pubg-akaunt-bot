@@ -164,3 +164,56 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Telegram Mini App phone-first layer */
+html, body, #root {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 640px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .field-input {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  button, a {
+    touch-action: manipulation;
+  }
+
+  .mobile-scroll-row {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .mobile-scroll-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-bottom-safe {
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 641px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .desktop-only {
+    display: none !important;
+  }
+}

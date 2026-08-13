@@ -11,15 +11,15 @@ export default function ProTools() {
   const dashboard = trpc.pro.sellerDashboard.useQuery(undefined, { enabled: isAuthenticated });
 
   return (
-    <main className="min-h-screen bg-background text-foreground pb-28">
-      <div className="container max-w-6xl px-3 py-6 sm:px-6 space-y-6">
+    <main className="min-h-screen bg-background pb-[calc(7rem+env(safe-area-inset-bottom))] text-foreground sm:pb-10">
+      <div className="container max-w-6xl space-y-5 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Inferno Stealth Pro</p>
             <h1 className="mt-1 text-2xl sm:text-4xl font-black tracking-tight">Savdo vositalari</h1>
             <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">Akkauntingizni to‘g‘ri baholang, ishonchni oshiring va savdo bo‘yicha yordamni bitta joydan boshqaring.</p>
           </div>
-          <Button variant="outline" size="sm" asChild className="self-start sm:self-auto border-border/60">
+          <Button variant="outline" size="sm" asChild className="min-h-11 self-start border-border/60 sm:self-auto">
             <Link href="/"><ArrowLeft className="mr-1.5 h-4 w-4" /> Bozorga qaytish</Link>
           </Button>
         </div>
@@ -56,7 +56,7 @@ export default function ProTools() {
           {!isAuthenticated ? (
             <Card className="border-white/10 bg-card/70"><CardContent className="p-6 text-sm text-muted-foreground">Sotuvchi statistikalarini ko‘rish uchun Telegram profilingizga kiring.</CardContent></Card>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-5">
               {[
                 ['E’lonlar', dashboard.data?.listingCount ?? 0],
                 ['Faol e’lon', dashboard.data?.availableCount ?? 0],
