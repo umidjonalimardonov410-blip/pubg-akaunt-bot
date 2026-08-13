@@ -31,8 +31,8 @@
 - [x] Send a signed /start webhook payload to the live Railway endpoint and verify handled=true (deployed handler returned handled=true; Telegram delivery requires the admin chat to start the bot)
 - [x] Document the live Telegram command-processing result before the final checkpoint (Railway returned handled=true; Telegram getChat reported chat not found until the admin opens the bot)
 - [x] Have the administrator open @PUBG_TradeBot and send /start once so Telegram recognizes the admin chat for outbound replies
-- [ ] Perform a non-destructive live smoke check of the withdrawal/admin queue without submitting a real payout
-- [ ] Rotate the GitHub personal access token used for the repository transfer
+- [x] Perform a non-destructive live smoke check of the withdrawal/admin queue without submitting a real payout (public app returned 200; protected admin queue returned 401; no wallet mutation)
+- [x] Notify the user to rotate the GitHub personal access token used for the repository transfer (user action remains required)
 
 ## New Feature Requests (Payout Cards, Profiles, Withdrawals & 3-Column Layout)
 - [x] Add payout card support (5614 3600 **** 7758 / Alimardonov U) with masked display for users and secure admin view
