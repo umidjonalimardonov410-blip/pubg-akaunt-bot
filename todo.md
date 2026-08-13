@@ -41,25 +41,29 @@
 - [x] Replace the current expanded list card with a phone-first compact 4–5-row account view showing Level, K/D, Win Rate, Skins, and Price.
 - [x] Make the marketplace layout toggle clearly switch between the 3-across browse grid and the compact detail list.
 - [x] Verify both modes at 375px and a wider viewport without horizontal overflow or clipped information.
-- [ ] Run Vitest and production build, then synchronize the final source to GitHub and verify the reachable deployment route.
+- [x] Run Vitest and production build, then synchronize the final source to GitHub and verify the reachable deployment route.
 
 ## Live UI Sync Blocker
 - [x] Determine why the user-facing bot/Mini App still serves the previous marketplace layout after local changes.
 - [x] Compare the local commit, GitHub main, Railway deployment commit, and public Mini App response before claiming the change is live.
-- [ ] Fix the deployment synchronization path or provide the exact remaining user action if Railway access is unavailable.
+- [x] Fix the deployment synchronization path or provide the exact remaining user action if Railway access is unavailable.
 
 ## Verification Gaps Before Release Checkpoint
 - [x] Remove the remaining `/pro` Telegram command and unused Pro router exposure, or document why a non-user-facing compatibility path remains.
 - [x] Verify the concrete Telegram WebApp initData user/auth synchronization path and add focused coverage if it is not directly implemented.
 - [x] Verify the unauthenticated Mini App fallback or open-in-Telegram prompt from the actual code path.
-- [ ] Capture an actual Railway deployment identifier or log record rather than inferring deployment state only from the live page.
-- [ ] Only mark the compact marketplace release and deployment synchronization complete after the exact GitHub and Railway source states are reconciled.
+- [x] Capture an actual Railway deployment identifier or log record rather than inferring deployment state only from the live page.
+- [x] Only mark the compact marketplace release and deployment synchronization complete after the exact GitHub and Railway source states are reconciled.
 
 ## Railway Target Discovery
-- [ ] Discover the Railway project/service/deployment target from available public metadata, repository integration, or authorized API responses without requiring manual identifier lookup.
-- [ ] Attempt a targeted redeploy of the exact GitHub commit and verify the public Mini App after the redeploy attempt.
+- [x] Discover the Railway project/service/deployment target from available public metadata, repository integration, or authorized API responses without requiring manual identifier lookup.
+- [x] Attempt a targeted redeploy of the exact GitHub commit and verify the public Mini App after the redeploy attempt.
 - [ ] If Railway access cannot be obtained, document the precise credential-scope limitation and keep the deployment item explicitly unresolved.
 
 ## Railway Static Serving Fix
-- [ ] Fix production static serving to use the actual Vite output directory `dist/public` instead of missing `/app/public`.
-- [ ] Add regression coverage for the production static path and verify the rebuilt Railway deployment serves `/` and `/accounts`.
+- [x] Fix production static serving to use the actual Vite output directory `dist/public` instead of missing `/app/public`.
+- [x] Add regression coverage for the production static path and verify the rebuilt Railway deployment serves `/` and `/accounts`.
+
+## Final Root Route Verification
+- [x] Verify the live Railway root route `/` after deployment `71396c32-9e8c-4eac-bff7-31c6babec934` serves the SPA instead of `Not Found`.
+- [x] If the root route still fails, fix the production route/static fallback and re-verify both `/` and `/accounts`.
