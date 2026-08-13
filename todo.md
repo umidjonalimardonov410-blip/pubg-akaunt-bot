@@ -73,3 +73,14 @@
 - [x] Implement and verify viewport/body overflow locking for the phone-only Mini App shell, then add a focused regression or documented code evidence (#root max-width 480px, overscroll-behavior-y none).
 - [x] Create the reusable skill `telegram-mini-app-marketplace` conforming to the skill-creator format (`/home/ubuntu/skills/telegram-mini-app-marketplace/SKILL.md`).
 - [x] Push the latest source changes to GitHub and verify a fresh Railway deployment of this exact revision.
+
+## New Scope: Multi-Currency, Payment Webhooks & Promotional Broadcasts (2026-08-13)
+- [ ] Add UZS/USD/RUB currency selection and display with a transparent, configurable exchange-rate model; keep ledger values canonical and avoid floating-point balance mutations.
+- [ ] Add Click payment initiation and callback/webhook verification with idempotent provider references and wallet crediting only after a verified successful callback.
+- [ ] Add Payme payment initiation and callback/webhook verification with idempotent provider references and wallet crediting only after a verified successful callback.
+- [ ] Add admin payment-provider status, webhook event history, and Uzbek success/failure messaging; retain manual receipt fallback.
+- [ ] Add Telegram promotional broadcast campaigns for rare item listings with admin-only targeting, preview, delivery tracking, rate limiting, and failure reporting.
+- [ ] Refine Uzbek Telegram menus, admin payout-card visibility, receipt submission/review flow, and compact phone-first account cards with 3-row information hierarchy.
+- [ ] Recreate or update the reusable `telegram-mini-app-marketplace` skill through the documented `/skill-creator` workflow and validate it.
+- [ ] Add focused Vitest coverage for currency conversion, Click/Payme signature/idempotency, broadcast authorization/delivery handling, and compact card data.
+- [ ] Run full tests, production build, mobile screenshots, sync latest source to GitHub, trigger Railway deployment, and verify live endpoints without mutating real funds or sending an unapproved broadcast.
