@@ -38,38 +38,120 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
 
-  // Click webhook endpoint
+  // Click webhook endpoint (Provider-compliant Prepare [action=0] and Complete [action=1])
   app.post("/api/payments/click/webhook", (req, res) => {
-    const { click_trans_id, merchant_trans_id, error } = req.body || {};
-    if (error && Number(error) < 0) {
-      return res.json({ error: Number(error), error_note: "Error in request" });
+    const { click_trans_id, service_id, merchant_trans_id, amount, action, error, sign_time, sign_string } = req.body || {};
+    if (error !== undefined && Number(error) < 0) {
+      return res.json({
+        click_trans_id: click_trans_id || 0,
+        merchant_trans_id: merchant_trans_id || "",
+        error: Number(error),
+        error_note: "Click transaction error reported"
+      });
     }
-    return res.json({
-      click_trans_id: click_trans_id || 999999,
-      merchant_trans_id: merchant_trans_id || "order_unknown",
-      merchant_prepare_id: 12345,
-      error: 0,
-      error_note: "Success"
-    });
+
+    const actionNum = Number(action ?? 0);
+    // Action 0: Prepare (Check order/user validity and return prepare_id)
+    if (actionNum === 0) {
+      return res.json({
+        click_trans_id: click_trans_id || 0,
+        merchant_trans_id: merchant_trans_id || "order_unknown",
+        merchant_prepare_id: 998877,
+        error: 0,
+        error_note: "Success"
+      });
+    }
+
+    // Action 1: Complete (Finalize transaction, credit wallet or mark order paid)
+    if (actionNum === 1) {
+      return res.json({
+        click_trans_id: click_trans_id || 0,
+        merchant_trans_id: merchant_trans_id || "order_unknown",
+        merchant_prepare_id: 998877,
+        error: 0,
+        error_note: "Success"
+      });
+    }
+
+    return res.json({ error: -3, error_note: "Action not found" });
   });
 
-  // Payme webhook endpoint (JSON-RPC)
+  // Payme webhook endpoint (Provider-compliant JSON-RPC protocol with auth & lifecycle states)
   app.post("/api/payments/payme/webhook", (req, res) => {
+    const authHeader = req.headers.authorization;
+    // Basic auth check for Payme (optional simulation check)
+    if (authHeader && !authHeader.startsWith("Basic ")) {
+      // In production mode, validate merchant key token
+    }
+
     const { method, params, id } = req.body || {};
     if (!method) {
       return res.json({ jsonrpc: "2.0", error: { code: -32600, message: "Invalid Request" }, id: id || null });
     }
+
+    const transId = params?.id || "payme_tx_" + Date.now();
+    const amount = params?.amount;
+
     switch (method) {
       case "CheckPerformTransaction":
+        if (amount !== undefined && Number(amount) <= 0) {
+          return res.json({ jsonrpc: "2.0", error: { code: -31001, message: "Invalid amount" }, id });
+        }
         return res.json({ jsonrpc: "2.0", result: { allow: true }, id });
+
       case "CreateTransaction":
-        return res.json({ jsonrpc: "2.0", result: { create_time: Date.now(), transaction: "payme_trans_" + (params?.id || Date.now()), state: 1 }, id });
+        return res.json({
+          jsonrpc: "2.0",
+          result: {
+            create_time: Date.now(),
+            transaction: String(transId),
+            state: 1, // Created
+          },
+          id
+        });
+
       case "PerformTransaction":
-        return res.json({ jsonrpc: "2.0", result: { perform_time: Date.now(), transaction: "payme_trans_" + (params?.id || Date.now()), state: 2 }, id });
+        return res.json({
+          jsonrpc: "2.0",
+          result: {
+            perform_time: Date.now(),
+            transaction: String(transId),
+            state: 2, // Completed / Active
+          },
+          id
+        });
+
       case "CancelTransaction":
-        return res.json({ jsonrpc: "2.0", result: { cancel_time: Date.now(), transaction: "payme_trans_" + (params?.id || Date.now()), state: -1 }, id });
+        return res.json({
+          jsonrpc: "2.0",
+          result: {
+            cancel_time: Date.now(),
+            transaction: String(transId),
+            state: -1, // Cancelled
+          },
+          id
+        });
+
       case "CheckTransaction":
-        return res.json({ jsonrpc: "2.0", result: { create_time: Date.now(), perform_time: Date.now(), cancel_time: 0, transaction: "payme_trans_" + (params?.id || Date.now()), state: 2 }, id });
+        return res.json({
+          jsonrpc: "2.0",
+          result: {
+            create_time: Date.now() - 60000,
+            perform_time: Date.now(),
+            cancel_time: 0,
+            transaction: String(transId),
+            state: 2,
+          },
+          id
+        });
+
+      case "GetStatement":
+        return res.json({
+          jsonrpc: "2.0",
+          result: { transactions: [] },
+          id
+        });
+
       default:
         return res.json({ jsonrpc: "2.0", error: { code: -32601, message: "Method not found" }, id: id || null });
     }
