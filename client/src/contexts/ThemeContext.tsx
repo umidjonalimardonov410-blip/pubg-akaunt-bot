@@ -40,6 +40,11 @@ export function ThemeProvider({
     if (switchable) {
       localStorage.setItem("theme", theme);
     }
+
+    const telegramWebApp = (window as Window & { Telegram?: { WebApp?: { setHeaderColor?: (color: string) => void; setBackgroundColor?: (color: string) => void } } }).Telegram?.WebApp;
+    const background = theme === "dark" ? "#08090b" : "#eef3f8";
+    telegramWebApp?.setHeaderColor?.(background);
+    telegramWebApp?.setBackgroundColor?.(background);
   }, [theme, switchable]);
 
   const toggleTheme = switchable

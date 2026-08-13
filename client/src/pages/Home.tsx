@@ -26,6 +26,8 @@ import {
   LockKeyhole,
   Menu,
   MessageCircle,
+  Moon,
+  Sun,
   Play,
   Plus,
   Search,
@@ -45,6 +47,8 @@ import { trpc } from "@/lib/trpc";
 import { accountShareUrl, autoClaimTelegramReferral, getTelegramIdentity, getTelegramReferralCode, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
 import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
 import { readFileAsBase64, uploadProfileAvatar } from "@/lib/profileUpload";
+import { useTheme } from "@/contexts/ThemeContext";
+import { LanguageSelect, useLanguage } from "@/contexts/LanguageContext";
 
 const HERO_IMAGE = "/manus-storage/hero-soldier_222b0d1f.jpeg";
 const CARD_IMAGE = "/manus-storage/soldier-red_6bdf1882.jpg";
@@ -225,6 +229,8 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const unreadQuery = trpc.notifications.getUnread.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchInterval: 30_000,
@@ -247,16 +253,18 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           <span className="sm:hidden"><Brand compact /></span>
           <span className="hidden sm:inline-flex"><Brand /></span>
           <nav className="hidden">
-            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Pro markaz', '/pro-market'], ['Pro vositalar', '/pro'], ['Yordam', '/support']].map(([label, path]) => (
+            {[[t('market'), '/accounts'], [t('saved'), '/saved'], [t('sell'), '/sell'], [t('escrow'), '/orders'], [t('referral'), '/referral'], [t('proCenter'), '/pro-market'], [t('proTools'), '/pro'], [t('support'), '/support']].map(([label, path]) => (
               <button key={path} onClick={() => onNavigate(path)} className="transition hover:text-white">{label}</button>
             ))}
           </nav>
         </div>
         <div className="relative flex items-center gap-2">
+          <LanguageSelect />
+          {toggleTheme && <button type="button" onClick={toggleTheme} className="grid h-10 w-10 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/5 text-cyan-200 transition hover:border-cyan-200/60" aria-label={theme === 'dark' ? t('themeLight') : t('themeDark')} title={theme === 'dark' ? t('themeLight') : t('themeDark')}>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>}
           <button
             onClick={() => setNotificationsOpen(value => !value)}
             className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/65 transition hover:border-red-500/40 hover:text-white"
-            aria-label="Bildirishnomalar"
+            aria-label={t("notifications")}
             aria-expanded={notificationsOpen}
           >
             <Bell className="h-4 w-4" />
@@ -265,13 +273,13 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           {notificationsOpen && (
             <div className="absolute right-0 top-12 z-50 w-[min(92vw,360px)] overflow-hidden rounded-2xl border border-red-500/25 bg-[#0d0f12] shadow-2xl shadow-black/40">
               <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
-                <div><p className="text-sm font-black text-white">Bildirishnomalar</p><p className="mt-0.5 text-[11px] text-white/40">Muhim savdo yangiliklari</p></div>
+                <div><p className="text-sm font-black text-white">{t("notifications")}</p><p className="mt-0.5 text-[11px] text-white/40">{t("importantTradeNews")}</p></div>
                 {unread.length > 0 && <span className="rounded-full bg-red-500/15 px-2 py-1 text-[10px] font-bold text-red-300">{unread.length} ta yangi</span>}
               </div>
               {!isAuthenticated ? (
-                <button onClick={() => { setNotificationsOpen(false); onNavigate('/profile'); }} className="w-full px-4 py-6 text-left text-xs leading-5 text-white/50 transition hover:bg-white/[0.03]">Bildirishnomalarni ko‘rish uchun profilga kiring.</button>
+                <button onClick={() => { setNotificationsOpen(false); onNavigate('/profile'); }} className="w-full px-4 py-6 text-left text-xs leading-5 text-white/50 transition hover:bg-white/[0.03]">{t("loginToSeeNotifications")}</button>
               ) : unread.length === 0 ? (
-                <div className="px-4 py-7 text-center"><Bell className="mx-auto h-6 w-6 text-white/20" /><p className="mt-2 text-xs text-white/45">Hozircha yangi bildirishnoma yo‘q.</p></div>
+                <div className="px-4 py-7 text-center"><Bell className="mx-auto h-6 w-6 text-white/20" /><p className="mt-2 text-xs text-white/45">{t("noNotifications")}</p></div>
               ) : (
                 <div className="max-h-72 overflow-y-auto">
                   {unread.slice(0, 6).map(notification => (
@@ -281,20 +289,20 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
                   ))}
                 </div>
               )}
-              <button onClick={() => { setNotificationsOpen(false); onNavigate('/profile'); }} className="w-full border-t border-white/[0.08] px-4 py-3 text-center text-xs font-bold text-red-300 transition hover:bg-red-500/[0.06]">Profilni ochish</button>
+              <button onClick={() => { setNotificationsOpen(false); onNavigate('/profile'); }} className="w-full border-t border-white/[0.08] px-4 py-3 text-center text-xs font-bold text-red-300 transition hover:bg-red-500/[0.06]">{t("openProfile")}</button>
             </div>
           )}
           <button onClick={() => onNavigate('/profile')} className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left">
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-red-500/15 text-red-300"><UserRound className="h-4 w-4" /></span>
-            <span><span className="block text-[10px] font-bold uppercase tracking-wider text-white/45">Kabinet</span><span className="block text-xs font-bold text-white">Mening profilim</span></span>
+            <span><span className="block text-[10px] font-bold uppercase tracking-wider text-white/45">{t('cabinet')}</span><span className="block text-xs font-bold text-white">{t('myProfile')}</span></span>
           </button>
-          <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70" aria-label="Menyu"><Menu className="h-5 w-5" /></button>
+          <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70" aria-label={t('menu')}><Menu className="h-5 w-5" /></button>
         </div>
       </div>
       {menuOpen && (
         <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3">
           <div className="mx-auto flex max-w-[480px] flex-col gap-1">
-            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Pro markaz', '/pro-market'], ['Pro vositalar', '/pro'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
+            {[[t('market'), '/accounts'], [t('saved'), '/saved'], [t('sell'), '/sell'], [t('escrow'), '/orders'], [t('referral'), '/referral'], [t('proCenter'), '/pro-market'], [t('proTools'), '/pro'], [t('profile'), '/profile'], [t('support'), '/support']].map(([label, path]) => (
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{label}</button>
             ))}
           </div>

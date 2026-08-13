@@ -190,6 +190,43 @@ export const appRouter = router({
         const favoriteCounts = await getFavoriteCounts(rows.map(row => row.id));
         return rows.map(row => ({ ...row, sellerViewCount: Number(row.viewCount ?? 0), favoriteCount: favoriteCounts.get(row.id) ?? 0 }));
       }),
+
+    updatePrice: protectedProcedure
+      .input(z.object({ accountId: z.number().int().positive(), price: z.number().positive().max(999999999) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database unavailable' });
+        const account = await getPubgAccountById(input.accountId);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        if (account.sellerId !== ctx.user.id && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bu e’lon narxini o‘zgartirish huquqi yo‘q' });
+        }
+        if (account.status === 'sold' || account.status === 'delisted') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Sotilgan yoki yopilgan e’lon narxini o‘zgartirib bo‘lmaydi' });
+        }
+        const oldPrice = Number(account.price);
+        const nextPrice = Number(input.price.toFixed(2));
+        const updated = await db.update(pubgAccounts).set({ price: nextPrice.toString() }).where(eq(pubgAccounts.id, account.id));
+        if (!updated || getAffectedRows(updated) !== 1) throw new TRPCError({ code: 'CONFLICT', message: 'Narx yangilanmadi' });
+
+        let notifiedCount = 0;
+        if (nextPrice < oldPrice) {
+          const watchers = await db.select({ userId: favorites.userId })
+            .from(favorites)
+            .where(and(eq(favorites.accountId, account.id), eq(favorites.priceDropAlerts, true)));
+          for (const watcher of watchers) {
+            await db.insert(notifications).values({
+              userId: watcher.userId,
+              type: 'price_drop',
+              title: 'Wishlist narxi tushdi',
+              message: `${account.playerName} akkaunti narxi ${new Intl.NumberFormat('uz-UZ').format(oldPrice)} so‘mdan ${new Intl.NumberFormat('uz-UZ').format(nextPrice)} so‘mga tushdi.`,
+              accountId: account.id,
+            });
+            notifiedCount += 1;
+          }
+        }
+        return { success: true, oldPrice, newPrice: nextPrice, notifiedCount };
+      }),
   }),
 
   // Secure media upload: the client sends a bounded base64 payload and the server writes it to S3.
@@ -614,8 +651,30 @@ export const appRouter = router({
           await db.delete(favorites).where(eq(favorites.id, existing[0].id));
           return { saved: false };
         }
-        await db.insert(favorites).values({ userId: ctx.user.id, accountId: input.accountId });
-        return { saved: true };
+        await db.insert(favorites).values({ userId: ctx.user.id, accountId: input.accountId, initialPrice: account.price.toString(), priceDropAlerts: true });
+        return { saved: true, priceDropAlerts: true };
+      }),
+
+    watchlist: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return await db.select({ accountId: favorites.accountId, initialPrice: favorites.initialPrice, priceDropAlerts: favorites.priceDropAlerts })
+        .from(favorites)
+        .where(eq(favorites.userId, ctx.user.id));
+    }),
+
+    setPriceDropAlerts: protectedProcedure
+      .input(z.object({ accountId: z.number().int().positive(), enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const account = await getPubgAccountById(input.accountId);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        const updated = await db.update(favorites)
+          .set({ priceDropAlerts: input.enabled, initialPrice: account.price.toString() })
+          .where(and(eq(favorites.userId, ctx.user.id), eq(favorites.accountId, input.accountId)));
+        if (!updated || getAffectedRows(updated) !== 1) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt wishlist’da yo‘q' });
+        return { accountId: input.accountId, enabled: input.enabled, initialPrice: account.price.toString() };
       }),
   }),
 

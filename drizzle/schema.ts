@@ -186,7 +186,7 @@ export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   
-  type: mysqlEnum("type", ["new_listing", "order_status", "review_received", "dispute_alert", "admin_message"]).notNull(),
+  type: mysqlEnum("type", ["new_listing", "order_status", "review_received", "dispute_alert", "admin_message", "price_drop"]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   
@@ -231,7 +231,10 @@ export const favorites = mysqlTable("favorites", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   accountId: int("accountId").notNull(),
+  initialPrice: decimal("initialPrice", { precision: 12, scale: 2 }).notNull(),
+  priceDropAlerts: boolean("priceDropAlerts").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({
   userAccountUnique: uniqueIndex("favorites_user_account_unique").on(table.userId, table.accountId),
 }));
