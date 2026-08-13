@@ -23,3 +23,23 @@ describe("Telegram bot configuration", () => {
     expect(payload.result?.username).toBeTruthy();
   }, 20_000);
 });
+
+import { parseTelegramCommand, getTelegramCommandResponse, getTelegramMiniAppUrl } from "./telegramBot";
+
+describe("Telegram Bot Local Command Helpers", () => {
+  it("should parse telegram commands correctly", () => {
+    expect(parseTelegramCommand("/start")).toBe("start");
+    expect(parseTelegramCommand("  /buy@PUBG_TradeBot  ")).toBe("buy");
+  });
+
+  it("should return valid Uzbek command responses", () => {
+    const startResp = getTelegramCommandResponse("start");
+    expect(startResp.title).toContain("Inferno Stealth");
+    expect(startResp.path).toBe("/");
+  });
+
+  it("should generate correct Mini App URLs", () => {
+    process.env.PUBLIC_APP_URL = "https://inferno-stealth-production.up.railway.app";
+    expect(getTelegramMiniAppUrl("/profile")).toBe("https://inferno-stealth-production.up.railway.app/profile");
+  });
+});
