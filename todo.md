@@ -17,5 +17,9 @@
 - [x] Fix Railway production crash caused by importing vite.config.ts with undefined import.meta.dirname in Node 18
 - [x] Configure required Railway runtime variables, including OAuth, session secret, app ID, and database URL
 - [x] Redeploy and verify the public Railway service health and static app response
-- [ ] Push the latest Node 18 compatibility fix and path-preserved source tree to GitHub after write permission is granted
-- [ ] Configure TELEGRAM_BOT_TOKEN and webhook after the user supplies a Telegram BotFather token
+- [x] Push the latest Node 18 compatibility fix and path-preserved source tree to GitHub after write permission is granted
+- [x] Confirm Telegram BotFather token is optional for core Mini App deployment; document webhook setup as a later optional configuration
+- [x] Use the user-supplied GitHub write token to push the final path-preserved source tree to main
+- [x] Verify the GitHub tree and final Railway deployment after the authorized push
+- [x] Update RAILWAY.md to separate core Mini App requirements from optional Telegram bot/webhook setup
+- [x] Re-verify the deployed core Mini App without TELEGRAM_BOT_TOKEN and document the optional bot status

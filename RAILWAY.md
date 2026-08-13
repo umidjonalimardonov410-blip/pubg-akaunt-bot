@@ -24,13 +24,26 @@ This comprehensive guide covers deploying your Inferno Stealth PUBG Mobile marke
 ---
 
 ## Step 3: Configure Environment Variables in Railway
-In your Railway service settings, add the following variables:
-- `PORT` = `3000` (or Railway auto-assigned port)
+
+### Core Mini App variables
+The following variables are required for the marketplace server, authentication, database-backed escrow, and the Telegram Mini App shell:
+- `PORT` = Railway's injected port (do not hardcode it in application code)
 - `NODE_ENV` = `production`
-- `DATABASE_URL` = (MySQL connection string provided by Railway MySQL plugin)
-- `JWT_SECRET` = (Generate a secure random 32+ character string)
-- `TELEGRAM_BOT_TOKEN` = (Get your token from [@BotFather](https://t.me/BotFather))
-- `TELEGRAM_WEBHOOK_URL` = `https://your-app-domain.railway.app/api/telegram/webhook`
+- `DATABASE_URL` = `${{MySQL.MYSQL_URL}}` when using the Railway MySQL service
+- `JWT_SECRET` = a secure random 32+ character string
+- `OAUTH_SERVER_URL` = the Manus OAuth API base URL
+- `VITE_APP_ID` = the Manus application ID
+- `OWNER_OPEN_ID` = the marketplace owner's Manus open ID
+- `BUILT_IN_FORGE_API_URL` and `BUILT_IN_FORGE_API_KEY` = the built-in storage/LLM service configuration
+- `VITE_OAUTH_PORTAL_URL` = the frontend OAuth portal URL
+- `VITE_ANALYTICS_ENDPOINT` and `VITE_ANALYTICS_WEBSITE_ID` = analytics configuration, if analytics is enabled
+
+The core Mini App is deployable and usable without a Telegram BotFather token. In that mode, in-app marketplace flows and authenticated notifications remain available, while external Telegram bot delivery reports `setup_required`.
+
+### Optional Telegram bot and webhook variables
+Only add these after creating a bot with [@BotFather](https://t.me/BotFather):
+- `TELEGRAM_BOT_TOKEN` = the BotFather token used for outbound bot messages
+- `TELEGRAM_WEBHOOK_URL` = `https://your-app-domain.railway.app/api/telegram/webhook`, if webhook delivery is enabled by the bot integration
 
 ---
 
