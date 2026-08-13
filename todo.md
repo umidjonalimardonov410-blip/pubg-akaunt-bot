@@ -77,8 +77,8 @@
 - [x] Run tests, production build, mobile screenshots, then push GitHub and redeploy the exact commit to Railway.
 
 ## Saved Favorites UI Verification
-- [ ] Verify `/saved` in the browser for unauthenticated, loading, empty, and populated favorite states.
-- [ ] Add focused UI coverage for the saved/favorites page empty and loading states if the existing tests do not cover them.
+- [x] Verify `/saved` in the browser for unauthenticated, loading, empty, and populated favorite states.
+- [x] Add focused UI coverage for the saved/favorites page empty and loading states if the existing tests do not cover them.
 
 ## Mobile Readability and Seller Flow Repair
 - [x] Increase phone-sized marketplace card readability: larger level labels, larger favorite heart hit targets, readable price/action controls, and less wasted/awkward space while preserving the three-column browse intent.
@@ -89,9 +89,9 @@
 - [x] Run tests, build, mobile verification, GitHub push, and exact Railway redeploy after these repairs.
 
 ## Seller Upload Verification Gaps
-- [ ] Add a visible seller upload progress/loading state that is clearly shown while image/video files are being uploaded.
-- [ ] Add focused seller media regression coverage for invalid type, size limit, successful image/video selection, and upload submission states.
-- [ ] Re-verify the seller flow after the new upload-state test and only then finalize the release checklist.
+- [x] Add a visible seller upload progress/loading state that is clearly shown while image/video files are being uploaded.
+- [x] Add focused seller media regression coverage for invalid type, size limit, successful image/video selection, and upload submission states.
+- [x] Re-verify the seller flow after the new upload-state test and only then finalize the release checklist.
 
 ## Production Mismatch Reported After Railway Deployment
 - [x] Audit Railway runtime environment, deployed commit, Telegram webhook, Mini App URL, and bot command registration against GitHub main.
@@ -117,3 +117,8 @@
 - [x] Verify signed Telegram WebApp authentication against production returns `httpStatus=200`, `ok=true`, and `loginMethod=telegram`.
 - [x] Verify live marketplace, compact mode, favorites gate, profile gate, seller gate, escrow, admin protection, Click, and Payme routes after redeploy.
 - [x] Preserve the previously verified 375px mobile layout because this release changes only server startup and Telegram bot behavior, not the mobile UI files.
+
+## Final Regression Hardening — 2026-08-13
+- [x] Add a real `SellPage` jsdom flow test covering file selection, pending upload progress, duplicate-submit prevention, upload completion, and account creation payload.
+- [x] Re-check the live `/saved` route after the regression update; production shows the expected Telegram login gate.
+- [x] Use existing `SavedPage.test.tsx` coverage for authenticated loading, empty, and populated states because those states require an authenticated Telegram session in the browser.
