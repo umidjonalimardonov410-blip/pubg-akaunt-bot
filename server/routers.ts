@@ -11,10 +11,12 @@ import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { proRouter } from "./ProRouters";
+import { expansionRouter } from "./ExpansionRouters";
 
 export const appRouter = router({
   system: systemRouter,
   pro: proRouter,
+  expansion: expansionRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -38,6 +40,12 @@ export const appRouter = router({
         maxLevel: z.number().optional(),
         region: z.string().optional(),
         skins: z.array(z.string()).optional(),
+        hasGlacier: z.boolean().optional(),
+        hasXSuit: z.boolean().optional(),
+        hasConquerorHistory: z.boolean().optional(),
+        isOldAccount: z.boolean().optional(),
+        verifiedSeller: z.boolean().optional(),
+        mediaAvailable: z.boolean().optional(),
         limit: z.number().optional().default(20),
         offset: z.number().optional().default(0),
       }))
@@ -55,6 +63,15 @@ export const appRouter = router({
         return await getPubgAccountById(input);
       }),
 
+    recordView: publicProcedure
+      .input(z.object({ accountId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.update(pubgAccounts).set({ viewCount: sql`${pubgAccounts.viewCount} + 1` }).where(eq(pubgAccounts.id, input.accountId));
+        return { success: true };
+      }),
+
     create: protectedProcedure
       .input(z.object({
         accountId: z.string(),
@@ -69,6 +86,9 @@ export const appRouter = router({
         outfitCount: z.number(),
         gunSkinCount: z.number(),
         vehicleCount: z.number(),
+        hasConquerorHistory: z.boolean().optional().default(false),
+        hasXSuit: z.boolean().optional().default(false),
+        accountCreatedYear: z.number().int().min(2008).max(2030).optional().default(2024),
         featuredSkins: z.array(z.string()),
         price: z.number(),
         description: z.string().optional(),
@@ -94,6 +114,9 @@ export const appRouter = router({
           outfitCount: input.outfitCount,
           gunSkinCount: input.gunSkinCount,
           vehicleCount: input.vehicleCount,
+          hasConquerorHistory: input.hasConquerorHistory,
+          hasXSuit: input.hasXSuit,
+          accountCreatedYear: input.accountCreatedYear,
           featuredSkins: input.featuredSkins,
           price: input.price.toString(),
           description: input.description,

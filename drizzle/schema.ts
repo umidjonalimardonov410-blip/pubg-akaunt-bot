@@ -22,6 +22,7 @@ export const users = mysqlTable("users", {
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
   profileBio: text("profileBio"),
   referralCode: varchar("referralCode", { length: 32 }),
+  alertPreferences: text("alertPreferences"),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -55,6 +56,9 @@ export const pubgAccounts = mysqlTable("pubg_accounts", {
   outfitCount: int("outfitCount").notNull(),
   gunSkinCount: int("gunSkinCount").notNull(),
   vehicleCount: int("vehicleCount").notNull(),
+  hasConquerorHistory: boolean("hasConquerorHistory").default(false).notNull(),
+  hasXSuit: boolean("hasXSuit").default(false).notNull(),
+  accountCreatedYear: int("accountCreatedYear").default(2024).notNull(),
   
   // Featured skins (JSON array of skin names)
   featuredSkins: json("featuredSkins").$type<string[]>().default([]).notNull(),
@@ -68,6 +72,7 @@ export const pubgAccounts = mysqlTable("pubg_accounts", {
   thumbnailUrl: varchar("thumbnailUrl", { length: 500 }),
   galleryUrls: json("galleryUrls").$type<string[]>().default([]).notNull(),
   videoUrl: varchar("videoUrl", { length: 500 }),
+  viewCount: int("viewCount").default(0).notNull(),
   
   // Verification
   isVerified: boolean("isVerified").default(false).notNull(),

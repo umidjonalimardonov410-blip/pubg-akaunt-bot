@@ -104,6 +104,12 @@ export async function searchPubgAccounts(filters: {
   maxLevel?: number;
   region?: string;
   skins?: string[];
+  hasGlacier?: boolean;
+  hasXSuit?: boolean;
+  hasConquerorHistory?: boolean;
+  isOldAccount?: boolean;
+  verifiedSeller?: boolean;
+  mediaAvailable?: boolean;
   limit?: number;
   offset?: number;
 }) {
@@ -141,15 +147,28 @@ export async function searchPubgAccounts(filters: {
   if (filters.region) {
     conditions.push(eq(pubgAccounts.region, filters.region));
   }
+  if (filters.hasXSuit) conditions.push(eq(pubgAccounts.hasXSuit, true));
+  if (filters.hasConquerorHistory) conditions.push(eq(pubgAccounts.hasConquerorHistory, true));
+  if (filters.isOldAccount) conditions.push(lte(pubgAccounts.accountCreatedYear, 2022));
 
   const rows = await db.select().from(pubgAccounts).where(and(...conditions)).orderBy(desc(pubgAccounts.createdAt));
+  const verifiedSellerIds = filters.verifiedSeller
+    ? (await db.select({ id: users.id }).from(users).where(eq(users.isVerifiedSeller, true))).map(row => row.id)
+    : undefined;
   const selectedSkins = filters.skins?.map(skin => skin.toLowerCase()).filter(Boolean) ?? [];
-  const filteredRows = selectedSkins.length === 0
-    ? rows
-    : rows.filter(row => {
-        const inventory = (row.featuredSkins ?? []).map(skin => skin.toLowerCase());
-        return selectedSkins.every(skin => inventory.some(item => item.includes(skin)));
-      });
+  const filteredRows = rows.filter(row => {
+    if (verifiedSellerIds && !verifiedSellerIds.includes(row.sellerId)) return false;
+    if (filters.hasGlacier) {
+      const inventory = (row.featuredSkins ?? []).map(skin => skin.toLowerCase());
+      if (!inventory.some(item => item.includes("glacier"))) return false;
+    }
+    if (selectedSkins.length > 0) {
+      const inventory = (row.featuredSkins ?? []).map(skin => skin.toLowerCase());
+      if (!selectedSkins.every(skin => inventory.some(item => item.includes(skin)))) return false;
+    }
+    if (filters.mediaAvailable && !((row.galleryUrls?.length ?? 0) > 0 || Boolean(row.videoUrl))) return false;
+    return true;
+  });
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 20;
   return filteredRows.slice(offset, offset + limit);

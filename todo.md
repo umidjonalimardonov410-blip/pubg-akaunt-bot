@@ -52,3 +52,28 @@
 - [x] Make account detail pages, escrow steps, and seller forms single-column and thumb-reachable
 - [x] Adapt Pro Tools, AI pricing estimator, and Telegram command simulator for compact mobile screens
 - [x] Verify responsive layouts with mobile viewport screenshots and save checkpoint
+
+## Pro Marketplace Expansion — requested by user
+- [x] Add trust profile with real completed-sale metrics, response rate, verification badges, and seller status
+- [x] Add completed-order review flow with anti-duplicate safeguards and buyer/seller rating summaries
+- [x] Add dispute center with evidence upload metadata, status timeline, admin resolution, and notifications
+- [x] Add payment-ready checkout provider abstraction with Click/Payme configuration fallback and escrow payment status
+- [x] Add Telegram notification delivery abstraction for order, chat, dispute, and referral events
+- [x] Add saved-search and price-drop alert settings
+- [x] Add expanded PUBG filters for Glacier, X-Suit, Conqueror history, old account, verified seller, and media availability
+- [x] Add referral dashboard with promo codes, milestones, and truthful reward ledger
+- [x] Add seller CRM dashboard with listing funnel, views, chats, orders, revenue, and quick actions
+- [x] Add admin trust/dispute/payment monitoring surface
+- [x] Add Uzbek mobile-first UI for all expansion modules with accessible empty/loading/error states
+- [x] Add Vitest coverage for new procedures, authorization, state transitions, and provider fallbacks
+- [x] Run database migration, tests, production build, and responsive screenshots
+- [x] Save a published checkpoint and package the updated source ZIP
+
+## Gap-closure history
+- [x] Add explicit anti-duplicate review tests/procedure evidence for completed-order reviews and surface buyer/seller rating summaries in code/tests
+- [x] Implement and expose a dispute status timeline/history surface
+- [x] Wire the Telegram delivery abstraction into alert preference and dispute update flows with safe fallback handling
+- [x] Persist alert preferences and add a media-availability marketplace filter
+- [x] Add seller listing view-count metrics to CRM backend/UI
+- [x] Add explicit loading and error states for expansion queries
+- [x] Add Vitest coverage for the existing expansion authorization/provider contracts and validate final transition behavior
