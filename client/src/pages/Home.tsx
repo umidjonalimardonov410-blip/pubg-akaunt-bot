@@ -166,7 +166,14 @@ export function getEscrowStatusLabel(status: string) {
   return ESCROW_STATUS_LABELS.pending;
 }
 
-const uzNumber = (value: number) => new Intl.NumberFormat("uz-UZ").format(value);
+const uzNumber = (value: number) => {
+  if (value === 0) return "0";
+  try {
+    return new Intl.NumberFormat("uz-UZ", { useGrouping: true }).format(value).replace(/\s/g, " ");
+  } catch {
+    return value.toLocaleString().replace(/\s/g, " ");
+  }
+};
 
 function pageFromPath(pathname: string): { key: PageKey; id?: number } {
   if (pathname.startsWith("/accounts")) return { key: "accounts" };

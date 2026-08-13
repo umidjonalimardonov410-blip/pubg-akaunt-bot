@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; }
+      .slide-container { width: 1280px; min-height: 720px; padding: 60px; display: flex; flex-direction: column; justify-content: space-between; position: relative; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+      .header h1 { font-size: 36px; font-weight: 800; color: #38bdf8; margin-bottom: 8px; }
+      .header p { font-size: 18px; color: #94a3b8; }
+      .content { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 30px; }
+      .box { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 28px; }
+      .box h3 { font-size: 20px; color: #38bdf8; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+      .box ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+      .box li { font-size: 15px; color: #cbd5e1; display: flex; align-items: flex-start; gap: 10px; line-height: 1.4; }
+      .box li i { color: #34d399; margin-top: 3px; }
+      .footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; font-size: 14px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header">
+            <h1>Railway Deployment Architecture</h1>
+            <p>Reliable production execution with automated builds and managed MySQL persistence</p>
+        </div>
+        <div class="content">
+            <div class="box">
+                <h3><i class="fas fa-hammer"></i> Build & Compilation Pipeline</h3>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> <strong>Command:</strong> `pnpm build` configured via `railway.json`.</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Frontend:</strong> Vite bundles React 19 UI with Tailwind 4 styles into optimized static assets.</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Backend:</strong> TypeScript server bundled via esbuild into single-file runtime `dist/index.js`.</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Node.js 18:</strong> Path-resolution compatibility fixes applied for seamless cloud execution.</li>
+                </ul>
+            </div>
+            <div class="box">
+                <h3><i class="fas fa-server"></i> Runtime & Database Persistence</h3>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> <strong>Command:</strong> `NODE_ENV=production node dist/index.js` launches Express service.</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Database URL:</strong> Automatically bound to Railway MySQL service via `${{MySQL.MYSQL_URL}}`.</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Migrations:</strong> Drizzle ORM ensures automatic table creation and schema validation on startup.</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Zero Downtime:</strong> Autoscale and Reserved hosting options ready for high concurrency.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer">
+            <span>Inferno Stealth Architecture & Deployment</span>
+            <span>Slide 2 of 6</span>
+        </div>
+    </div>
+</body>
+</html>

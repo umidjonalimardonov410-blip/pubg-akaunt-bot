@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; }
+      .slide-container { width: 1280px; min-height: 720px; padding: 60px; display: flex; flex-direction: column; justify-content: space-between; position: relative; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+      .header h1 { font-size: 36px; font-weight: 800; color: #38bdf8; margin-bottom: 8px; }
+      .header p { font-size: 18px; color: #94a3b8; }
+      .table-container { margin-top: 24px; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; overflow: hidden; }
+      table { width: 100%; border-collapse: collapse; text-align: left; }
+      th, td { padding: 14px 20px; font-size: 14px; }
+      th { background: rgba(56, 189, 248, 0.1); color: #38bdf8; font-weight: 700; border-bottom: 1px solid rgba(56, 189, 248, 0.2); }
+      td { border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #cbd5e1; }
+      td code { background: rgba(15, 23, 42, 0.8); color: #34d399; padding: 3px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+      .footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; font-size: 14px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header">
+            <h1>Essential Environment Variables</h1>
+            <p>Required Railway variables for secure runtime operation and bot integration</p>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Variable Name</th>
+                        <th>Example Value</th>
+                        <th>Purpose & Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>NODE_ENV</code></td>
+                        <td><code>production</code></td>
+                        <td>Enables production optimizations and static file serving.</td>
+                    </tr>
+                    <tr>
+                        <td><code>DATABASE_URL</code></td>
+                        <td><code>${{MySQL.MYSQL_URL}}</code></td>
+                        <td>Connection string for Drizzle ORM MySQL persistence.</td>
+                    </tr>
+                    <tr>
+                        <td><code>JWT_SECRET</code></td>
+                        <td><code>secure_random_32_chars</code></td>
+                        <td>Cryptographic signing key for secure user session cookies.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TELEGRAM_BOT_TOKEN</code></td>
+                        <td><code>8801986213:AAFS...</code></td>
+                        <td>BotFather token for outbound bot messages and commands.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TELEGRAM_ADMIN_IDS</code></td>
+                        <td><code>8801986213,8787603995</code></td>
+                        <td>Comma-separated numeric IDs authorized for admin dashboard.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TELEGRAM_WEBHOOK_URL</code></td>
+                        <td><code>https://...up.railway.app/api/telegram/webhook</code></td>
+                        <td>Secure webhook endpoint registered with Telegram API.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="footer">
+            <span>Inferno Stealth Architecture & Deployment</span>
+            <span>Slide 3 of 6</span>
+        </div>
+    </div>
+</body>
+</html>

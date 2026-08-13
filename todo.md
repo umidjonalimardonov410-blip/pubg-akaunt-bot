@@ -113,3 +113,10 @@
 - [ ] Verify whether server/routers.ts or server/_core/index.ts registers POST `/api/telegram/webhook`
 - [ ] Test bot getMe and webhook status programmatically against Telegram Bot API
 - [ ] Ensure Railway receives the exact commit that registers the webhook and handles updates
+
+## Destructive Railway Rebuild Scope (User Confirmed: IKKALASINI O'CHIR)
+- [ ] Delete both confirmed Railway projects (`Inferno Stealth` and `comfortable-ambition`) using the Railway API or manual instructions
+- [ ] Verify fresh Railway project creation and link it to the GitHub repository `umidjonalimardonov410-blip/pubg-akaunt-bot`
+- [ ] Restore required environment variables in Railway (JWT_SECRET, DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_IDS, PUBLIC_APP_URL, TELEGRAM_WEBHOOK_URL)
+- [ ] Trigger fresh clean build and deployment on Railway from the GitHub `main` branch
+- [ ] Verify live Railway public HTTP 200 health check, Mini App frontend, and Telegram webhook registration

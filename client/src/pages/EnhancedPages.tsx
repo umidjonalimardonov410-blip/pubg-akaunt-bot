@@ -7,7 +7,14 @@ import { referralShareUrl, shareTelegramText, telegramHaptic } from '@/lib/teleg
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const CARD_IMAGE = '/manus-storage/soldier-red_6bdf1882.jpg';
-const uzNumber = (value: number) => new Intl.NumberFormat('uz-UZ').format(value);
+const uzNumber = (value: number) => {
+  if (value === 0) return "0";
+  try {
+    return new Intl.NumberFormat("uz-UZ", { useGrouping: true }).format(value).replace(/\s/g, " ");
+  } catch {
+    return value.toLocaleString().replace(/\s/g, " ");
+  }
+};
 
 type ListingLike = { id: number; playerName: string; level: number; rank: string; price: number; region: string; image: string; description?: string; tag?: string };
 
