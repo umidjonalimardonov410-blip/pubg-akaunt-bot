@@ -77,7 +77,7 @@ class OAuthService {
 
 const createOAuthHttpClient = (): AxiosInstance =>
   axios.create({
-    baseURL: ENV.oAuthServerUrl,
+    baseURL: ENV.oAuthServerUrl || "http://placeholder-url-for-sdk-initialization.local",
     timeout: AXIOS_TIMEOUT_MS,
   });
 

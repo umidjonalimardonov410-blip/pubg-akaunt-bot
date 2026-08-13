@@ -4,17 +4,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
 import { referralShareUrl, shareTelegramText, telegramHaptic } from '@/lib/telegram';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 const CARD_IMAGE = '/manus-storage/soldier-red_6bdf1882.jpg';
-const uzNumber = (value: number) => {
-  if (value === 0) return "0";
-  try {
-    return new Intl.NumberFormat("uz-UZ", { useGrouping: true }).format(value).replace(/\s/g, " ");
-  } catch {
-    return value.toLocaleString().replace(/\s/g, " ");
-  }
-};
+const uzNumber = (value: number) => new Intl.NumberFormat('uz-UZ').format(value);
 
 type ListingLike = { id: number; playerName: string; level: number; rank: string; price: number; region: string; image: string; description?: string; tag?: string };
 
@@ -29,37 +21,20 @@ function normalize(row: any): ListingLike {
 
 export function FavoriteButton({ accountId, compact = false }: { accountId: number; compact?: boolean }) {
   const { isAuthenticated } = useAuth();
-  const { t } = useLanguage();
   const idsQuery = trpc.favorites.ids.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
   const utils = trpc.useUtils();
   const toggle = trpc.favorites.toggle.useMutation({ onSuccess: result => { telegramHaptic(result.saved ? 'success' : 'light'); utils.favorites.ids.invalidate(); utils.favorites.list.invalidate(); toast.success(result.saved ? 'Akkaunt saqlanganlar ro‘yxatiga qo‘shildi' : 'Akkaunt saqlanganlardan olib tashlandi'); }, onError: error => toast.error(error.message) });
   const saved = Boolean(idsQuery.data?.includes(accountId));
-  const handleClick = () => { if (!isAuthenticated) { toast.info(t('loginToSave')); return; } toggle.mutate({ accountId }); };
-  return <button onClick={handleClick} disabled={toggle.isPending} className={`${compact ? 'h-10 w-10' : 'h-11 w-11'} grid place-items-center rounded-xl border transition ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300' : 'border-white/10 bg-black/30 text-white/65 hover:border-red-400/40 hover:text-white'}`} aria-label={saved ? t('savedAccounts') : t('wishlist')} aria-pressed={saved}><Heart className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} ${saved ? 'fill-current' : ''}`} /></button>;
-}
-
-function PriceDropToggle({ accountId, enabled }: { accountId: number; enabled: boolean }) {
-  const { t } = useLanguage();
-  const utils = trpc.useUtils();
-  const toggle = trpc.favorites.setPriceDropAlerts.useMutation({
-    onSuccess: result => {
-      utils.favorites.watchlist.invalidate();
-      toast.success(result.enabled ? t('priceDropOn') : t('priceDropOff'));
-    },
-    onError: error => toast.error(error.message),
-  });
-  return <button type="button" role="switch" aria-checked={enabled} disabled={toggle.isPending} onClick={() => toggle.mutate({ accountId, enabled: !enabled })} className={`flex min-h-10 items-center gap-2 rounded-xl border px-3 text-[11px] font-bold transition ${enabled ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-white/[0.03] text-white/45'}`}><span className={`h-2 w-2 rounded-full ${enabled ? 'bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.8)]' : 'bg-white/25'}`} />{enabled ? t('priceDropOn') : t('priceDropOff')}</button>;
+  const handleClick = () => { if (!isAuthenticated) { toast.info('Saqlash uchun avval tizimga kiring.'); return; } toggle.mutate({ accountId }); };
+  return <button onClick={handleClick} disabled={toggle.isPending} className={`${compact ? 'h-10 w-10' : 'h-11 w-11'} grid place-items-center rounded-xl border transition ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300' : 'border-white/10 bg-black/30 text-white/65 hover:border-red-400/40 hover:text-white'}`} aria-label={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'} aria-pressed={saved}><Heart className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} ${saved ? 'fill-current' : ''}`} /></button>;
 }
 
 export function SavedPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { isAuthenticated } = useAuth();
-  const { t } = useLanguage();
   const query = trpc.favorites.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const watchlistQuery = trpc.favorites.watchlist.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  if (!isAuthenticated) return <main className="mx-auto max-w-2xl rounded-3xl border border-red-500/20 bg-[#0e1013] p-8 text-center"><Heart className="mx-auto h-10 w-10 text-red-300" /><h1 className="mt-4 font-display text-2xl font-black text-white">{t('savedAccounts')}</h1><p className="mt-2 text-sm leading-6 text-white/45">Qiziqqan akkauntlaringizni saqlash uchun profilga kiring.</p><Button onClick={() => onNavigate('/profile')}>{t('openProfile')} <ArrowRight className="h-4 w-4" /></Button></main>;
+  if (!isAuthenticated) return <main className="mx-auto max-w-2xl rounded-3xl border border-red-500/20 bg-[#0e1013] p-8 text-center"><Heart className="mx-auto h-10 w-10 text-red-300" /><h1 className="mt-4 font-display text-2xl font-black text-white">Saqlangan akkauntlar</h1><p className="mt-2 text-sm leading-6 text-white/45">Qiziqqan akkauntlaringizni saqlash uchun profilga kiring.</p><Button onClick={() => onNavigate('/profile')}>Profilga kirish <ArrowRight className="h-4 w-4" /></Button></main>;
   const accounts = (query.data ?? []).map(normalize);
-  const watchlist = new Map((watchlistQuery.data ?? []).map(item => [item.accountId, item]));
-  return <main className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-400">{t('wishlist')}</span><h1 className="mt-2 font-display text-3xl font-black text-white">{t('savedAccounts')}</h1><p className="mt-2 text-sm text-white/45">{t('wishlistDescription')}</p></div><Button ghost onClick={() => onNavigate('/accounts')}><ArrowLeft className="h-4 w-4" />{t('backToMarket')}</Button></div>{query.isLoading ? <div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-8 text-center text-sm text-white/45">Saqlanganlar yuklanmoqda...</div> : accounts.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 bg-[#0e1013] p-10 text-center"><Heart className="mx-auto h-8 w-8 text-white/20" /><h2 className="mt-4 font-display text-lg font-black text-white">{t('savedAccountsEmpty')}</h2><p className="mt-2 text-sm text-white/40">{t('saveAccountsHint')}</p><Button className="mt-5" onClick={() => onNavigate('/accounts')}>{t('browseMarket')}</Button></div> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{accounts.map(account => <article key={account.id} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e1013]"><img src={account.image} alt={account.playerName} className="h-44 w-full object-cover" /><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-red-300">{account.tag}</p><h2 className="mt-1 font-display text-lg font-black text-white">{account.playerName}</h2><p className="mt-1 text-xs text-white/40">LVL {account.level} · {account.rank} · {account.region}</p></div><FavoriteButton accountId={account.id} compact /></div><p className="mt-3 line-clamp-2 text-xs leading-5 text-white/45">{account.description}</p><div className="mt-4 flex flex-wrap items-center justify-between gap-2"><span className="font-display text-lg font-black text-red-300">{uzNumber(account.price)} so‘m</span><Button onClick={() => onNavigate(`/account/${account.id}`)}>{t('details')} <ArrowRight className="h-4 w-4" /></Button></div><div className="mt-3"><PriceDropToggle accountId={account.id} enabled={watchlist.get(account.id)?.priceDropAlerts ?? true} /></div></div></article>)}</div>}</main>;
+  return <main className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-400">Watchlist</span><h1 className="mt-2 font-display text-3xl font-black text-white">Saqlangan akkauntlar</h1><p className="mt-2 text-sm text-white/45">Qayta ko‘rib chiqmoqchi bo‘lgan e’lonlaringiz bir joyda.</p></div><Button ghost onClick={() => onNavigate('/accounts')}><ArrowLeft className="h-4 w-4" />Bozorga qaytish</Button></div>{query.isLoading ? <div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-8 text-center text-sm text-white/45">Saqlanganlar yuklanmoqda...</div> : accounts.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 bg-[#0e1013] p-10 text-center"><Heart className="mx-auto h-8 w-8 text-white/20" /><h2 className="mt-4 font-display text-lg font-black text-white">Ro‘yxat hozircha bo‘sh</h2><p className="mt-2 text-sm text-white/40">Bozorda yurakcha tugmasini bosib akkaunt saqlang.</p><Button className="mt-5" onClick={() => onNavigate('/accounts')}>Bozorni ko‘rish</Button></div> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{accounts.map(account => <article key={account.id} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e1013]"><img src={account.image} alt={account.playerName} className="h-44 w-full object-cover" /><div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-red-300">{account.tag}</p><h2 className="mt-1 font-display text-lg font-black text-white">{account.playerName}</h2><p className="mt-1 text-xs text-white/40">LVL {account.level} · {account.rank} · {account.region}</p></div><FavoriteButton accountId={account.id} compact /></div><p className="mt-3 line-clamp-2 text-xs leading-5 text-white/45">{account.description}</p><div className="mt-4 flex items-center justify-between"><span className="font-display text-lg font-black text-red-300">{uzNumber(account.price)} so‘m</span><Button onClick={() => onNavigate(`/account/${account.id}`)}>Batafsil <ArrowRight className="h-4 w-4" /></Button></div></div></article>)}</div>}</main>;
 }
 
 export function ChatPage({ id, onBack }: { id: number; onBack: () => void }) {

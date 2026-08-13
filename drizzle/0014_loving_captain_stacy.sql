@@ -1,1 +1,0 @@
-ALTER TABLE `withdrawal_requests` ADD `isTest` boolean DEFAULT false NOT NULL;

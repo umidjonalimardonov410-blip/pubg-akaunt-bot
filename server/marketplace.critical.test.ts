@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  storagePut: vi.fn(async () => ({ key: "users/7/accounts/profile-avatar.webp", url: "https://storage.test/profile-avatar.webp" })),
   account: undefined as any,
   order: undefined as any,
   existingReview: undefined as any,
@@ -10,8 +9,6 @@ const state = vi.hoisted(() => ({
   updateSet: vi.fn(),
   updateWhere: vi.fn(),
   selectFrom: vi.fn(),
-  selectWhere: vi.fn(),
-  selectLimit: vi.fn(),
   db: {
     insert: vi.fn(),
     update: vi.fn(),
@@ -35,7 +32,7 @@ vi.mock("./db", async () => {
 });
 
 vi.mock("./storage", () => ({
-  storagePut: state.storagePut,
+  storagePut: vi.fn(async () => ({ key: "users/2/accounts/proof.png", url: "https://storage.test/proof.png" })),
 }));
 
 vi.mock("./_core/notification", () => ({
@@ -43,7 +40,6 @@ vi.mock("./_core/notification", () => ({
 }));
 
 import { appRouter } from "./routers";
-import { storagePut } from "./storage";
 
 const makeContext = (id: number, role: "user" | "admin" = "user") => ({
   user: { id, role } as any,
@@ -70,7 +66,6 @@ const accountInput = {
 };
 
 beforeEach(() => {
-  state.storagePut.mockClear();
   state.account = undefined;
   state.order = undefined;
   state.existingReview = undefined;
@@ -82,14 +77,7 @@ beforeEach(() => {
   state.updateSet.mockReturnValue({ where: state.updateWhere });
   state.updateWhere.mockResolvedValue({ affectedRows: 1 });
   state.selectFrom.mockReset();
-  state.selectWhere.mockReset();
-  state.selectLimit.mockReset();
-  state.selectFrom.mockReturnValue({
-    where: state.selectWhere,
-    then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) => Promise.resolve([{ id: 1 }, { id: 2 }]).then(resolve, reject),
-  });
-  state.selectWhere.mockReturnValue({ limit: state.selectLimit });
-  state.selectLimit.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+  state.selectFrom.mockResolvedValue([{ id: 1 }, { id: 2 }]);
   state.db.insert.mockReset();
   state.db.insert.mockReturnValue({ values: state.insertValues });
   state.db.update.mockReset();
@@ -120,22 +108,6 @@ describe("critical marketplace procedures", () => {
       type: "new_listing",
       accountId: 31,
     }));
-  });
-
-  it("uploads a profile avatar through storagePut under the authenticated user path", async () => {
-    const caller = appRouter.createCaller(makeContext(7));
-    const result = await caller.media.upload({
-      fileName: "profile-avatar.webp",
-      contentType: "image/webp",
-      dataBase64: Buffer.from("avatar-bytes").toString("base64"),
-    });
-
-    expect(storagePut).toHaveBeenCalledWith(
-      "users/7/accounts/profile-avatar.webp",
-      expect.any(Buffer),
-      "image/webp",
-    );
-    expect(result.url).toBe("https://storage.test/profile-avatar.webp");
   });
 
   it("rejects unsupported media types before storage upload", async () => {
@@ -172,36 +144,19 @@ describe("critical marketplace procedures", () => {
     })).rejects.toThrow("Sharh allaqachon qoldirilgan");
   });
 
-  it("requires a receipt-backed deposit and blocks withdrawals without sufficient balance", async () => {
+  it("records wallet top-ups and blocks withdrawals without sufficient balance", async () => {
     const caller = appRouter.createCaller(makeContext(2));
 
-    await expect(caller.wallet.topup({ amount: 100000 })).rejects.toThrow("chek rasmini yuboring");
+    await expect(caller.wallet.topup({ amount: 100000 })).resolves.toEqual({ success: true });
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 2,
+      type: "topup",
+      amount: "100000",
+      status: "completed",
+    }));
 
     state.updateWhere.mockResolvedValueOnce({ affectedRows: 0 });
-    await expect(caller.wallet.withdraw({ amount: 10000, cardNumber: "8600123412345678", cardHolderName: "Test User" })).rejects.toThrow("balans yetarli emas");
-  });
-
-  it("submits a receipt-backed deposit request without immediate wallet credit", async () => {
-    const caller = appRouter.createCaller(makeContext(2));
-    state.selectLimit.mockResolvedValueOnce([]);
-
-    await expect(caller.wallet.submitDeposit({
-      amount: 100000,
-      receiptUrl: "https://storage.test/receipt.png",
-      receiptReference: "CHEK-100",
-    })).resolves.toEqual({ success: true, depositId: 31 });
-
-    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 2,
-      amount: "100000",
-      receiptUrl: "https://storage.test/receipt.png",
-      receiptReference: "CHEK-100",
-      status: "pending",
-    }));
-    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 2,
-      title: "To‘lov cheki qabul qilindi",
-    }));
+    await expect(caller.wallet.withdraw({ amount: 10000, destination: "8600 1234" })).rejects.toThrow("balans yetarli emas");
   });
 
   it("restricts admin actions and broadcasts to every registered user", async () => {

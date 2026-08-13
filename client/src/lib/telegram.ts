@@ -40,15 +40,6 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null;
 }
 
-export function getTelegramIdentity() {
-  const user = getTelegramWebApp()?.initDataUnsafe?.user;
-  return {
-    id: user?.id ? String(user.id) : null,
-    username: user?.username ? `@${user.username}` : null,
-    name: user?.first_name || null,
-  };
-}
-
 export function initTelegramWebApp() {
   const webApp = getTelegramWebApp();
   if (!webApp) return null;

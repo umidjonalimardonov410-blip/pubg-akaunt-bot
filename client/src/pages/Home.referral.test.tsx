@@ -24,10 +24,6 @@ vi.mock('@/lib/trpc', () => ({
 }));
 
 import Home from './Home';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
-
-const renderHome = () => render(<ThemeProvider defaultTheme="dark" switchable><LanguageProvider><Home /></LanguageProvider></ThemeProvider>);
 
 describe('Home Telegram referral attribution', () => {
   beforeEach(() => {
@@ -43,7 +39,7 @@ describe('Home Telegram referral attribution', () => {
   });
 
   it('invokes profile.claimReferral once with an authenticated Telegram payload', async () => {
-    renderHome();
+    render(<Home />);
     await waitFor(() => expect(claimMutation.mutate).toHaveBeenCalledTimes(1));
     expect(claimMutation.mutate).toHaveBeenCalledWith({ code: 'IS42DEMO' }, expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }));
     expect(window.sessionStorage.getItem('inferno-referral-claimed:IS42DEMO')).toBe('1');
@@ -51,7 +47,7 @@ describe('Home Telegram referral attribution', () => {
 
   it('does not invoke profile.claimReferral again when the session marker already exists', async () => {
     window.sessionStorage.setItem('inferno-referral-claimed:IS42DEMO', '1');
-    renderHome();
+    render(<Home />);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(claimMutation.mutate).not.toHaveBeenCalled();
   });

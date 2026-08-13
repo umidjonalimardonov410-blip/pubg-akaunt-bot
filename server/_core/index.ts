@@ -5,10 +5,10 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
+import { registerTelegramBot, registerTelegramWebhook } from "../telegramBot";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { registerTelegramBot, registerTelegramWebhook } from "../telegramBot";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -60,11 +60,11 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  server.listen(port, async () => {
     console.log(`Server running on http://localhost:${port}/`);
-    void registerTelegramBot().then(result => {
-      console.log(`[Telegram] commands=${result.commands} menu=${result.menu} webhook=${result.webhook} status=${result.status}`);
-    });
+    // Register Telegram bot commands, menu button, and webhook
+    const botStatus = await registerTelegramBot();
+    console.log(`[Telegram] commands=${botStatus.commands} menu=${botStatus.menu} webhook=${botStatus.webhook} status=${botStatus.status}`);
   });
 }
 

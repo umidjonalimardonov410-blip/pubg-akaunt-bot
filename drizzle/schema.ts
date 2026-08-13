@@ -21,8 +21,6 @@ export const users = mysqlTable("users", {
   twoFactorSecret: varchar("twoFactorSecret", { length: 64 }),
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
   profileBio: text("profileBio"),
-  avatarUrl: varchar("avatarUrl", { length: 500 }),
-  telegramUsername: varchar("telegramUsername", { length: 128 }),
   referralCode: varchar("referralCode", { length: 32 }),
   alertPreferences: text("alertPreferences"),
   
@@ -162,31 +160,13 @@ export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = typeof transactions.$inferInsert;
 
 /**
- * Card top-up requests awaiting receipt verification by an admin.
- */
-export const depositRequests = mysqlTable("deposit_requests", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  receiptUrl: varchar("receiptUrl", { length: 500 }),
-  receiptReference: varchar("receiptReference", { length: 255 }),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-  adminNotes: text("adminNotes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type DepositRequest = typeof depositRequests.$inferSelect;
-export type InsertDepositRequest = typeof depositRequests.$inferInsert;
-
-/**
  * Notifications
  */
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   
-  type: mysqlEnum("type", ["new_listing", "order_status", "review_received", "dispute_alert", "admin_message", "price_drop"]).notNull(),
+  type: mysqlEnum("type", ["new_listing", "order_status", "review_received", "dispute_alert", "admin_message"]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   
@@ -231,60 +211,13 @@ export const favorites = mysqlTable("favorites", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   accountId: int("accountId").notNull(),
-  initialPrice: decimal("initialPrice", { precision: 12, scale: 2 }).notNull(),
-  priceDropAlerts: boolean("priceDropAlerts").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({
   userAccountUnique: uniqueIndex("favorites_user_account_unique").on(table.userId, table.accountId),
 }));
 
 export type Favorite = typeof favorites.$inferSelect;
 export type InsertFavorite = typeof favorites.$inferInsert;
-
-/**
- * Payout cards and withdrawal requests
- */
-export const payoutCards = mysqlTable("payout_cards", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  cardNumber: varchar("cardNumber", { length: 32 }).notNull(), // e.g. 56143600xxxx7758
-  cardHolderName: varchar("cardHolderName", { length: 128 }).notNull(), // e.g. Alimardonov U
-  bankName: varchar("bankName", { length: 64 }).default("Uzcard/Humo").notNull(),
-  isDefault: boolean("isDefault").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type PayoutCard = typeof payoutCards.$inferSelect;
-export type InsertPayoutCard = typeof payoutCards.$inferInsert;
-
-export const withdrawalRequests = mysqlTable("withdrawal_requests", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  cardNumber: varchar("cardNumber", { length: 32 }).notNull(),
-  cardHolderName: varchar("cardHolderName", { length: 128 }).notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-  isTest: boolean("isTest").default(false).notNull(),
-  adminNotes: text("adminNotes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
-export type InsertWithdrawalRequest = typeof withdrawalRequests.$inferInsert;
-
-export const auditLogs = mysqlTable("audit_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId"),
-  action: varchar("action", { length: 128 }).notNull(),
-  details: text("details").notNull(),
-  ipAddress: varchar("ipAddress", { length: 64 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
 /**
  * Private buyer/seller thread attached to an account or order.
