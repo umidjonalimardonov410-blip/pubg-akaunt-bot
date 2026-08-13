@@ -28,6 +28,11 @@ describe('Telegram Bot Server Helper Tests', () => {
     const buyRes = getTelegramCommandResponse('buy');
     expect(buyRes.title).toContain('Akkauntlar bozori');
     expect(buyRes.path).toBe('/accounts');
+    expect(buyRes.text).toContain('ommaviy bozorda');
+
+    const listingsRes = getTelegramCommandResponse('mylistings');
+    expect(listingsRes.title).toContain('Mening e’lonlarim');
+    expect(listingsRes.path).toBe('/profile');
 
     const adminRes = getTelegramCommandResponse('admin', '999');
     expect(adminRes.title).toContain('Ruxsat cheklangan');
@@ -61,6 +66,23 @@ describe('Telegram Bot Server Helper Tests', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/sendChatAction');
     expect(fetchMock.mock.calls[1]?.[0]).toContain('/sendMessage');
 
+  });
+
+  it('opens the seller listing manager from the persistent Telegram button', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, result: { message_id: 125 } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handleTelegramUpdate({
+      update_id: 1003,
+      message: { chat: { id: 12345, type: 'private' }, from: { id: 12345 }, text: '🧾 E’lonlarim' },
+    });
+
+    expect(result.command).toBe('mylistings');
+    const sendBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(sendBody.reply_markup.inline_keyboard[0][0].web_app.url).toBe('https://example.com/profile');
   });
 
   it('accepts the user own shared phone contact and shows the persistent menu', async () => {

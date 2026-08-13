@@ -193,3 +193,12 @@
 ## Final Seller Media QA Hardening — 2026-08-14
 - [x] Add mobile-friendly thumbnail/video previews and inline file validation feedback to the seller media picker.
 - [x] Add focused regression coverage for seller preview rendering and validation messages.
+
+
+## Public Marketplace and Listing Management Repair — 2026-08-14
+- [ ] Verify user-created accounts become publicly visible in the marketplace after the listing lifecycle completes, rather than remaining stuck in review-only UI.
+- [ ] Repair listing status/approval behavior so approved public listings appear in the bot and Mini App marketplace without weakening admin moderation controls.
+- [ ] Add or repair owner-only listing edit controls and update procedures for account details, price, description, and media.
+- [ ] Repair Telegram bot marketplace navigation and listing-management buttons for public browsing and owner editing.
+- [ ] Add regression tests for public listing visibility, owner authorization, listing updates, and Telegram marketplace controls.
+- [ ] Verify mobile and production flows, push the repaired release to GitHub, and save a checkpoint.

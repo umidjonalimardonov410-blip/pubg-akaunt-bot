@@ -16,8 +16,9 @@ export type TelegramCommand = {
 
 export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
   { command: "start", description: "Inferno Stealth menyusini ochish", title: "Inferno Stealth'ga xush kelibsiz", text: "PUBG Mobile akkauntlarini shaffof ko‘ring, xavfsiz escrow orqali xarid qiling yoki o‘z e’loningizni joylang.", path: "/" },
-  { command: "buy", description: "Akkauntlarni ko‘rish", title: "Akkauntlar bozori", text: "Region, level, K/D, skinlar va narx bo‘yicha mos akkauntni tanlang. Har bir e’lon admin tekshiruvidan o‘tadi.", path: "/accounts" },
-  { command: "sell", description: "Akkaunt sotish", title: "Akkaunt sotish", text: "PUBG ID, statistika, inventar va media ma’lumotlarini to‘liq kiriting. E’lon xaridorlarga chiqishidan oldin tekshiriladi.", path: "/sell" },
+  { command: "buy", description: "Akkauntlarni ko‘rish", title: "Akkauntlar bozori", text: "Region, level, K/D, skinlar va narx bo‘yicha mos akkauntni tanlang. Foydalanuvchilar qo‘ygan e’lonlar ommaviy bozorda darhol ko‘rinadi.", path: "/accounts" },
+  { command: "sell", description: "Akkaunt sotish", title: "Akkaunt sotish", text: "PUBG ID, statistika, inventar va media ma’lumotlarini to‘liq kiriting. E’lon yuborilgach ommaviy bozorga joylanadi; profil orqali tahrirlashingiz mumkin.", path: "/sell" },
+  { command: "mylistings", description: "E’lonlarimni boshqarish", title: "Mening e’lonlarim", text: "Qo‘ygan akkauntlaringiz, narxlar, bozor holati va tahrirlash tugmalari Telegram Mini App profilida mavjud.", path: "/profile" },
   { command: "orders", description: "Buyurtmalarni ko‘rish", title: "Buyurtmalarim", text: "Escrow bosqichlari, to‘lov holati, topshirish tasdig‘i va nizo jarayonini shu bo‘limda kuzating.", path: "/orders" },
   { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "10 000 / 20 000 / 50 000 so‘mdan birini tanlang, kartaga o‘tkazing va chek rasmini yuboring. Admin tasdiqlagach balansingizga qo‘shiladi.", path: "/profile" },
   { command: "support", description: "Yordam markazi", title: "Yordam markazi", text: "Muammo bo‘lsa, buyurtma raqami va dalillar bilan ticket yuboring. Login yoki parolni hech qachon chatga yozmang.", path: "/support" },
@@ -102,7 +103,7 @@ function buildMainKeyboard() {
     keyboard: [
       [webAppButton("🛒 Akkaunt olish", "/accounts"), webAppButton("➕ Akkaunt sotish", "/sell")],
       [webAppButton("📦 Buyurtmalarim", "/orders"), webAppButton("👤 Profilim", "/profile")],
-      [{ text: "💳 Balans to‘ldirish" }],
+      [webAppButton("🧾 E’lonlarim", "/profile"), { text: "💳 Balans to‘ldirish" }],
       [webAppButton("🆘 Yordam", "/support")],
       [{ text: "📱 Telefon raqam orqali kirish", request_contact: true }],
     ],
@@ -146,7 +147,7 @@ export function getTelegramCommandResponse(command: string, userId?: number | st
   if (!item) {
     return {
       title: "Inferno Stealth yordam",
-      text: "Buyruqni tanlang: /buy — bozor, /sell — sotish, /orders — buyurtmalar, /wallet — wallet yoki /support — yordam.",
+      text: "Buyruqni tanlang: /buy — ommaviy bozor, /sell — sotish, /mylistings — e’lonlarim, /orders — buyurtmalar, /wallet — wallet yoki /support — yordam.",
       path: "/",
     };
   }
@@ -315,6 +316,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   if (command === 'wallet' || message.text?.trim() === '💳 Balans to‘ldirish') {
     const sent = await sendWalletMenu(chatId);
     return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'mylistings' || message.text?.trim() === '🧾 E’lonlarim') {
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: '<b>Mening e’lonlarim</b>\n\nOmmaviy bozorga qo‘ygan akkauntlaringizni ko‘rish va tahrirlash uchun quyidagi tugmani bosing.', parse_mode: 'HTML', reply_markup: buildInlineKeyboard('/profile') });
+    return { handled: true as const, command: 'mylistings', status: sent.status, sent: sent.ok };
   }
 
   const response = getTelegramCommandResponse(command, message.from?.id);

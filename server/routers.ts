@@ -129,13 +129,16 @@ export const appRouter = router({
           thumbnailUrl: input.thumbnailUrl,
           galleryUrls: input.galleryUrls,
           videoUrl: input.videoUrl,
-          status: 'pending_verification',
+          // Public marketplace listings go live immediately. Admin moderation remains available
+          // through delisting/verification controls, while sellers can start receiving buyers.
+          status: 'available',
+          isVerified: false,
         });
 
         const accountId = getInsertId(result);
         await notifyOwner({
           title: "Yangi PUBG akkaunt e'loni",
-          content: `${input.playerName} (${input.region}) e'loni admin ko'rigiga yuborildi. Narx: ${input.price} so'm.`,
+          content: `${input.playerName} (${input.region}) e'loni Inferno Stealth ommaviy bozoriga joylandi. Narx: ${input.price} so'm.`,
         }).catch(() => undefined);
         try {
           const owner = await getUserByOpenId(ENV.ownerOpenId);
@@ -144,7 +147,7 @@ export const appRouter = router({
               userId: owner.id,
               type: 'new_listing',
               title: "Yangi PUBG akkaunt e'loni",
-              message: `${input.playerName} e'loni admin ko'rigiga yuborildi.`,
+              message: `${input.playerName} e'loni ommaviy bozorga joylandi. Xaridorlar hozir ko‘rishi mumkin.`,
               accountId,
             });
           }
@@ -158,7 +161,44 @@ export const appRouter = router({
       .input(z.number().optional())
       .query(async ({ ctx, input }) => {
         const sellerId = input || ctx.user.id;
+        if (sellerId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
         return await getSellerAccounts(sellerId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        playerName: z.string().trim().min(2).max(100).optional(),
+        level: z.number().int().min(1).max(100).optional(),
+        region: z.string().trim().min(2).max(50).optional(),
+        price: z.number().int().min(0).optional(),
+        description: z.string().trim().max(5000).optional(),
+        featuredSkins: z.array(z.string().trim().min(1).max(100)).max(30).optional(),
+        thumbnailUrl: z.string().url().max(500).nullable().optional(),
+        galleryUrls: z.array(z.string().url().max(500)).max(12).optional(),
+        videoUrl: z.string().url().max(500).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const account = await getPubgAccountById(input.id);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        if (account.sellerId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Faqat o‘z e’loningizni tahrirlashingiz mumkin' });
+        if (account.status === 'sold') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Sotilgan akkauntni tahrirlab bo‘lmaydi' });
+        const updateData: Record<string, unknown> = {};
+        if (input.playerName !== undefined) updateData.playerName = input.playerName;
+        if (input.level !== undefined) updateData.level = input.level;
+        if (input.region !== undefined) updateData.region = input.region;
+        if (input.price !== undefined) updateData.price = input.price.toString();
+        if (input.description !== undefined) updateData.description = input.description || null;
+        if (input.featuredSkins !== undefined) updateData.featuredSkins = input.featuredSkins;
+        if (input.thumbnailUrl !== undefined) updateData.thumbnailUrl = input.thumbnailUrl;
+        if (input.galleryUrls !== undefined) updateData.galleryUrls = input.galleryUrls;
+        if (input.videoUrl !== undefined) updateData.videoUrl = input.videoUrl;
+        if (Object.keys(updateData).length === 0) return { success: true };
+        const ownershipCondition = ctx.user.role === 'admin' ? eq(pubgAccounts.id, input.id) : and(eq(pubgAccounts.id, input.id), eq(pubgAccounts.sellerId, ctx.user.id));
+        await db.update(pubgAccounts).set(updateData).where(ownershipCondition);
+        return { success: true };
       }),
   }),
 

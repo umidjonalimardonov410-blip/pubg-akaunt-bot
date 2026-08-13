@@ -111,7 +111,7 @@ beforeEach(() => {
 });
 
 describe("critical marketplace procedures", () => {
-  it("creates new listings as pending verification and persists an owner alert", async () => {
+  it("creates new listings as public marketplace listings and persists an owner alert", async () => {
     const caller = appRouter.createCaller(makeContext(2));
 
     const result = await caller.accounts.create(accountInput);
@@ -119,7 +119,7 @@ describe("critical marketplace procedures", () => {
     expect(result).toEqual({ id: 31 });
     expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
       sellerId: 2,
-      status: "pending_verification",
+      status: "available",
       featuredSkins: ["M416 Glacier"],
     }));
     expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
@@ -127,6 +127,33 @@ describe("critical marketplace procedures", () => {
       type: "new_listing",
       accountId: 31,
     }));
+  });
+
+  it("allows the seller to edit an available listing and blocks another seller", async () => {
+    state.account = { id: 31, sellerId: 2, status: "available", playerName: "Inferno Seller" };
+    const seller = appRouter.createCaller(makeContext(2));
+
+    await expect(seller.accounts.update({
+      id: 31,
+      playerName: "Inferno Seller Updated",
+      level: 80,
+      region: "EU",
+      price: 910000,
+      description: "Yangilangan tavsif",
+      featuredSkins: ["M416 Glacier", "X-Suit"],
+    })).resolves.toEqual({ success: true });
+    expect(state.updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      playerName: "Inferno Seller Updated",
+      level: 80,
+      region: "EU",
+      price: "910000",
+      featuredSkins: ["M416 Glacier", "X-Suit"],
+    }));
+
+    await expect(appRouter.createCaller(makeContext(8)).accounts.update({
+      id: 31,
+      price: 1000,
+    })).rejects.toThrow("Faqat o‘z e’loningizni tahrirlashingiz mumkin");
   });
 
   it("rejects unsupported media types before storage upload", async () => {

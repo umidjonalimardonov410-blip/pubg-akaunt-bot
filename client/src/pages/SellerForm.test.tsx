@@ -108,6 +108,6 @@ describe('SellPage upload and submit flow', () => {
       thumbnailUrl: 'https://storage.example/proof.jpg',
       galleryUrls: ['https://storage.example/proof.jpg'],
     }));
-    await waitFor(() => expect(screen.getByText("E'lon tekshiruvga yuborildi")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("E'lon bozorga joylandi")).toBeTruthy());
   });
 });
