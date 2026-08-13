@@ -13,3 +13,9 @@
 - [x] Run full test suite and production build verification
 
 - [x] Mobile verification states documented: `/accounts` marketplace/listing cards, `/saved` wishlist, `/profile` wallet/profile, `/pro` Pro tools, `/support` help center at 375x812; all rendered without horizontal overflow.
+
+## Telegram Bot Real-World Repair
+- [x] Trace and document the exact cause of `setup_required`/`sent:false` by checking required env vars and Telegram API error responses
+- [x] Implement and commit the actual bot fix if needed, then verify `handleTelegramUpdate` returns `sent:true` for `/start`
+- [x] Add a focused test covering POST `/api/telegram/webhook` with a `/start` payload
+- [x] Verify live bot reply after pushing and deploying
