@@ -25,3 +25,9 @@
 - [ ] Verify touch readability and layout alignment on mobile viewport
 - [ ] Run test suite and production build verification
 - [ ] Save checkpoint and deliver result
+
+## Remove Pro and Enable Telegram Login
+- [ ] Remove Pro menu links, bottom navigation tab, and Pro pages/components
+- [ ] Wire Telegram WebApp `window.Telegram.WebApp.initDataUnsafe?.user` into automatic sign-in and profile synchronization
+- [ ] Ensure unauthenticated users are seamlessly authenticated via Telegram WebApp data or prompted to open inside Telegram Mini App
+- [ ] Run full test suite and production build verification

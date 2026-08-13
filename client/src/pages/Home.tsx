@@ -244,7 +244,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           <span className="sm:hidden"><Brand compact /></span>
           <span className="hidden sm:inline-flex"><Brand /></span>
           <nav className="hidden items-center gap-6 text-sm font-semibold text-white/55 lg:flex">
-            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Pro markaz', '/pro-market'], ['Pro vositalar', '/pro'], ['Yordam', '/support']].map(([label, path]) => (
+            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Yordam', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => onNavigate(path)} className="transition hover:text-white">{label}</button>
             ))}
           </nav>
@@ -291,7 +291,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
       {menuOpen && (
         <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3 lg:hidden">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-1">
-            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Pro markaz', '/pro-market'], ['Pro vositalar', '/pro'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
+            {[['Bozor', '/accounts'], ['Saqlanganlar', '/saved'], ['Sotish', '/sell'], ['Kafolatli savdo', '/orders'], ['Referral', '/referral'], ['Profil', '/profile'], ['Yordam', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{label}</button>
             ))}
           </div>
@@ -717,10 +717,10 @@ function EmptyState({ title, text }: { title: string; text: string }) {
 
 function BottomNav({ current, onNavigate }: { current: PageKey; onNavigate: (path: string) => void }) {
   const isPro = typeof window !== 'undefined' && (window.location.pathname.includes('pro-tools') || window.location.pathname.includes('pro-market'));
-  const items = [['home', '/', Flame], ['accounts', '/accounts', Search], ['sell', '/sell', Plus], ['orders', '/orders', ShoppingBag], ['pro', '/pro-market', Sparkles]] as const;
+  const items = [['home', '/', Flame], ['accounts', '/accounts', Search], ['sell', '/sell', Plus], ['orders', '/orders', ShoppingBag], ['profile', '/profile', UserRound]] as const;
   return <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-red-500/15 bg-[#08090b]/[.98] px-2 pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,.5)] backdrop-blur-xl lg:hidden"><div className="mx-auto grid max-w-md grid-cols-5 gap-1">{items.map(([key, path, Icon]) => {
-    const active = key === 'pro' ? isPro : current === key;
-    return <button key={key} onClick={() => { telegramHaptic('light'); onNavigate(path); }} className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[9px] font-bold transition active:scale-95 ${active ? 'text-red-300' : 'text-white/40 hover:text-white'}`}><span className={`grid h-8 w-8 place-items-center rounded-xl transition ${active ? 'bg-red-500/20 text-red-300 shadow-[0_0_15px_rgba(239,68,68,.3)]' : 'bg-white/[0.03] text-white/60'}`}><Icon className="h-3.5 w-3.5" /></span>{key === 'home' ? 'Asosiy' : key === 'accounts' ? 'Bozor' : key === 'sell' ? 'Sotish' : key === 'orders' ? 'Buyurtma' : 'Pro'}</button>;
+    const active = current === key;
+    return <button key={key} onClick={() => { telegramHaptic('light'); onNavigate(path); }} className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[9px] font-bold transition active:scale-95 ${active ? 'text-red-300' : 'text-white/40 hover:text-white'}`}><span className={`grid h-8 w-8 place-items-center rounded-xl transition ${active ? 'bg-red-500/20 text-red-300 shadow-[0_0_15px_rgba(239,68,68,.3)]' : 'bg-white/[0.03] text-white/60'}`}><Icon className="h-3.5 w-3.5" /></span>{key === 'home' ? 'Asosiy' : key === 'accounts' ? 'Bozor' : key === 'sell' ? 'Sotish' : key === 'orders' ? 'Buyurtma' : 'Profil'}</button>;
   })}</div></nav>;
 }
 
