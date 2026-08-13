@@ -24,7 +24,7 @@
 - [x] Update marketplace account grid in Home.tsx / EnhancedPages.tsx to use grid-cols-3 (three items horizontally per row) with compact padding, smaller fonts, and concise badges
 - [x] Verify touch readability and layout alignment on mobile viewport
 - [x] Run test suite and production build verification
-- [ ] Save checkpoint and deliver result
+- [x] Save checkpoint and deliver result
 
 ## Remove Pro and Enable Telegram Login
 - [x] Remove Pro menu links, bottom navigation tab, and Pro pages/components
@@ -58,7 +58,7 @@
 ## Railway Target Discovery
 - [x] Discover the Railway project/service/deployment target from available public metadata, repository integration, or authorized API responses without requiring manual identifier lookup.
 - [x] Attempt a targeted redeploy of the exact GitHub commit and verify the public Mini App after the redeploy attempt.
-- [ ] If Railway access cannot be obtained, document the precise credential-scope limitation and keep the deployment item explicitly unresolved.
+- [x] Railway access was obtained; the conditional credential-scope limitation path was not required.
 
 ## Railway Static Serving Fix
 - [x] Fix production static serving to use the actual Vite output directory `dist/public` instead of missing `/app/public`.
@@ -67,3 +67,4 @@
 ## Final Root Route Verification
 - [x] Verify the live Railway root route `/` after deployment `71396c32-9e8c-4eac-bff7-31c6babec934` serves the SPA instead of `Not Found`.
 - [x] If the root route still fails, fix the production route/static fallback and re-verify both `/` and `/accounts`.
+- [x] Deliver the verified checkpoint/result to the user with the checkpoint attachment.
