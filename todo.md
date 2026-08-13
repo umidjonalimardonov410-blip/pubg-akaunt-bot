@@ -5,4 +5,4 @@
 - [x] Add saved-search shortcuts and one-tap price drop alerts for mobile buyers
 - [x] Add quick-support FAQ drawer and direct Telegram chat initiation for mobile users
 - [x] Run Vitest test suite and production build verification
-- [ ] Save published checkpoint and package the complete project source ZIP for direct download
+- [x] Save published checkpoint and package the complete project source ZIP for direct download
