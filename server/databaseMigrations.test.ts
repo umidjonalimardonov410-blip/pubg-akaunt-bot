@@ -5,6 +5,7 @@ import {
   getMigrationsFolder,
   isExistingTableMigrationError,
   isIgnorableSchemaConflict,
+  rewriteTiDbJsonDefaults,
   type MigrationDependencies,
   shouldRunProductionMigrations,
 } from "./databaseMigrations";
@@ -29,9 +30,13 @@ function withProductionEnv<T>(callback: () => Promise<T>) {
   });
 }
 
-function makeRecoveryConnection(statementError?: unknown) {
+function makeRecoveryConnection(statementError?: unknown, emulateTiDbJsonDefaultError = false) {
   const query = vi.fn(async (sql: string) => {
     const normalized = sql.trim();
+    if (emulateTiDbJsonDefaultError && normalized.includes("DEFAULT ('[]')")) {
+      throw { code: "ER_PARSE_ERROR", errno: 1064 };
+    }
+    if (emulateTiDbJsonDefaultError && normalized.includes("DEFAULT '[]'")) return [[], []];
     if (normalized.includes("GET_LOCK")) return [[{ lock_result: 1 }], []];
     if (normalized.includes("RELEASE_LOCK")) return [[], []];
     if (normalized.includes("information_schema.tables")) {
@@ -45,12 +50,12 @@ function makeRecoveryConnection(statementError?: unknown) {
   return { query, end: vi.fn(async () => undefined) };
 }
 
-function makeDependencies(connection: ReturnType<typeof makeRecoveryConnection>, migrationError: unknown): MigrationDependencies {
+function makeDependencies(connection: ReturnType<typeof makeRecoveryConnection>, migrationError: unknown, migrationSql = "CREATE TABLE `disputes` (id int)"): MigrationDependencies {
   return {
     connect: vi.fn(async () => connection as never),
     createDrizzle: vi.fn(() => ({}) as never),
     migrate: vi.fn(async () => { throw migrationError; }),
-    readMigrationFiles: vi.fn(() => [{ sql: ["CREATE TABLE `disputes` (id int)"], folderMillis: 123, hash: "hash-123", bps: false }]),
+    readMigrationFiles: vi.fn(() => [{ sql: [migrationSql], folderMillis: 123, hash: "hash-123", bps: false }]),
   };
 }
 
@@ -81,6 +86,13 @@ describe("production database migration bootstrap", () => {
     expect(isIgnorableSchemaConflict({ code: "ER_TABLE_EXISTS_ERROR" }, "ALTER TABLE `users` MODIFY COLUMN `name` text")).toBe(false);
   });
 
+  it("rewrites only TiDB's parenthesized JSON array defaults after a parse error", () => {
+    const statement = "CREATE TABLE `pubg_accounts` (`galleryUrls` json NOT NULL DEFAULT ('[]'))";
+    expect(rewriteTiDbJsonDefaults({ code: "ER_PARSE_ERROR", errno: 1064 }, statement)).toContain("DEFAULT '[]'");
+    expect(rewriteTiDbJsonDefaults({ code: "ER_DUP_ENTRY", errno: 1062 }, statement)).toBe(statement);
+    expect(rewriteTiDbJsonDefaults({ code: "ER_PARSE_ERROR", errno: 1064 }, "CREATE TABLE `users` (`name` text)")).toBe("CREATE TABLE `users` (`name` text)");
+  });
+
   it("runs the actual locked recovery path and journals a previously-created schema", async () => {
     const connection = makeRecoveryConnection();
     const dependencies = makeDependencies(connection, { code: "DRIZZLE_QUERY_ERROR", cause: { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 } });
@@ -92,6 +104,17 @@ describe("production database migration bootstrap", () => {
     expect(dependencies.connect).toHaveBeenCalledTimes(2);
     expect(connection.query.mock.calls.some(([sql]) => String(sql).trim().startsWith("INSERT INTO `__drizzle_migrations`"))).toBe(true);
     expect(connection.end).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers a TiDB-incompatible JSON default before journaling the migration", async () => {
+    const jsonStatement = "CREATE TABLE `pubg_accounts` (`galleryUrls` json NOT NULL DEFAULT ('[]'))";
+    const connection = makeRecoveryConnection(undefined, true);
+    const dependencies = makeDependencies(connection, { code: "DRIZZLE_QUERY_ERROR", cause: { code: "ER_TABLE_EXISTS_ERROR", errno: 1050 } }, jsonStatement);
+
+    const result = await withProductionEnv(() => ensureProductionDatabaseSchema(dependencies));
+
+    expect(result).toMatchObject({ status: "ready", recovered: true });
+    expect(connection.query.mock.calls.some(([sql]) => String(sql).trim().includes("DEFAULT '[]'"))).toBe(true);
   });
 
   it("does not hide a non-ignorable SQL error during recovery", async () => {

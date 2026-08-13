@@ -119,6 +119,19 @@ export function isIgnorableSchemaConflict(error: unknown, statement: string) {
   return false;
 }
 
+/**
+ * TiDB rejects MySQL's parenthesized JSON string defaults in some versions
+ * (for example DEFAULT ('[]')). Keep the compatibility rewrite deliberately
+ * narrow and activate it only after TiDB reports a parse error.
+ */
+export function rewriteTiDbJsonDefaults(error: unknown, statement: string) {
+  if (!hasErrorCode(error, ["ER_PARSE_ERROR", "1064"])) return statement;
+  return statement.replace(
+    /(`(?:featuredSkins|galleryUrls)`\s+json\s+NOT NULL\s+)DEFAULT\s*\(\s*'\[\]'\s*\)/gi,
+    "$1DEFAULT '[]'",
+  );
+}
+
 function migrationTableCreateSql() {
   return `CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (\n    id serial primary key,\n    hash text not null,\n    created_at bigint\n  )`;
 }
@@ -196,6 +209,16 @@ async function recoverExistingSchema(
       try {
         await connection.query(normalized);
       } catch (error) {
+        const compatibleStatement = rewriteTiDbJsonDefaults(error, normalized);
+        if (compatibleStatement !== normalized) {
+          try {
+            await connection.query(compatibleStatement);
+            console.warn(`[Database] Rewrote TiDB-incompatible JSON default in ${migration.folderMillis}`);
+            continue;
+          } catch (retryError) {
+            error = retryError;
+          }
+        }
         if (!isIgnorableSchemaConflict(error, normalized)) {
           throw error;
         }

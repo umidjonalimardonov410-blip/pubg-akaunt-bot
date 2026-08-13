@@ -126,9 +126,15 @@
 ## Railway Restart Migration Repair — 2026-08-13
 - [x] Make the production Drizzle migration bootstrap safe to retry when a previous deployment has already created one or more tables.
 - [x] Add regression coverage for an existing-table migration retry and rerun the full test/build verification.
-- [ ] Push the idempotent migration fix to GitHub and redeploy the exact commit to Railway.
+- [x] Push the idempotent migration fix to GitHub and redeploy the exact commit to Railway.
 - [ ] Confirm the Railway startup probe is healthy and recheck the live Mini App after the retry-safe migration fix.
 
 - [x] Correct over-escaped Drizzle migration-table identifiers that prevented the retry recovery SQL from executing.
 - [x] Exercise the real `ensureProductionDatabaseSchema()` recovery path and prove non-ignorable SQL errors still fail startup.
 - [x] Re-run final verification: 69 tests passed, 2 integration tests skipped, and production build succeeded.
+
+## TiDB Recovery SQL Compatibility — 2026-08-13
+- [x] Make migration recovery retry-safe for the observed TiDB JSON default syntax error without masking unrelated schema errors.
+- [x] Add regression coverage for the JSON default syntax conflict and rerun the full test/build verification.
+- [ ] Push the TiDB-compatible repair to GitHub and redeploy the exact commit to Railway.
+- [ ] Confirm the Railway runtime startup probe is healthy and recheck the live Mini App after the repair.
