@@ -228,7 +228,7 @@
 - [x] Add review spam/abuse filtering and user report workflow.
 - [x] Add Telegram search pagination and compact mobile card interaction fixes.
 - [x] Repair Mini App account creation flow and compact listing-card favorite/LV button interactions.
-- [ ] Run full regression suite, production build, push to GitHub, and save a deployment-ready checkpoint.
+- [x] Run full regression suite, production build, push to GitHub, and save a deployment-ready checkpoint.
 
 
 ## Final Hardening and GitHub/Railway Release — 2026-08-14
@@ -238,4 +238,4 @@
 - [x] Repair compact card favorite/LV hit targets and keep controls reliable at 375px.
 - [x] Repair and regression-test the Telegram-only Mini App account creation flow.
 - [x] Run full regression suite, TypeScript checks, and production build; verify mobile routes.
-- [ ] Push the complete release to GitHub main and redeploy/verify the exact release on Railway.
+- [x] Push the complete release to GitHub main and redeploy/verify the exact release on Railway.
