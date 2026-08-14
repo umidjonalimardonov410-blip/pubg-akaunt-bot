@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { createHash } from "node:crypto";
 
 import { getDb, getUserByOpenId, getInsertId, searchPubgAccounts } from './db';
 import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
@@ -81,8 +82,34 @@ export function isTelegramAdmin(userId?: number | string) {
   return userId !== undefined && getTelegramAdminIds().includes(String(userId));
 }
 
+export function getPublicBaseUrl() {
+  const configured =
+    process.env.TELEGRAM_MINI_APP_URL ||
+    process.env.PUBLIC_APP_URL ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "") ||
+    (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL.replace(/^https?:\/\//, "")}` : "");
+  if (!configured) return null;
+  return configured.replace(/\/$/, "");
+}
+
+export function getTelegramWebhookSecret() {
+  const configured = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  if (configured) return configured;
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return null;
+  // Stable, derivable secret so setWebhook and the handler always agree.
+  return createHash("sha256").update(`telegram-webhook:${token}`).digest("base64url");
+}
+
+export function getTelegramWebhookUrl() {
+  const configured = process.env.TELEGRAM_WEBHOOK_URL?.trim();
+  if (configured) return configured;
+  const base = getPublicBaseUrl();
+  return base ? `${base}/api/telegram/webhook` : null;
+}
+
 export function getTelegramMiniAppUrl(path = "/") {
-  const configuredBase = process.env.TELEGRAM_MINI_APP_URL || process.env.PUBLIC_APP_URL;
+  const configuredBase = getPublicBaseUrl();
   if (!configuredBase) return null;
   const base = configuredBase.replace(/\/$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -502,14 +529,24 @@ export async function registerTelegramBot() {
       })
     : { ok: false as const, status: "setup_required" as const };
 
-  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+  const webhookUrl = getTelegramWebhookUrl();
+  const webhookSecret = getTelegramWebhookSecret();
   const webhook = webhookUrl
     ? await telegramApiRequest("setWebhook", {
         url: webhookUrl,
         allowed_updates: ["message", "callback_query"],
-        ...(process.env.TELEGRAM_WEBHOOK_SECRET ? { secret_token: process.env.TELEGRAM_WEBHOOK_SECRET } : {}),
+        drop_pending_updates: false,
+        ...(webhookSecret ? { secret_token: webhookSecret } : {}),
       })
     : { ok: false as const, status: "setup_required" as const };
+
+  if (webhookUrl && !webhook.ok) {
+    console.error(`[Telegram] setWebhook failed for ${webhookUrl}:`, JSON.stringify(webhook));
+  } else if (webhookUrl) {
+    console.log(`[Telegram] webhook registered at ${webhookUrl}`);
+  } else {
+    console.warn("[Telegram] webhook URL could not be resolved (set RAILWAY_PUBLIC_DOMAIN or TELEGRAM_WEBHOOK_URL)");
+  }
 
   return { status: "active" as const, commands: commands.ok, menu: menu.ok, webhook: webhook.ok };
 }
@@ -518,7 +555,7 @@ export function registerTelegramWebhook(app: Express) {
   app.post("/api/telegram/webhook", async (req: Request, res: Response) => {
     console.log(`[Telegram Webhook] Received update:`, JSON.stringify(req.body));
     
-    const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    const expectedSecret = getTelegramWebhookSecret();
     if (expectedSecret && req.header("x-telegram-bot-api-secret-token") !== expectedSecret) {
       console.warn("[Telegram Webhook] Secret mismatch");
       res.status(401).json({ ok: false, message: "Webhook signature tekshiruvi muvaffaqiyatsiz." });
