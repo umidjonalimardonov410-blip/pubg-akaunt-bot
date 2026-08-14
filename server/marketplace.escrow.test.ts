@@ -194,5 +194,12 @@ describe("persistence boundary order flow", () => {
       orderId,
       status: "completed",
     }));
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 3,
+      type: "order_status",
+      title: "Akkauntingiz sotildi",
+      orderId,
+      accountId: 21,
+    }));
   });
 });

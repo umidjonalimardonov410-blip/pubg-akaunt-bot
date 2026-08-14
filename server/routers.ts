@@ -13,6 +13,10 @@ import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
 import { sendTelegramNotification } from "./telegramBot";
 
+function escapeTelegramHtml(value: string) {
+  return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
+}
+
 async function notifyTelegramUser(userId: number, text: string, path = '/profile') {
   const user = await getUserById(userId);
   if (!user?.openId.startsWith('telegram:')) return;
@@ -52,6 +56,7 @@ export const appRouter = router({
         isOldAccount: z.boolean().optional(),
         verifiedSeller: z.boolean().optional(),
         mediaAvailable: z.boolean().optional(),
+        category: z.enum(['all', 'pro', 'conqueror', 'classic']).optional(),
         limit: z.number().optional().default(20),
         offset: z.number().optional().default(0),
       }))
@@ -417,6 +422,17 @@ export const appRouter = router({
           });
         });
 
+        const saleMessage = `🎉 <b>Akkauntingiz sotildi!</b>\n\n#${input} buyurtma muvaffaqiyatli yakunlandi. Sotuvchi balansi ${Number(order.price).toLocaleString('uz-UZ')} so‘mga to‘ldirildi.`;
+        await db.insert(notifications).values({
+          userId: order.sellerId,
+          type: 'order_status',
+          title: 'Akkauntingiz sotildi',
+          message: `#${input} buyurtma yakunlandi. Sotuvchi to‘lovi balansingizga qo‘shildi.`,
+          accountId: order.accountId,
+          orderId: input,
+        });
+        await notifyTelegramUser(order.sellerId, saleMessage, '/orders');
+
         return { success: true };
       }),
 
@@ -757,8 +773,13 @@ export const appRouter = router({
         if (thread.buyerId !== ctx.user.id && thread.sellerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
         const result = await db.insert(chatMessages).values({ threadId: input.threadId, senderId: ctx.user.id, body: input.body });
         await db.update(chatThreads).set({ updatedAt: new Date() }).where(eq(chatThreads.id, input.threadId));
-        const recipientId = thread.buyerId === ctx.user.id ? thread.sellerId : thread.buyerId;
-        await db.insert(notifications).values({ userId: recipientId, type: 'admin_message', title: 'Yangi xavfsiz chat xabari', message: input.body.slice(0, 180), accountId: thread.accountId ?? undefined, orderId: thread.orderId ?? undefined });
+        const senderIsBuyer = thread.buyerId === ctx.user.id;
+        const recipientId = senderIsBuyer ? thread.sellerId : thread.buyerId;
+        const messagePreview = input.body.slice(0, 180);
+        await db.insert(notifications).values({ userId: recipientId, type: 'admin_message', title: senderIsBuyer ? 'Xaridordan yangi xabar' : 'Yangi xavfsiz chat xabari', message: messagePreview, accountId: thread.accountId ?? undefined, orderId: thread.orderId ?? undefined });
+        if (senderIsBuyer) {
+          await notifyTelegramUser(thread.sellerId, `💬 <b>Xaridordan yangi xabar</b>\n\n${escapeTelegramHtml(messagePreview)}`, `/chat/${thread.id}`);
+        }
         return { messageId: getInsertId(result) };
       }),
     close: protectedProcedure

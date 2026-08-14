@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   selectRows: [] as any[],
   transactionRows: [] as any[],
   owner: { id: 99 } as any,
+  chatThread: undefined as any,
   insertValues: vi.fn(),
   updateSet: vi.fn(),
   updateWhere: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("./db", async () => {
     getOrderReview: vi.fn(async () => state.existingReview),
     getUserByOpenId: vi.fn(async () => state.owner),
     getUserById: vi.fn(async (id: number) => ({ id, openId: `manual:${id}` })),
+    getChatThreadById: vi.fn(async () => state.chatThread),
     getPendingAccounts: vi.fn(async () => []),
     getAdminDisputes: vi.fn(async () => []),
   };
@@ -75,6 +77,7 @@ beforeEach(() => {
   state.selectRows = [{ id: 1 }, { id: 2 }];
   state.transactionRows = [];
   state.owner = { id: 99 };
+  state.chatThread = undefined;
   state.insertValues.mockReset();
   state.insertValues.mockResolvedValue({ insertId: 31 });
   state.updateSet.mockReset();
@@ -288,6 +291,21 @@ describe("critical marketplace procedures", () => {
       { userId: 1, type: "admin_message", title: "Muhim xabar", message: "Tekshiruv boshlandi" },
       { userId: 2, type: "admin_message", title: "Muhim xabar", message: "Tekshiruv boshlandi" },
     ]);
+  });
+
+  it("notifies the seller when a buyer sends a new chat message", async () => {
+    state.chatThread = { id: 55, buyerId: 2, sellerId: 3, accountId: 31, orderId: 44 };
+    const buyer = appRouter.createCaller(makeContext(2));
+
+    await expect(buyer.chat.send({ threadId: 55, body: "Assalomu alaykum, akkaunt hali mavjudmi?" })).resolves.toEqual({ messageId: 31 });
+    expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 3,
+      type: "admin_message",
+      title: "Xaridordan yangi xabar",
+      message: "Assalomu alaykum, akkaunt hali mavjudmi?",
+      accountId: 31,
+      orderId: 44,
+    }));
   });
 
   it("only lets the notification owner mark an alert as read", async () => {

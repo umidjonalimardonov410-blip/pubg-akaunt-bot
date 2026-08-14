@@ -96,6 +96,10 @@ export async function getUserById(id: number) {
 }
 
 // PUBG Accounts queries
+export function derivedPubgAccountCategory(account: { hasXSuit?: boolean | null; hasConquerorHistory?: boolean | null }): 'pro' | 'conqueror' | 'classic' {
+  return account.hasXSuit ? 'pro' : account.hasConquerorHistory ? 'conqueror' : 'classic';
+}
+
 export async function searchPubgAccounts(filters: {
   search?: string;
   minPrice?: number;
@@ -110,6 +114,7 @@ export async function searchPubgAccounts(filters: {
   isOldAccount?: boolean;
   verifiedSeller?: boolean;
   mediaAvailable?: boolean;
+  category?: 'all' | 'pro' | 'conqueror' | 'classic';
   limit?: number;
   offset?: number;
 }) {
@@ -167,6 +172,9 @@ export async function searchPubgAccounts(filters: {
       if (!selectedSkins.every(skin => inventory.some(item => item.includes(skin)))) return false;
     }
     if (filters.mediaAvailable && !((row.galleryUrls?.length ?? 0) > 0 || Boolean(row.videoUrl))) return false;
+    if (filters.category && filters.category !== 'all') {
+      if (derivedPubgAccountCategory(row) !== filters.category) return false;
+    }
     return true;
   });
   const offset = filters.offset ?? 0;

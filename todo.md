@@ -196,9 +196,18 @@
 
 
 ## Public Marketplace and Listing Management Repair — 2026-08-14
-- [ ] Verify user-created accounts become publicly visible in the marketplace after the listing lifecycle completes, rather than remaining stuck in review-only UI.
-- [ ] Repair listing status/approval behavior so approved public listings appear in the bot and Mini App marketplace without weakening admin moderation controls.
-- [ ] Add or repair owner-only listing edit controls and update procedures for account details, price, description, and media.
-- [ ] Repair Telegram bot marketplace navigation and listing-management buttons for public browsing and owner editing.
-- [ ] Add regression tests for public listing visibility, owner authorization, listing updates, and Telegram marketplace controls.
-- [ ] Verify mobile and production flows, push the repaired release to GitHub, and save a checkpoint.
+- [x] Verify user-created accounts become publicly visible in the marketplace after the listing lifecycle completes, rather than remaining stuck in review-only UI.
+- [x] Repair listing status/approval behavior so approved public listings appear in the bot and Mini App marketplace without weakening admin moderation controls.
+- [x] Add or repair owner-only listing edit controls and update procedures for account details, price, description, and media.
+- [x] Repair Telegram bot marketplace navigation and listing-management buttons for public browsing and owner editing.
+- [x] Add regression tests for public listing visibility, owner authorization, listing updates, and Telegram marketplace controls.
+- [x] Verify mobile and production flows, push the repaired release to GitHub, and save a checkpoint.
+
+
+## Open Marketplace, Filters, and Seller Notifications — 2026-08-14
+- [x] Ensure every Telegram-authenticated user can open the seller flow and add a PUBG account without an admin-only gate.
+- [x] Verify all available public listings are returned to marketplace users and add regression coverage for multi-seller visibility.
+- [x] Add public marketplace filters for minimum/maximum price and account category with reset behavior and mobile layout.
+- [x] Notify sellers in Telegram when their account is successfully sold and when a buyer sends a new message.
+- [x] Improve profile listing editing with field-level validation errors, server-error mapping, and save/loading feedback.
+- [x] Run full tests/build/mobile verification, push the changes to GitHub, and save a release checkpoint.
