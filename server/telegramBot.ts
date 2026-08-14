@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 
-import { getDb, getUserByOpenId, getInsertId } from './db';
+import { getDb, getUserByOpenId, getInsertId, searchPubgAccounts } from './db';
 import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
 import { storagePut } from './storage';
 import { eq } from 'drizzle-orm';
@@ -146,6 +146,42 @@ function marketplaceFilterKeyboard() {
   };
 }
 
+const TELEGRAM_MARKET_PAGE_SIZE = 5;
+
+function escapeTelegramHtml(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
+}
+
+export function parseMarketplacePageData(data: string) {
+  const match = /^market_page:(\d+):(.+)$/.exec(data);
+  if (!match) return null;
+  let path = '/accounts';
+  try {
+    path = decodeURIComponent(match[2] || '/accounts');
+  } catch {
+    return null;
+  }
+  if (!path.startsWith('/accounts')) return null;
+  return { page: Number(match[1]), path };
+}
+
+export function getMarketplaceSearchFilters(path: string) {
+  const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : '';
+  const params = new URLSearchParams(query);
+  const minPrice = params.get('minPrice');
+  const maxPrice = params.get('maxPrice');
+  const category = params.get('category');
+  return {
+    ...(minPrice && Number.isFinite(Number(minPrice)) ? { minPrice: Number(minPrice) } : {}),
+    ...(maxPrice && Number.isFinite(Number(maxPrice)) ? { maxPrice: Number(maxPrice) } : {}),
+    ...(category === 'pro' || category === 'conqueror' || category === 'classic' ? { category } : {}),
+  } as { minPrice?: number; maxPrice?: number; category?: 'pro' | 'conqueror' | 'classic' };
+}
+
+function marketplacePageCallback(page: number, path: string) {
+  return `market_page:${Math.max(0, page)}:${encodeURIComponent(path)}`;
+}
+
 function marketplaceFilterPath(data: string) {
   const match = /^market_filter:price:(\d*):(\d*)$/.exec(data);
   if (match) {
@@ -176,9 +212,42 @@ async function sendMarketplaceMenu(chatId: number | string, selectedPath = '/acc
           { text: '🔄 Filtrlarni tozalash', callback_data: 'market_filter:reset' },
           { text: '📱 Tanlangan bozorni ochish', web_app: { url: selectedUrl } },
         ],
+        [{ text: '🔎 Natijalarni ko‘rish', callback_data: marketplacePageCallback(0, selectedPath) }],
       ],
     },
   });
+}
+
+function marketplaceResultKeyboard(page: number, hasNext: boolean, selectedPath: string) {
+  const navigation = [] as Array<{ text: string; callback_data: string }>;
+  if (page > 0) navigation.push({ text: '⬅️ Oldingi', callback_data: marketplacePageCallback(page - 1, selectedPath) });
+  if (hasNext) navigation.push({ text: 'Keyingi ➡️', callback_data: marketplacePageCallback(page + 1, selectedPath) });
+  const marketUrl = getTelegramMiniAppUrl(selectedPath) || process.env.PUBLIC_APP_URL || '/accounts';
+  return {
+    inline_keyboard: [
+      ...(navigation.length ? [navigation] : []),
+      [{ text: '⚙️ Filtrlarni o‘zgartirish', callback_data: `market_filter_menu:${encodeURIComponent(selectedPath)}` }],
+      [{ text: '📱 To‘liq bozorni ochish', web_app: { url: marketUrl } }],
+    ],
+  };
+}
+
+async function sendMarketplaceResults(chatId: number | string, page: number, selectedPath: string) {
+  const safePage = Math.max(0, Math.floor(page));
+  const rows = await searchPubgAccounts({ ...getMarketplaceSearchFilters(selectedPath), limit: TELEGRAM_MARKET_PAGE_SIZE + 1, offset: safePage * TELEGRAM_MARKET_PAGE_SIZE });
+  const hasNext = rows.length > TELEGRAM_MARKET_PAGE_SIZE;
+  const visibleRows = rows.slice(0, TELEGRAM_MARKET_PAGE_SIZE);
+  const resultText = visibleRows.length === 0
+    ? 'Bu filtr bo‘yicha hozircha e’lon topilmadi.'
+    : visibleRows.map((account, index) => `${safePage * TELEGRAM_MARKET_PAGE_SIZE + index + 1}. <b>${escapeTelegramHtml(account.playerName)}</b>\n   🎮 LVL ${account.level} · K/D ${escapeTelegramHtml(account.kdRatio)} · ${escapeTelegramHtml(formatUzAmount(Number(account.price)))} so‘m\n   🏆 ${account.hasXSuit ? 'Pro / X-Suit' : account.hasConquerorHistory ? 'Conqueror' : 'Classic'} · #${account.id}`).join('\n\n');
+  const sent = await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>🔎 Marketplace natijalari</b>\n\n${resultText}\n\nSahifa: <b>${safePage + 1}</b>`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: marketplaceResultKeyboard(safePage, hasNext, selectedPath),
+  });
+  return { sent, count: visibleRows.length, hasNext, page: safePage };
 }
 
 async function telegramApiRequest<T = unknown>(method: string, body: Record<string, unknown>) {
@@ -326,6 +395,20 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     const callbackChatId = callback.message?.chat?.id;
     if (callbackChatId === undefined) return { handled: false as const, status: 'ignored' as const };
     const data = callback.data || '';
+    const marketPage = parseMarketplacePageData(data);
+    if (marketPage) {
+      await answerTelegramCallback(callback.id, 'Marketplace sahifasi yuklanmoqda');
+      const result = await sendMarketplaceResults(callbackChatId, marketPage.page, marketPage.path);
+      return { handled: true as const, command: 'market_page', status: result.sent.status, sent: result.sent.ok, page: result.page, count: result.count, hasNext: result.hasNext };
+    }
+    const filterMenuMatch = /^market_filter_menu:(.+)$/.exec(data);
+    if (filterMenuMatch) {
+      let selectedPath = '/accounts';
+      try { selectedPath = decodeURIComponent(filterMenuMatch[1]); } catch { selectedPath = '/accounts'; }
+      await answerTelegramCallback(callback.id, 'Filtrlar ochildi');
+      const sent = await sendMarketplaceMenu(callbackChatId, selectedPath.startsWith('/accounts') ? selectedPath : '/accounts');
+      return { handled: true as const, command: 'market_filter_menu', status: sent.status, sent: sent.ok };
+    }
     if (data === 'wallet_menu') {
       await answerTelegramCallback(callback.id, 'Wallet menyusi ochildi');
       const sent = await sendWalletMenu(callbackChatId);

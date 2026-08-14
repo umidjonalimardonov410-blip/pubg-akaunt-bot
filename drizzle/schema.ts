@@ -129,12 +129,30 @@ export const reviews = mysqlTable("reviews", {
   // Rating
   rating: int("rating").notNull(), // 1-5 stars
   comment: text("comment"),
+  moderationStatus: mysqlEnum("moderationStatus", ["published", "hidden"]).default("published").notNull(),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = typeof reviews.$inferInsert;
+
+/**
+ * User reports and admin moderation decisions for reviews.
+ */
+export const reviewReports = mysqlTable("review_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  reviewId: int("reviewId").notNull(),
+  reporterId: int("reporterId").notNull(),
+  reason: varchar("reason", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["pending", "dismissed", "hidden"]).default("pending").notNull(),
+  adminNote: text("adminNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+
+export type ReviewReport = typeof reviewReports.$inferSelect;
+export type InsertReviewReport = typeof reviewReports.$inferInsert;
 
 /**
  * Wallet transactions

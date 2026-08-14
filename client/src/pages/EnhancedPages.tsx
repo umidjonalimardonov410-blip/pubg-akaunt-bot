@@ -54,7 +54,7 @@ export function FavoriteButton({ accountId, compact = false }: { accountId: numb
     });
     toggle.mutate({ accountId });
   };
-  return <button type="button" onClick={handleClick} disabled={toggle.isPending} className={`${compact ? 'h-11 w-11' : 'h-12 w-12'} grid place-items-center rounded-xl border transition duration-200 active:scale-90 ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300 shadow-[0_0_18px_rgba(239,68,68,.18)]' : 'border-white/10 bg-black/30 text-white/65 hover:border-red-400/40 hover:text-white'}`} aria-label={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'} aria-pressed={saved}><Heart className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} transition duration-200 ${saved ? 'fill-current scale-110' : ''}`} /></button>;
+  return <button type="button" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); handleClick(); }} disabled={toggle.isPending} className={`${compact ? 'h-9 w-9 rounded-xl touch-manipulation' : 'h-12 w-12 rounded-xl'} grid shrink-0 place-items-center border transition duration-200 active:scale-90 ${saved ? 'border-red-400/50 bg-red-500/20 text-red-300 shadow-[0_0_18px_rgba(239,68,68,.18)]' : 'border-white/10 bg-black/30 text-white/65 hover:border-red-400/40 hover:text-white'}`} aria-label={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'} aria-pressed={saved}><Heart className={`${compact ? 'h-3.5 w-3.5' : 'h-6 w-6'} transition duration-200 ${saved ? 'fill-current scale-110' : ''}`} /></button>;
 }
 
 export function SavedPage({ onNavigate }: { onNavigate: (path: string) => void }) {

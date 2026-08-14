@@ -221,3 +221,21 @@
 - [x] Update profile UI to showcase user rating, review breakdown, and trust status.
 - [x] Run full tests, TypeScript checks, and production build without errors.
 - [x] Push the verified code to GitHub main and save a deploy-ready checkpoint.
+
+
+## Admin Verification, Review Moderation, Telegram Pagination, and UI Repairs — 2026-08-14
+- [x] Build admin seller-verification queue and application review actions.
+- [x] Add review spam/abuse filtering and user report workflow.
+- [x] Add Telegram search pagination and compact mobile card interaction fixes.
+- [x] Repair Mini App account creation flow and compact listing-card favorite/LV button interactions.
+- [ ] Run full regression suite, production build, push to GitHub, and save a deployment-ready checkpoint.
+
+
+## Final Hardening and GitHub/Railway Release — 2026-08-14
+- [x] Add seller-verification queue procedures and admin actions backed by the existing sellerVerifications table.
+- [x] Add review content filtering, review-report persistence, and admin moderation actions.
+- [x] Add paginated Telegram marketplace search callbacks with next/previous navigation and focused tests.
+- [x] Repair compact card favorite/LV hit targets and keep controls reliable at 375px.
+- [x] Repair and regression-test the Telegram-only Mini App account creation flow.
+- [x] Run full regression suite, TypeScript checks, and production build; verify mobile routes.
+- [ ] Push the complete release to GitHub main and redeploy/verify the exact release on Railway.

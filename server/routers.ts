@@ -4,8 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
-import { users, pubgAccounts, orders, reviews as orderReviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
-import { eq, and, gte, desc, sql } from "drizzle-orm";
+import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
+import { eq, and, gte, desc, sql, or, isNull } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
@@ -22,6 +22,22 @@ async function notifyTelegramUser(userId: number, text: string, path = '/profile
   if (!user?.openId.startsWith('telegram:')) return;
   const chatId = user.openId.slice('telegram:'.length);
   await sendTelegramNotification(chatId, text, path).catch(() => undefined);
+}
+
+const REVIEW_ABUSE_TERMS = ['suka', 'blyat', 'блять', 'ебать', 'idiot', 'тупой', 'ahmoq', 'harom'];
+
+export function getReviewModerationReason(comment?: string) {
+  const value = (comment ?? '').trim();
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  if (value.length > 1200) return 'Sharh 1200 belgidan oshmasin.';
+  if (normalized.includes('http://') || normalized.includes('https://') || normalized.includes('t.me/') || normalized.includes('www.')) return 'Sharh ichida havola yuborish mumkin emas.';
+  if (normalized.split('').some((character, index) => character && normalized.slice(index, index + 7) === character.repeat(7))) return 'Takroriy belgilar spam sifatida belgilandi.';
+  if (REVIEW_ABUSE_TERMS.some(term => normalized.includes(term))) return 'Haqoratli yoki tajovuzkor so‘zlar aniqlangan.';
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const repeatedWord = words.some(word => word.length > 2 && words.filter(item => item === word).length >= 4);
+  if (repeatedWord) return 'Takroriy so‘zlar spam sifatida belgilandi.';
+  return null;
 }
 
 export const appRouter = router({
@@ -491,13 +507,16 @@ export const appRouter = router({
 
         const existing = await getOrderReview(input.orderId);
         if (existing) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Sharh allaqachon qoldirilgan' });
+        const moderationReason = getReviewModerationReason(input.comment);
+        if (moderationReason) throw new TRPCError({ code: 'BAD_REQUEST', message: moderationReason });
 
         const result = await db.insert(orderReviews).values({
           orderId: input.orderId,
           reviewerId: ctx.user.id,
           sellerId: order.sellerId,
           rating: input.rating,
-          comment: input.comment,
+          comment: input.comment?.trim() || null,
+          moderationStatus: 'published',
         });
 
         return { reviewId: getInsertId(result) };
@@ -506,7 +525,23 @@ export const appRouter = router({
     getSellerReviews: publicProcedure
       .input(z.number())
       .query(async ({ input }) => {
-        return await getSellerReviews(input);
+        const rows = await getSellerReviews(input);
+        return rows.filter(row => row.moderationStatus !== 'hidden');
+      }),
+
+    report: protectedProcedure
+      .input(z.object({ reviewId: z.number().int().positive(), reason: z.string().trim().min(3).max(255) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const review = await db.select().from(orderReviews).where(eq(orderReviews.id, input.reviewId)).limit(1);
+        if (!review[0]) throw new TRPCError({ code: 'NOT_FOUND', message: 'Sharh topilmadi' });
+        if (review[0].reviewerId === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'O‘zingizning sharhingizni shikoyat qila olmaysiz' });
+        const existing = await db.select().from(reviewReports).where(and(eq(reviewReports.reviewId, input.reviewId), eq(reviewReports.reporterId, ctx.user.id), eq(reviewReports.status, 'pending'))).limit(1);
+        if (existing.length) throw new TRPCError({ code: 'CONFLICT', message: 'Bu sharh bo‘yicha shikoyatingiz allaqachon yuborilgan' });
+        const result = await db.insert(reviewReports).values({ reviewId: input.reviewId, reporterId: ctx.user.id, reason: input.reason.trim(), status: 'pending' });
+        await notifyOwner({ title: 'Yangi sharh shikoyati', content: `Review #${input.reviewId}: ${input.reason.trim()}` }).catch(() => undefined);
+        return { reportId: getInsertId(result), status: 'pending' as const };
       }),
   }),
 
@@ -848,8 +883,116 @@ export const appRouter = router({
       }),
   }),
 
+  sellerVerification: router({
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const rows = await db.select().from(sellerVerifications).where(eq(sellerVerifications.userId, ctx.user.id)).limit(1);
+      return rows[0] ?? null;
+    }),
+
+    submit: protectedProcedure
+      .input(z.object({
+        fullName: z.string().trim().min(3).max(128),
+        telegramUsername: z.string().trim().min(2).max(64),
+        idCardPhotoUrl: z.string().trim().min(5).max(2000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const existing = await db.select().from(sellerVerifications).where(eq(sellerVerifications.userId, ctx.user.id)).limit(1);
+        if (existing[0]?.status === 'approved') throw new TRPCError({ code: 'CONFLICT', message: 'Sotuvchi profilingiz allaqachon tasdiqlangan' });
+        if (existing[0]) {
+          await db.update(sellerVerifications).set({ fullName: input.fullName, telegramUsername: input.telegramUsername, idCardPhotoUrl: input.idCardPhotoUrl, status: 'pending' }).where(eq(sellerVerifications.id, existing[0].id));
+          return { verificationId: existing[0].id, status: 'pending' as const };
+        }
+        const result = await db.insert(sellerVerifications).values({ ...input, status: 'pending', userId: ctx.user.id });
+        await notifyOwner({ title: 'Yangi sotuvchi verifikatsiyasi', content: `${input.fullName} (@${input.telegramUsername}) tasdiqlash uchun ariza yubordi.` }).catch(() => undefined);
+        return { verificationId: getInsertId(result), status: 'pending' as const };
+      }),
+  }),
+
   // Admin: Disputes & Management
   admin: router({
+    getSellerVerificationQueue: protectedProcedure
+      .input(z.object({ status: z.enum(['all', 'pending', 'approved', 'rejected']).default('pending') }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const fields = { application: sellerVerifications, userName: users.name, userOpenId: users.openId };
+        const status = input?.status ?? 'pending';
+        const query = db.select(fields).from(sellerVerifications).leftJoin(users, eq(users.id, sellerVerifications.userId)).orderBy(desc(sellerVerifications.createdAt));
+        return status === 'all' ? await query : await query.where(eq(sellerVerifications.status, status));
+      }),
+
+    reviewSellerVerification: protectedProcedure
+      .input(z.object({ verificationId: z.number().int().positive(), approved: z.boolean(), note: z.string().trim().max(1000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const applications = await db.select().from(sellerVerifications).where(eq(sellerVerifications.id, input.verificationId)).limit(1);
+        const application = applications[0];
+        if (!application) throw new TRPCError({ code: 'NOT_FOUND', message: 'Sotuvchi arizasi topilmadi' });
+        if (application.status !== 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Bu sotuvchi arizasi allaqachon ko‘rib chiqilgan' });
+        const status = input.approved ? 'approved' : 'rejected';
+        await db.transaction(async (tx: any) => {
+          await tx.update(sellerVerifications).set({ status }).where(and(eq(sellerVerifications.id, input.verificationId), eq(sellerVerifications.status, 'pending')));
+          if (input.approved) {
+            await tx.update(users).set({ isVerifiedSeller: true, sellerBadge: 'trusted' }).where(eq(users.id, application.userId));
+          }
+          await tx.insert(securityAudits).values({
+            userId: application.userId,
+            eventType: input.approved ? 'seller_verification_approved' : 'seller_verification_rejected',
+            riskScore: input.approved ? 0 : 5,
+            details: JSON.stringify({ verificationId: application.id, reviewedBy: ctx.user.id, note: input.note?.trim() || null }),
+          });
+          await tx.insert(notifications).values({
+            userId: application.userId,
+            type: 'admin_message',
+            title: input.approved ? 'Sotuvchi profilingiz tasdiqlandi' : 'Sotuvchi arizasi rad etildi',
+            message: input.note?.trim() || (input.approved ? 'Tasdiqlangan sotuvchi belgisi profilingizga qo‘shildi.' : 'Arizangiz tekshiruvdan o‘tmadi. Ma’lumotlarni to‘ldirib qayta yuborishingiz mumkin.'),
+          });
+        });
+        await notifyTelegramUser(application.userId, input.approved
+          ? `✅ <b>Sotuvchi profilingiz tasdiqlandi</b>\n\nProfilingizda tasdiqlangan sotuvchi belgisi yoqildi.`
+          : `ℹ️ <b>Sotuvchi arizasi rad etildi</b>\n\n${input.note?.trim() || 'Ma’lumotlarni to‘ldirib qayta yuborishingiz mumkin.'}`,
+          '/profile');
+        return { success: true, status };
+      }),
+
+    getReviewReports: protectedProcedure
+      .input(z.object({ status: z.enum(['all', 'pending', 'dismissed', 'hidden']).default('pending') }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const fields = { report: reviewReports, review: orderReviews, reporterName: users.name };
+        const query = db.select(fields).from(reviewReports).leftJoin(orderReviews, eq(orderReviews.id, reviewReports.reviewId)).leftJoin(users, eq(users.id, reviewReports.reporterId)).orderBy(desc(reviewReports.createdAt));
+        const status = input?.status ?? 'pending';
+        return status === 'all' ? await query : await query.where(eq(reviewReports.status, status));
+      }),
+
+    moderateReviewReport: protectedProcedure
+      .input(z.object({ reportId: z.number().int().positive(), action: z.enum(['dismissed', 'hidden']), note: z.string().trim().max(1000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const rows = await db.select().from(reviewReports).where(eq(reviewReports.id, input.reportId)).limit(1);
+        const report = rows[0];
+        if (!report) throw new TRPCError({ code: 'NOT_FOUND', message: 'Sharh shikoyati topilmadi' });
+        if (report.status !== 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Bu shikoyat allaqachon ko‘rib chiqilgan' });
+        await db.transaction(async (tx: any) => {
+          await tx.update(reviewReports).set({ status: input.action, adminNote: input.note?.trim() || null, reviewedAt: new Date() }).where(and(eq(reviewReports.id, input.reportId), eq(reviewReports.status, 'pending')));
+          if (input.action === 'hidden') await tx.update(orderReviews).set({ moderationStatus: 'hidden' }).where(eq(orderReviews.id, report.reviewId));
+          await tx.insert(securityAudits).values({ userId: report.reporterId, eventType: input.action === 'hidden' ? 'review_hidden' : 'review_report_dismissed', riskScore: input.action === 'hidden' ? 4 : 0, details: JSON.stringify({ reportId: report.id, reviewId: report.reviewId, reviewedBy: ctx.user.id, note: input.note?.trim() || null }) });
+        });
+        await notifyTelegramUser(report.reporterId, input.action === 'hidden' ? '✅ Sharh bo‘yicha shikoyatingiz ko‘rib chiqildi.' : 'ℹ️ Sharh bo‘yicha shikoyatingiz tekshirildi va qoidabuzarlik topilmadi.');
+        return { success: true, status: input.action };
+      }),
+
     getPendingAccounts: protectedProcedure
       .query(async ({ ctx }) => {
         if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseTelegramCommand, getTelegramCommandResponse, handleTelegramUpdate } from './telegramBot';
+import { getMarketplaceSearchFilters, handleTelegramUpdate, parseMarketplacePageData, parseTelegramCommand, getTelegramCommandResponse } from './telegramBot';
 
 describe('Telegram Bot Server Helper Tests', () => {
   beforeEach(() => {
@@ -125,6 +125,13 @@ describe('Telegram Bot Server Helper Tests', () => {
     expect(result.path).toBe('/accounts?maxPrice=500000');
     const sendBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
     expect(sendBody.reply_markup.inline_keyboard[3][1].web_app.url).toBe('https://example.com/accounts?maxPrice=500000');
+  });
+
+  it('parses safe marketplace page callbacks and preserves only supported filters', () => {
+    expect(parseMarketplacePageData('market_page:2:%2Faccounts%3FminPrice%3D500000%26maxPrice%3D2000000%26category%3Dpro')).toEqual({ page: 2, path: '/accounts?minPrice=500000&maxPrice=2000000&category=pro' });
+    expect(parseMarketplacePageData('market_page:0:%2Fadmin')).toBeNull();
+    expect(getMarketplaceSearchFilters('/accounts?minPrice=500000&maxPrice=2000000&category=pro&ignored=x')).toEqual({ minPrice: 500000, maxPrice: 2000000, category: 'pro' });
+    expect(getMarketplaceSearchFilters('/accounts?category=unknown')).toEqual({});
   });
 
   it('accepts the user own shared phone contact and shows the persistent menu', async () => {

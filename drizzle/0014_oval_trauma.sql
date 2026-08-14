@@ -1,0 +1,1 @@
+ALTER TABLE `reviews` ADD `moderationStatus` enum('published','hidden') DEFAULT 'published' NOT NULL;
