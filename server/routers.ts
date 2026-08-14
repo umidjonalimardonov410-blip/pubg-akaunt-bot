@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
-import { users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
+import { users, pubgAccounts, orders, reviews as orderReviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
 import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { notifyOwner } from "./_core/notification";
@@ -492,7 +492,7 @@ export const appRouter = router({
         const existing = await getOrderReview(input.orderId);
         if (existing) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Sharh allaqachon qoldirilgan' });
 
-        const result = await db.insert(reviews).values({
+        const result = await db.insert(orderReviews).values({
           orderId: input.orderId,
           reviewerId: ctx.user.id,
           sellerId: order.sellerId,
@@ -698,7 +698,20 @@ export const appRouter = router({
 
   // Profile, public seller trust card, and referrals
   profile: router({
-    get: protectedProcedure.query(async ({ ctx }) => getUserById(ctx.user.id)),
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const user = await getUserById(ctx.user.id);
+      if (!user) return null;
+      const db = await getDb();
+      let ratingStats = { avgRating: 5.0, reviewCount: 0 };
+      if (db) {
+        const reviewRows = await db.select({ rating: orderReviews.rating }).from(orderReviews).innerJoin(orders, eq(orderReviews.orderId, orders.id)).where(eq(orders.sellerId, ctx.user.id));
+        if (reviewRows.length > 0) {
+          const total = reviewRows.reduce((sum, r) => sum + r.rating, 0);
+          ratingStats = { avgRating: Number((total / reviewRows.length).toFixed(1)), reviewCount: reviewRows.length };
+        }
+      }
+      return { ...user, ...ratingStats };
+    }),
     update: protectedProcedure
       .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional() }))
       .mutation(async ({ ctx, input }) => {

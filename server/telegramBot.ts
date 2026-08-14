@@ -122,6 +122,65 @@ function buildInlineKeyboard(path?: string) {
   };
 }
 
+function marketplaceFilterKeyboard() {
+  const marketUrl = getTelegramMiniAppUrl('/accounts') || process.env.PUBLIC_APP_URL || '/accounts';
+  return {
+    inline_keyboard: [
+      [
+        { text: '💰 0–500 ming', callback_data: 'market_filter:price:0:500000' },
+        { text: '💰 500 ming–2 mln', callback_data: 'market_filter:price:500000:2000000' },
+      ],
+      [
+        { text: '💰 2 mln+', callback_data: 'market_filter:price:2000000:' },
+        { text: '🏆 Pro / X-Suit', callback_data: 'market_filter:category:pro' },
+      ],
+      [
+        { text: '👑 Conqueror', callback_data: 'market_filter:category:conqueror' },
+        { text: '🎮 Classic', callback_data: 'market_filter:category:classic' },
+      ],
+      [
+        { text: '🔄 Filtrlarni tozalash', callback_data: 'market_filter:reset' },
+        { text: '📱 To‘liq bozor', web_app: { url: marketUrl } },
+      ],
+    ],
+  };
+}
+
+function marketplaceFilterPath(data: string) {
+  const match = /^market_filter:price:(\d*):(\d*)$/.exec(data);
+  if (match) {
+    const params = new URLSearchParams();
+    if (match[1] && Number(match[1]) > 0) params.set('minPrice', match[1]);
+    if (match[2]) params.set('maxPrice', match[2]);
+    const query = params.toString();
+    return `/accounts${query ? `?${query}` : ''}`;
+  }
+  const category = /^market_filter:category:(pro|conqueror|classic)$/.exec(data)?.[1];
+  if (category) return `/accounts?category=${category}`;
+  if (data === 'market_filter:reset') return '/accounts';
+  return null;
+}
+
+async function sendMarketplaceMenu(chatId: number | string, selectedPath = '/accounts') {
+  const selectedUrl = getTelegramMiniAppUrl(selectedPath) || process.env.PUBLIC_APP_URL || '/accounts';
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: '<b>🛒 Inferno Market — tezkor qidiruv</b>\n\nNarx yoki toifani tanlang. Tugma sizni shu filtr qo‘llangan Mini App bozoriga olib kiradi. Barcha foydalanuvchi e’lonlari shu yerda ko‘rinadi.',
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: {
+      ...marketplaceFilterKeyboard(),
+      inline_keyboard: [
+        ...marketplaceFilterKeyboard().inline_keyboard.slice(0, 3),
+        [
+          { text: '🔄 Filtrlarni tozalash', callback_data: 'market_filter:reset' },
+          { text: '📱 Tanlangan bozorni ochish', web_app: { url: selectedUrl } },
+        ],
+      ],
+    },
+  });
+}
+
 async function telegramApiRequest<T = unknown>(method: string, body: Record<string, unknown>) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return { ok: false as const, status: "setup_required" as const };
@@ -272,6 +331,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const sent = await sendWalletMenu(callbackChatId);
       return { handled: true as const, command: 'wallet_menu', status: sent.status, sent: sent.ok };
     }
+    const marketPath = marketplaceFilterPath(data);
+    if (marketPath) {
+      await answerTelegramCallback(callback.id, 'Bozor filtri tayyorlandi');
+      const sent = await sendMarketplaceMenu(callbackChatId, marketPath);
+      return { handled: true as const, command: 'market_filter', status: sent.status, sent: sent.ok, path: marketPath };
+    }
     const amountMatch = /^wallet_amount:(10000|20000|50000)$/.exec(data);
     if (amountMatch) {
       const amount = Number(amountMatch[1]);
@@ -313,6 +378,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   }
 
   const command = parseTelegramCommand(message.text);
+  if (command === 'buy' || message.text?.trim() === '🛒 Akkaunt olish') {
+    const sent = await sendMarketplaceMenu(chatId);
+    return { handled: true as const, command: 'buy', status: sent.status, sent: sent.ok };
+  }
   if (command === 'wallet' || message.text?.trim() === '💳 Balans to‘ldirish') {
     const sent = await sendWalletMenu(chatId);
     return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };

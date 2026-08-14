@@ -213,3 +213,11 @@
 - [x] Run full tests/build/mobile verification, push the changes to GitHub, and save a release checkpoint.
 
 - [x] Verify GitHub repository synchronization and push any remaining commits.
+
+
+## Reviews, Telegram Inline Search, and Seller Trust Signals — 2026-08-14
+- [x] Implement buyer reviews, seller rating aggregation, and verified-seller trust badges.
+- [x] Add Telegram inline keyboard search for fast price and category filtering.
+- [x] Update profile UI to showcase user rating, review breakdown, and trust status.
+- [x] Run full tests, TypeScript checks, and production build without errors.
+- [x] Push the verified code to GitHub main and save a deploy-ready checkpoint.
