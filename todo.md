@@ -239,3 +239,9 @@
 - [x] Repair and regression-test the Telegram-only Mini App account creation flow.
 - [x] Run full regression suite, TypeScript checks, and production build; verify mobile routes.
 - [x] Push the complete release to GitHub main and redeploy/verify the exact release on Railway.
+
+
+## Full GitHub Sync Re-audit — 2026-08-14
+- [ ] Verify local git status against GitHub remote main.
+- [ ] Force-push or sync all complete project and bot files to GitHub main.
+- [ ] Confirm successful build and live deployment.
