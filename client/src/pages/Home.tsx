@@ -22,6 +22,7 @@ import {
   Grid2X2,
   Headphones,
   Heart,
+  Phone,
   ImagePlus,
   LayoutList,
   LoaderCircle,
@@ -44,7 +45,7 @@ import {
   Zap,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { accountShareUrl, authenticateTelegramWebApp, autoClaimTelegramReferral, getTelegramMiniAppLaunchUrl, getTelegramReferralCode, getTelegramWebApp, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
+import { accountShareUrl, authenticateTelegramWebApp, getTelegramPhoneLoginUrl, autoClaimTelegramReferral, getTelegramMiniAppLaunchUrl, getTelegramReferralCode, getTelegramWebApp, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
 import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
 
 const HERO_IMAGE = "/manus-storage/hero-soldier_222b0d1f.jpeg";
@@ -336,8 +337,9 @@ function ListingCard({ item, onOpen }: { item: Listing; onOpen: (id: number) => 
         <div className="relative aspect-square overflow-hidden rounded-xl bg-[#16181b]">
           <img src={item.image} alt={item.playerName} className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-105 group-hover:opacity-100" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <div className="absolute left-1 top-1"><span className="rounded-md bg-black/75 px-1 py-0.5 text-[9px] font-black text-red-100 shadow-lg">LVL {item.level}</span></div>
-          <div className="absolute right-0.5 top-0.5 z-10"><FavoriteButton accountId={item.id} compact /></div>
+          <div className="inferno-scan pointer-events-none absolute inset-0" />
+          <div className="absolute left-1 top-1"><span className="rounded bg-black/70 px-1 py-[1px] text-[8px] font-black leading-none tracking-wide text-red-100 shadow">LVL {item.level}</span></div>
+          <div className="absolute right-1 top-1 z-10"><FavoriteButton accountId={item.id} compact /></div>
           <div className="absolute bottom-2 left-2 max-w-[85%] truncate text-xs font-black text-white">{item.playerName}</div>
         </div>
         <div className="mt-2 flex items-center justify-between px-0.5 text-xs text-white/65">
@@ -464,12 +466,28 @@ function Chip({ label, active, onToggle }: { label: string; active: boolean; onT
   return <button type="button" onClick={onToggle} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${active ? 'border-red-400/60 bg-red-500/15 text-red-200' : 'border-white/10 bg-white/[0.03] text-white/55 hover:text-white'}`}>{active && <Check className="mr-1 inline h-3 w-3" />}{label}</button>;
 }
 
+/** Animated battlefield layer: muzzle flashes, tracer rounds and rising embers. */
+function BattleEffects() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <span className="inferno-muzzle absolute left-[18%] top-[38%] h-10 w-10 rounded-full bg-[radial-gradient(circle,rgba(255,196,120,.95),rgba(239,68,68,.35),transparent_70%)] blur-[2px]" />
+      <span className="inferno-muzzle absolute right-[24%] top-[52%] h-8 w-8 rounded-full bg-[radial-gradient(circle,rgba(255,214,150,.9),rgba(239,68,68,.3),transparent_70%)] blur-[2px]" style={{ animationDelay: '1.4s' }} />
+      <span className="inferno-tracer absolute left-[20%] top-[41%] h-[2px] w-24 rounded-full bg-gradient-to-r from-transparent via-amber-200 to-red-500" />
+      <span className="inferno-tracer absolute right-[14%] top-[58%] h-[2px] w-20 rounded-full bg-gradient-to-r from-transparent via-red-200 to-red-500" style={{ animationDelay: '1.1s' }} />
+      {[8, 26, 44, 62, 78, 92].map((left, index) => (
+        <span key={left} className="inferno-ember absolute bottom-0 h-1.5 w-1.5 rounded-full bg-red-400/70 blur-[1px]" style={{ left: `${left}%`, animationDelay: `${index * 0.9}s` }} />
+      ))}
+    </div>
+  );
+}
+
 function Hero({ onExplore, onSell }: { onExplore: () => void; onSell: () => void }) {
   return (
     <section className="relative isolate overflow-hidden rounded-[28px] border border-red-500/20 bg-[#111316] shadow-[0_30px_100px_rgba(0,0,0,.3)]">
       <img src={HERO_IMAGE} alt="Inferno Stealth" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-25" />
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_72%_30%,rgba(239,68,68,.26),transparent_38%),linear-gradient(90deg,#111316_15%,rgba(17,19,22,.9)_44%,rgba(17,19,22,.35))]" />
       <div className="absolute -right-32 -top-32 -z-10 h-96 w-96 rounded-full bg-red-500/10 blur-3xl" />
+      <BattleEffects />
       <div className="grid min-h-[380px] items-end gap-6 p-5 sm:p-8 md:p-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
         <div className="max-w-2xl">
           <StatusPill><Flame className="h-3 w-3" />INFERNO STEALTH MARKET</StatusPill>
@@ -807,10 +825,16 @@ export function TelegramLoginGate({ title, description }: { title: string; descr
       toast.success('Telegram profili ulandi');
       window.location.reload();
     } else {
-      toast.error('Telegram sessiyasi topilmadi. Mini App’ni bot ichidan oching.');
+      toast.error('Telegram sessiyasi topilmadi. Pastdagi telefon raqam orqali kirishdan foydalaning.');
     }
   };
-  return <main className="mx-auto max-w-xl rounded-3xl border border-red-500/25 bg-[linear-gradient(135deg,rgba(239,68,68,.12),rgba(14,16,19,.98))] p-5 text-center shadow-[0_18px_60px_rgba(0,0,0,.28)] sm:p-8"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-red-400/30 bg-red-500/15 text-red-200"><Send className="h-7 w-7" /></span><h1 className="mt-5 font-display text-2xl font-black text-white">{title}</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-white/55">{description}</p><button type="button" disabled={busy} onClick={handleLogin} className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-500 px-5 text-sm font-black text-white shadow-[0_0_24px_rgba(239,68,68,.25)] transition active:scale-[.98] disabled:opacity-60">{busy ? 'Telegram tekshirilmoqda...' : 'Telegram orqali kirish'}<ArrowRight className="h-4 w-4" /></button><p className="mt-4 text-[11px] text-white/35">Login va parolni bu yerga yubormang. Faqat Telegram sessiyasi ishlatiladi.</p></main>;
+  const handlePhoneLogin = () => {
+    const url = getTelegramPhoneLoginUrl();
+    const webApp = getTelegramWebApp();
+    if (webApp?.openTelegramLink) webApp.openTelegramLink(url);
+    else window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  return <main className="mx-auto max-w-xl overflow-hidden rounded-3xl border border-red-500/25 bg-[linear-gradient(135deg,rgba(239,68,68,.12),rgba(14,16,19,.98))] p-5 text-center shadow-[0_18px_60px_rgba(0,0,0,.28)] sm:p-8"><span className="inferno-pulse mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-red-400/30 bg-red-500/15 text-red-200"><Send className="h-7 w-7" /></span><h1 className="mt-5 font-display text-2xl font-black text-white">{title}</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-white/55">{description}</p><button type="button" disabled={busy} onClick={handleLogin} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-red-500 px-5 text-sm font-black text-white shadow-[0_0_24px_rgba(239,68,68,.25)] transition active:scale-[.98] disabled:opacity-60">{busy ? 'Telegram tekshirilmoqda...' : 'Telegram orqali kirish'}<ArrowRight className="h-4 w-4" /></button><button type="button" onClick={handlePhoneLogin} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-400/35 bg-white/[0.04] px-5 text-sm font-black text-white/85 transition active:scale-[.98]"><Phone className="h-4 w-4 text-red-300" />Telefon raqam orqali kirish</button><p className="mt-4 text-[11px] text-white/35">Login va parolni bu yerga yubormang. Faqat Telegram sessiyasi ishlatiladi.</p></main>;
 }
 
 export function SellerListingsPanel() {

@@ -4,6 +4,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { getUserByOpenId, upsertUser } from "./db";
+import { verifyTelegramLoginToken } from "./telegramLoginTokens";
 
 type TelegramUser = {
   id: number;
@@ -62,10 +63,37 @@ export function registerTelegramAuthRoute(app: Express) {
       const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
       res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       const savedUser = await getUserByOpenId(openId);
-      res.json({ ok: true, user: savedUser ? { id: savedUser.id, name: savedUser.name, loginMethod: savedUser.loginMethod } : { openId, name, loginMethod: "telegram" } });
+      // Telegram WebView often blocks third-party cookies, so the client mirrors
+      // this token into sessionStorage and sends it as a Bearer header.
+      res.json({ ok: true, sessionToken, telegramId: String(user.id), user: savedUser ? { id: savedUser.id, name: savedUser.name, loginMethod: savedUser.loginMethod } : { openId, name, loginMethod: "telegram" } });
     } catch (error) {
       console.error("[Telegram Auth] Failed to create session", error);
       res.status(500).json({ ok: false, message: "Telegram orqali login vaqtincha ishlamadi." });
+    }
+  });
+}
+
+export function registerTelegramTokenAuthRoute(app: Express) {
+  // Phone-number login: the bot issues a signed one-time token after the user
+  // shares their contact, and the Mini App exchanges it for a session here.
+  app.post("/api/telegram/token-auth", async (req: Request, res: Response) => {
+    const payload = verifyTelegramLoginToken(String(req.body?.token || ""));
+    if (!payload) {
+      res.status(401).json({ ok: false, message: "Kirish havolasi eskirgan. Botdan raqamingizni qayta yuboring." });
+      return;
+    }
+
+    const openId = `telegram:${payload.telegramId}`;
+    const name = payload.name || `Telegram ${payload.telegramId}`;
+    try {
+      await upsertUser({ openId, name, loginMethod: "telegram_phone", lastSignedIn: new Date() });
+      const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+      const savedUser = await getUserByOpenId(openId);
+      res.json({ ok: true, sessionToken, telegramId: payload.telegramId, user: savedUser ? { id: savedUser.id, name: savedUser.name, loginMethod: savedUser.loginMethod } : { openId, name, loginMethod: "telegram_phone" } });
+    } catch (error) {
+      console.error("[Telegram Auth] Phone login failed", error);
+      res.status(500).json({ ok: false, message: "Telefon raqam orqali kirish vaqtincha ishlamadi." });
     }
   });
 }

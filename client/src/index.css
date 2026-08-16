@@ -217,3 +217,58 @@ button, a, input, select, textarea {
     display: none !important;
   }
 }
+
+/* --- Inferno animated battle effects --- */
+@keyframes inferno-scan-sweep {
+  0% { transform: translateY(-120%); opacity: 0; }
+  35% { opacity: .55; }
+  100% { transform: translateY(220%); opacity: 0; }
+}
+
+.inferno-scan::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 45%;
+  background: linear-gradient(180deg, transparent, rgba(239, 68, 68, 0.22), transparent);
+  animation: inferno-scan-sweep 4.5s ease-in-out infinite;
+}
+
+@keyframes inferno-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 26px 6px rgba(239, 68, 68, 0.18); }
+}
+
+.inferno-pulse { animation: inferno-pulse-glow 2.4s ease-in-out infinite; }
+
+@keyframes inferno-muzzle-flash {
+  0%, 92%, 100% { opacity: 0; transform: scale(.6); }
+  94% { opacity: .9; transform: scale(1.15); }
+  96% { opacity: .35; transform: scale(.9); }
+}
+
+.inferno-muzzle { animation: inferno-muzzle-flash 3.2s steps(1, end) infinite; }
+
+@keyframes inferno-ember-rise {
+  0% { transform: translate3d(0, 0, 0) scale(.7); opacity: 0; }
+  20% { opacity: .8; }
+  100% { transform: translate3d(12px, -120px, 0) scale(1.1); opacity: 0; }
+}
+
+.inferno-ember { animation: inferno-ember-rise 6s linear infinite; }
+
+@keyframes inferno-tracer {
+  0% { transform: translateX(-30%) scaleX(.4); opacity: 0; }
+  30% { opacity: .9; }
+  100% { transform: translateX(240%) scaleX(1); opacity: 0; }
+}
+
+.inferno-tracer { animation: inferno-tracer 2.8s ease-in infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .inferno-scan::after,
+  .inferno-pulse,
+  .inferno-muzzle,
+  .inferno-ember,
+  .inferno-tracer { animation: none; }
+}

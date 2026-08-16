@@ -6,7 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerTelegramBot, registerTelegramWebhook } from "../telegramBot";
-import { registerTelegramAuthRoute } from "../telegramAuth";
+import { registerTelegramAuthRoute, registerTelegramTokenAuthRoute } from "../telegramAuth";
 import { ensureProductionDatabaseSchema } from "../databaseMigrations";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -161,6 +161,7 @@ async function startServer() {
   });
   registerTelegramWebhook(app);
   registerTelegramAuthRoute(app);
+  registerTelegramTokenAuthRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

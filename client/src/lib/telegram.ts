@@ -1,3 +1,5 @@
+import { COOKIE_NAME } from '@shared/const';
+
 export type TelegramThemeParams = {
   bg_color?: string;
   secondary_bg_color?: string;
@@ -110,6 +112,19 @@ export function autoClaimTelegramReferral({
 }
 
 
+export const TELEGRAM_SESSION_STORAGE_KEY = 'manus-cookie';
+
+/** Telegram WebView blocks third-party cookies, so mirror the session token for the Bearer fallback. */
+export function storeTelegramSessionToken(sessionToken?: string | null) {
+  if (!sessionToken) return false;
+  try {
+    sessionStorage.setItem(TELEGRAM_SESSION_STORAGE_KEY, `${COOKIE_NAME}=${sessionToken}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function authenticateTelegramWebApp(webApp = getTelegramWebApp()) {
   const initData = webApp?.initData;
   const userId = webApp?.initDataUnsafe?.user?.id;
@@ -122,10 +137,44 @@ export async function authenticateTelegramWebApp(webApp = getTelegramWebApp()) {
       body: JSON.stringify({ initData }),
     });
     if (!response.ok) return { ok: false as const, status: 'failed' as const };
+    const payload = (await response.json().catch(() => null)) as { sessionToken?: string } | null;
+    storeTelegramSessionToken(payload?.sessionToken);
     return { ok: true as const, status: 'active' as const };
   } catch {
     return { ok: false as const, status: 'failed' as const };
   }
+}
+
+/** One-time login token issued by the bot after the user shares their phone number. */
+export function readTelegramLoginToken() {
+  if (typeof window === 'undefined') return null;
+  const fromQuery = new URLSearchParams(window.location.search).get('tglogin');
+  if (fromQuery) return fromQuery;
+  const startParam = getTelegramWebApp()?.initDataUnsafe?.start_param || '';
+  return startParam.startsWith('tglogin_') ? startParam.slice('tglogin_'.length) : null;
+}
+
+export async function exchangeTelegramLoginToken(token: string) {
+  try {
+    const response = await fetch('/api/telegram/token-auth', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ token }),
+    });
+    if (!response.ok) return { ok: false as const, status: 'failed' as const };
+    const payload = (await response.json().catch(() => null)) as { sessionToken?: string } | null;
+    storeTelegramSessionToken(payload?.sessionToken);
+    return { ok: true as const, status: 'active' as const };
+  } catch {
+    return { ok: false as const, status: 'failed' as const };
+  }
+}
+
+/** Opens the bot chat where the persistent keyboard offers the phone-number login button. */
+export function getTelegramPhoneLoginUrl() {
+  const username = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
+  return username ? `https://t.me/${username}?start=login` : 'https://t.me/';
 }
 
 export function getTelegramMiniAppLaunchUrl() {

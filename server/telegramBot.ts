@@ -1,7 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createHash } from "node:crypto";
 
-import { getDb, getUserByOpenId, getInsertId, searchPubgAccounts } from './db';
+import { getDb, getUserByOpenId, getInsertId, searchPubgAccounts, upsertUser } from './db';
+import { createTelegramLoginToken } from './telegramLoginTokens';
 import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
 import { storagePut } from './storage';
 import { eq } from 'drizzle-orm';
@@ -476,15 +477,38 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const contact = message.contact;
   if (contact) {
     const ownsContact = contact.user_id !== undefined && String(contact.user_id) === String(message.from?.id);
+    if (!ownsContact) {
+      const sent = await telegramApiRequest('sendMessage', {
+        chat_id: chatId,
+        text: '<b>Bu boshqa foydalanuvchining raqami</b>\n\nKirish uchun pastdagi tugma orqali o‘zingizning telefon raqamingizni yuboring.',
+        parse_mode: 'HTML',
+        reply_markup: buildMainKeyboard(),
+      });
+      return { handled: true as const, command: 'contact', status: sent.status, sent: sent.ok };
+    }
+
+    const telegramId = String(contact.user_id);
+    const displayName = contact.first_name || `Telegram ${telegramId}`;
+    try {
+      await upsertUser({ openId: `telegram:${telegramId}`, name: displayName, loginMethod: 'telegram_phone', lastSignedIn: new Date() });
+    } catch (error) {
+      console.warn('[Telegram Bot] contact upsert failed', error);
+    }
+
+    const loginToken = createTelegramLoginToken({ telegramId, name: displayName, phone: contact.phone_number });
+    const loginUrl = loginToken ? getTelegramMiniAppUrl(`/profile?tglogin=${encodeURIComponent(loginToken)}`) : getTelegramMiniAppUrl('/profile');
     const sent = await telegramApiRequest('sendMessage', {
       chat_id: chatId,
-      text: ownsContact
-        ? '<b>Telefon raqamingiz tasdiqlandi</b>\n\nQuyidagi menyudan kerakli bo‘limni bosing. Mini App sizni Telegram profilingiz orqali xavfsiz kiritadi.'
-        : '<b>Bu boshqa foydalanuvchining raqami</b>\n\nKirish uchun pastdagi tugma orqali o‘zingizning telefon raqamingizni yuboring.',
+      text: `<b>✅ Telefon raqamingiz tasdiqlandi</b>\n\n📱 ${escapeTelegramHtml(contact.phone_number || '')}\n\nQuyidagi tugma orqali Mini App'ga to‘g‘ridan-to‘g‘ri kiring — profilingiz, ID va e’lonlaringiz avtomatik ochiladi.`,
       parse_mode: 'HTML',
-      reply_markup: buildMainKeyboard(),
+      reply_markup: loginUrl
+        ? { inline_keyboard: [[{ text: '🔓 Profilga kirish (Mini App)', web_app: { url: loginUrl } }]] }
+        : buildMainKeyboard(),
     });
-    return { handled: true as const, command: 'contact', status: sent.status, sent: sent.ok };
+    if (loginUrl) {
+      await telegramApiRequest('sendMessage', { chat_id: chatId, text: 'Asosiy menyu:', reply_markup: buildMainKeyboard() });
+    }
+    return { handled: true as const, command: 'contact', status: sent.status, sent: sent.ok, login: Boolean(loginToken) };
   }
 
   const command = parseTelegramCommand(message.text);
@@ -507,7 +531,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     text: `<b>${response.title}</b>\n\n${response.text}`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
-    reply_markup: command === 'start' || !command ? buildMainKeyboard() : buildInlineKeyboard(response.path),
+    // The persistent menu keyboard must always be visible, so it is attached to
+    // every reply instead of only /start.
+    reply_markup: buildMainKeyboard(),
   });
 
   return { handled: true as const, command, status: sent.status, sent: sent.ok };
@@ -518,8 +544,14 @@ export async function registerTelegramBot() {
     return { status: "setup_required" as const, commands: false, menu: false, webhook: false };
   }
 
+  // Only /start should remain in the Telegram command list, so every stale
+  // command scope is wiped before registering it again.
+  for (const scope of [undefined, { type: "all_private_chats" }, { type: "all_group_chats" }, { type: "default" }]) {
+    await telegramApiRequest("deleteMyCommands", scope ? { scope } : {});
+  }
   const commands = await telegramApiRequest("setMyCommands", {
-    commands: TELEGRAM_BOT_COMMANDS.filter(item => item.command === "start").map(({ command, description }) => ({ command, description })),
+    commands: [{ command: "start", description: "Inferno Stealth menyusini ochish" }],
+    scope: { type: "all_private_chats" },
   });
 
   const menuUrl = getTelegramMiniAppUrl("/");

@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
-import { authenticateTelegramWebApp, getTelegramWebApp } from "./lib/telegram";
+import { authenticateTelegramWebApp, exchangeTelegramLoginToken, getTelegramWebApp, readTelegramLoginToken } from "./lib/telegram";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -76,6 +76,17 @@ const trpcClient = trpc.createClient({
 });
 
 async function bootstrapTelegramAuth() {
+  // Phone-number login link takes priority: it works even outside the Mini App.
+  const loginToken = readTelegramLoginToken();
+  if (loginToken) {
+    const result = await exchangeTelegramLoginToken(loginToken);
+    if (result.ok && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tglogin");
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (result.ok) return;
+  }
   const webApp = getTelegramWebApp();
   if (!webApp?.initData || !webApp.initDataUnsafe?.user?.id) return;
   await authenticateTelegramWebApp(webApp);
