@@ -10,6 +10,8 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
+  phone: varchar("phone", { length: 32 }),
+  languageCode: varchar("languageCode", { length: 8 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   
   // Marketplace fields

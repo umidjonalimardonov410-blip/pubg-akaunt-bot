@@ -748,11 +748,11 @@ export const appRouter = router({
       return { ...user, ...ratingStats };
     }),
     update: protectedProcedure
-      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional() }))
+      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), languageCode: z.enum(['uz','ru','en']).optional() }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-        await db.update(users).set({ name: input.name?.trim() || null, profileBio: input.profileBio?.trim() || null }).where(eq(users.id, ctx.user.id));
+        await db.update(users).set({ name: input.name?.trim() || null, profileBio: input.profileBio?.trim() || null, ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}), ...(input.languageCode ? { languageCode: input.languageCode } : {}) }).where(eq(users.id, ctx.user.id));
         return await getUserById(ctx.user.id);
       }),
     referral: protectedProcedure.query(async ({ ctx }) => {

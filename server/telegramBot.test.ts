@@ -62,9 +62,12 @@ describe('Telegram Bot Server Helper Tests', () => {
     const result = await handleTelegramUpdate(update);
     expect(result.status).toBe('active');
     expect(result.sent).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/sendChatAction');
     expect(fetchMock.mock.calls[1]?.[0]).toContain('/sendMessage');
+    const menuBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
+    expect(menuBody.reply_markup.keyboard).toHaveLength(6);
+    expect(menuBody.reply_markup.keyboard[5][0].request_contact).toBe(true);
 
   });
 
@@ -94,7 +97,7 @@ describe('Telegram Bot Server Helper Tests', () => {
 
     const result = await handleTelegramUpdate({
       update_id: 1004,
-      message: { chat: { id: 12345, type: 'private' }, from: { id: 12345 }, text: '🛒 Akkaunt olish' },
+      message: { chat: { id: 12345, type: 'private' }, from: { id: 12345 }, text: '🛒 Bozor' },
     });
 
     expect(result.command).toBe('buy');
@@ -152,8 +155,10 @@ describe('Telegram Bot Server Helper Tests', () => {
 
     expect(result.command).toBe('contact');
     const sendBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
-    expect(sendBody.reply_markup.keyboard).toHaveLength(5);
-    expect(sendBody.reply_markup.keyboard[4][0].request_contact).toBe(true);
+    expect(sendBody.reply_markup.inline_keyboard[0][0].web_app.url).toContain('/profile');
+    const menuBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
+    expect(menuBody.reply_markup.keyboard).toHaveLength(6);
+    expect(menuBody.reply_markup.keyboard[5][0].request_contact).toBe(true);
 
   });
 });

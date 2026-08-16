@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 import { getDb, getUserByOpenId, getInsertId, searchPubgAccounts, upsertUser } from './db';
 import { createTelegramLoginToken } from './telegramLoginTokens';
+import { botText, matchMenuKey, normalizeBotLang, type BotLang } from './botTexts';
 import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
 import { storagePut } from './storage';
 import { eq } from 'drizzle-orm';
@@ -126,19 +127,110 @@ function webAppButton(text: string, path: string) {
   return url ? { text, web_app: { url } } : { text };
 }
 
-function buildMainKeyboard() {
+const chatLanguages = new Map<string, BotLang>();
+
+export function getChatLanguage(chatId: number | string, fallback?: string) {
+  return chatLanguages.get(String(chatId)) ?? normalizeBotLang(fallback);
+}
+
+export function setChatLanguage(chatId: number | string, lang: BotLang) {
+  chatLanguages.set(String(chatId), lang);
+}
+
+function buildMainKeyboard(lang: BotLang = 'uz') {
+  const texts = botText(lang);
   return {
     keyboard: [
-      [webAppButton("🛒 Akkaunt olish", "/accounts"), webAppButton("➕ Akkaunt sotish", "/sell")],
-      [webAppButton("📦 Buyurtmalarim", "/orders"), webAppButton("👤 Profilim", "/profile")],
-      [webAppButton("🧾 E’lonlarim", "/profile"), { text: "💳 Balans to‘ldirish" }],
-      [webAppButton("🆘 Yordam", "/support")],
-      [{ text: "📱 Telefon raqam orqali kirish", request_contact: true }],
+      [webAppButton(texts.menuMarket, "/accounts"), webAppButton(texts.menuSell, "/sell")],
+      [webAppButton(texts.menuOrders, "/orders"), webAppButton(texts.menuProfile, "/profile")],
+      [webAppButton(texts.menuListings, "/profile"), { text: texts.menuWallet }],
+      [{ text: texts.menuReferral }, { text: texts.menuRules }],
+      [{ text: texts.menuSupport }, { text: texts.menuLanguage }],
+      [{ text: texts.menuContact, request_contact: true }],
     ],
     resize_keyboard: true,
     is_persistent: true,
-    input_field_placeholder: "Kerakli bo‘limni tanlang",
+    input_field_placeholder: texts.placeholder,
   };
+}
+
+function languageKeyboard() {
+  return {
+    inline_keyboard: [[
+      { text: '🇺🇿 O‘zbekcha', callback_data: 'set_lang:uz' },
+      { text: '🇷🇺 Русский', callback_data: 'set_lang:ru' },
+      { text: '🇬🇧 English', callback_data: 'set_lang:en' },
+    ]],
+  };
+}
+
+async function sendWelcome(chatId: number | string, lang: BotLang, name: string) {
+  const texts = botText(lang);
+  const appUrl = getTelegramMiniAppUrl('/');
+  const rowsExtra = appUrl ? [[{ text: texts.openApp, web_app: { url: appUrl } }]] : [];
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.welcomeTitle}</b>\n\n${texts.welcomeBody.replace('{name}', escapeTelegramHtml(name))}`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        ...rowsExtra,
+        [
+          ...(getTelegramMiniAppUrl('/accounts') ? [{ text: texts.menuMarket, web_app: { url: getTelegramMiniAppUrl('/accounts') as string } }] : []),
+          ...(getTelegramMiniAppUrl('/sell') ? [{ text: texts.menuSell, web_app: { url: getTelegramMiniAppUrl('/sell') as string } }] : []),
+        ],
+        [
+          { text: texts.menuRules, callback_data: 'show_rules' },
+          { text: texts.menuReferral, callback_data: 'show_referral' },
+        ],
+        [
+          { text: texts.menuWallet, callback_data: 'wallet_menu' },
+          { text: texts.menuLanguage, callback_data: 'show_language' },
+        ],
+      ],
+    },
+  });
+}
+
+async function sendRules(chatId: number | string, lang: BotLang) {
+  const texts = botText(lang);
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.rulesTitle}</b>\n\n${texts.rulesBody}`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: getTelegramMiniAppUrl('/rules')
+      ? { inline_keyboard: [[{ text: texts.openApp, web_app: { url: getTelegramMiniAppUrl('/rules') as string } }]] }
+      : undefined,
+  });
+}
+
+async function sendReferral(chatId: number | string, lang: BotLang, telegramUserId?: number | string) {
+  const texts = botText(lang);
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, '');
+  const code = telegramUserId ? `IS${telegramUserId}` : 'IS';
+  const link = botUsername ? `https://t.me/${botUsername}?start=ref_${code}` : `${getPublicBaseUrl() ?? ''}/referral?ref=${code}`;
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.referralTitle}</b>\n\n${texts.referralBody.replace('{link}', `<code>${escapeTelegramHtml(link)}</code>`)}`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: getTelegramMiniAppUrl('/referral')
+      ? { inline_keyboard: [[{ text: texts.openApp, web_app: { url: getTelegramMiniAppUrl('/referral') as string } }]] }
+      : undefined,
+  });
+}
+
+async function sendSupport(chatId: number | string, lang: BotLang) {
+  const texts = botText(lang);
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.supportTitle}</b>\n\n${texts.supportBody}`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: buildInlineKeyboard('/support'),
+  });
 }
 
 function buildInlineKeyboard(path?: string) {
@@ -437,6 +529,35 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const sent = await sendMarketplaceMenu(callbackChatId, selectedPath.startsWith('/accounts') ? selectedPath : '/accounts');
       return { handled: true as const, command: 'market_filter_menu', status: sent.status, sent: sent.ok };
     }
+    const langMatch = /^set_lang:(uz|ru|en)$/.exec(data);
+    if (langMatch) {
+      const lang = langMatch[1] as BotLang;
+      setChatLanguage(callbackChatId, lang);
+      const telegramId = callback.from?.id;
+      if (telegramId !== undefined) {
+        try { await upsertUser({ openId: `telegram:${telegramId}`, languageCode: lang }); } catch (error) { console.warn('[Telegram Bot] language save failed', error); }
+      }
+      await answerTelegramCallback(callback.id, botText(lang).languageSaved);
+      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: botText(lang).languageSaved, reply_markup: buildMainKeyboard(lang) });
+      return { handled: true as const, command: 'set_lang', status: sent.status, sent: sent.ok, lang };
+    }
+    if (data === 'show_rules') {
+      const lang = getChatLanguage(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(lang).menuRules);
+      const sent = await sendRules(callbackChatId, lang);
+      return { handled: true as const, command: 'rules', status: sent.status, sent: sent.ok };
+    }
+    if (data === 'show_referral') {
+      const lang = getChatLanguage(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(lang).menuReferral);
+      const sent = await sendReferral(callbackChatId, lang, callback.from?.id);
+      return { handled: true as const, command: 'referral', status: sent.status, sent: sent.ok };
+    }
+    if (data === 'show_language') {
+      await answerTelegramCallback(callback.id, '🌐');
+      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: botText(getChatLanguage(callbackChatId)).languageTitle, reply_markup: languageKeyboard() });
+      return { handled: true as const, command: 'language', status: sent.status, sent: sent.ok };
+    }
     if (data === 'wallet_menu') {
       await answerTelegramCallback(callback.id, 'Wallet menyusi ochildi');
       const sent = await sendWalletMenu(callbackChatId);
@@ -490,7 +611,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     const telegramId = String(contact.user_id);
     const displayName = contact.first_name || `Telegram ${telegramId}`;
     try {
-      await upsertUser({ openId: `telegram:${telegramId}`, name: displayName, loginMethod: 'telegram_phone', lastSignedIn: new Date() });
+      await upsertUser({ openId: `telegram:${telegramId}`, name: displayName, loginMethod: 'telegram_phone', phone: contact.phone_number ?? null, languageCode: getChatLanguage(chatId, message.from?.language_code), lastSignedIn: new Date() });
     } catch (error) {
       console.warn('[Telegram Bot] contact upsert failed', error);
     }
@@ -512,16 +633,41 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   }
 
   const command = parseTelegramCommand(message.text);
-  if (command === 'buy' || message.text?.trim() === '🛒 Akkaunt olish') {
+  const lang = getChatLanguage(chatId, message.from?.language_code);
+  const texts = botText(lang);
+  const menuKey = matchMenuKey(message.text ?? '');
+
+  if (command === 'start' || command === '') {
+    const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.mainMenu, reply_markup: buildMainKeyboard(lang) });
+    return { handled: true as const, command: 'start', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'buy' || menuKey === 'menuMarket') {
     const sent = await sendMarketplaceMenu(chatId);
     return { handled: true as const, command: 'buy', status: sent.status, sent: sent.ok };
   }
-  if (command === 'wallet' || message.text?.trim() === '💳 Balans to‘ldirish') {
+  if (command === 'wallet' || menuKey === 'menuWallet') {
     const sent = await sendWalletMenu(chatId);
     return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };
   }
-  if (command === 'mylistings' || message.text?.trim() === '🧾 E’lonlarim') {
-    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: '<b>Mening e’lonlarim</b>\n\nOmmaviy bozorga qo‘ygan akkauntlaringizni ko‘rish va tahrirlash uchun quyidagi tugmani bosing.', parse_mode: 'HTML', reply_markup: buildInlineKeyboard('/profile') });
+  if (command === 'rules' || menuKey === 'menuRules') {
+    const sent = await sendRules(chatId, lang);
+    return { handled: true as const, command: 'rules', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'referral' || menuKey === 'menuReferral') {
+    const sent = await sendReferral(chatId, lang, message.from?.id);
+    return { handled: true as const, command: 'referral', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'support' || menuKey === 'menuSupport') {
+    const sent = await sendSupport(chatId, lang);
+    return { handled: true as const, command: 'support', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'language' || menuKey === 'menuLanguage') {
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.languageTitle, reply_markup: languageKeyboard() });
+    return { handled: true as const, command: 'language', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'mylistings' || menuKey === 'menuListings') {
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: `<b>${texts.listingsTitle}</b>\n\n${texts.listingsBody}`, parse_mode: 'HTML', reply_markup: buildInlineKeyboard('/profile') });
     return { handled: true as const, command: 'mylistings', status: sent.status, sent: sent.ok };
   }
 
@@ -533,7 +679,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     disable_web_page_preview: true,
     // The persistent menu keyboard must always be visible, so it is attached to
     // every reply instead of only /start.
-    reply_markup: buildMainKeyboard(),
+    reply_markup: buildMainKeyboard(lang),
   });
 
   return { handled: true as const, command, status: sent.status, sent: sent.ok };
