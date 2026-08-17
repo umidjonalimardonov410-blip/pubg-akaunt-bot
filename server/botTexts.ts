@@ -16,6 +16,7 @@ type Texts = {
   menuReferral: string;
   menuRules: string;
   menuSupport: string;
+  menuAdmin: string;
   menuLanguage: string;
   menuContact: string;
   placeholder: string;
@@ -35,6 +36,8 @@ type Texts = {
   contactVerified: string;
   contactLogin: string;
   mainMenu: string;
+  adminTitle: string;
+  adminBody: string;
 };
 
 const uz: Texts = {
@@ -47,6 +50,7 @@ const uz: Texts = {
   menuReferral: '👥 Referal',
   menuRules: '📜 Qoidalar',
   menuSupport: '🆘 Yordam',
+  menuAdmin: '👨‍💼 Admin',
   menuLanguage: '🌐 Til',
   menuContact: '📱 Raqam orqali kirish',
   placeholder: 'Kerakli bo‘limni tanlang',
@@ -75,6 +79,8 @@ const uz: Texts = {
   contactVerified: '✅ <b>Raqamingiz tasdiqlandi</b>',
   contactLogin: '🔓 Profilga kirish (Mini App)',
   mainMenu: 'Asosiy menyu:',
+  adminTitle: '👨‍💼 ADMIN BILAN ALOQA',
+  adminBody: 'Savdo, to‘lov yoki nizo bo‘yicha savollar uchun to‘g‘ridan-to‘g‘ri adminimizga yozing: {admin}\n\n⚠️ Login va parolni hech kimga yubormang. Admin hech qachon parol so‘ramaydi.',
 };
 
 const ru: Texts = {
@@ -87,6 +93,7 @@ const ru: Texts = {
   menuReferral: '👥 Рефералы',
   menuRules: '📜 Правила',
   menuSupport: '🆘 Поддержка',
+  menuAdmin: '👨‍💼 Админ',
   menuLanguage: '🌐 Язык',
   menuContact: '📱 Вход по номеру',
   placeholder: 'Выберите раздел',
@@ -114,6 +121,8 @@ const ru: Texts = {
   contactVerified: '✅ <b>Номер подтверждён</b>',
   contactLogin: '🔓 Войти в профиль (Mini App)',
   mainMenu: 'Главное меню:',
+  adminTitle: '👨‍💼 СВЯЗЬ С АДМИНОМ',
+  adminBody: 'По вопросам сделки, оплаты или спора пишите напрямую админу: {admin}\n\n⚠️ Никогда не отправляйте логин и пароль. Админ никогда их не просит.',
 };
 
 const en: Texts = {
@@ -126,6 +135,7 @@ const en: Texts = {
   menuReferral: '👥 Referral',
   menuRules: '📜 Rules',
   menuSupport: '🆘 Support',
+  menuAdmin: '👨‍💼 Admin',
   menuLanguage: '🌐 Language',
   menuContact: '📱 Login by phone',
   placeholder: 'Choose a section',
@@ -153,6 +163,8 @@ const en: Texts = {
   contactVerified: '✅ <b>Phone number verified</b>',
   contactLogin: '🔓 Open profile (Mini App)',
   mainMenu: 'Main menu:',
+  adminTitle: '👨‍💼 CONTACT ADMIN',
+  adminBody: 'For deal, payment or dispute questions message our admin directly: {admin}\n\n⚠️ Never share your login or password. The admin never asks for them.',
 };
 
 const dictionary: Record<BotLang, Texts> = { uz, ru, en };

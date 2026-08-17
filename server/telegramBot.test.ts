@@ -66,8 +66,8 @@ describe('Telegram Bot Server Helper Tests', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/sendChatAction');
     expect(fetchMock.mock.calls[1]?.[0]).toContain('/sendMessage');
     const menuBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
-    expect(menuBody.reply_markup.keyboard).toHaveLength(6);
-    expect(menuBody.reply_markup.keyboard[5][0].request_contact).toBe(true);
+    expect(menuBody.reply_markup.keyboard).toHaveLength(7);
+    expect(menuBody.reply_markup.keyboard[6][0].request_contact).toBe(true);
 
   });
 
@@ -157,8 +157,8 @@ describe('Telegram Bot Server Helper Tests', () => {
     const sendBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
     expect(sendBody.reply_markup.inline_keyboard[0][0].web_app.url).toContain('/profile');
     const menuBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
-    expect(menuBody.reply_markup.keyboard).toHaveLength(6);
-    expect(menuBody.reply_markup.keyboard[5][0].request_contact).toBe(true);
+    expect(menuBody.reply_markup.keyboard).toHaveLength(7);
+    expect(menuBody.reply_markup.keyboard[6][0].request_contact).toBe(true);
 
   });
 });

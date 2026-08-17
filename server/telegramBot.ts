@@ -7,6 +7,7 @@ import { botText, matchMenuKey, normalizeBotLang, type BotLang } from './botText
 import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
 import { storagePut } from './storage';
 import { eq } from 'drizzle-orm';
+import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL } from '../shared/adminContact';
 
 export type TelegramCommand = {
   command: string;
@@ -25,6 +26,7 @@ export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
   { command: "orders", description: "Buyurtmalarni ko‘rish", title: "Buyurtmalarim", text: "Escrow bosqichlari, to‘lov holati, topshirish tasdig‘i va nizo jarayonini shu bo‘limda kuzating.", path: "/orders" },
   { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "10 000 / 20 000 / 50 000 so‘mdan birini tanlang, kartaga o‘tkazing va chek rasmini yuboring. Admin tasdiqlagach balansingizga qo‘shiladi.", path: "/profile" },
   { command: "support", description: "Yordam markazi", title: "Yordam markazi", text: "Muammo bo‘lsa, buyurtma raqami va dalillar bilan ticket yuboring. Login yoki parolni hech qachon chatga yozmang.", path: "/support" },
+  { command: "contactadmin", description: "Admin bilan bog‘lanish", title: "Admin bilan aloqa", text: "Savdo, to‘lov yoki nizo bo‘yicha to‘g‘ridan-to‘g‘ri admin bilan bog‘laning.", path: "/support" },
   { command: "admin", description: "Admin nazorati", title: "Admin nazorati", text: "E’lonlar, escrow, nizolar va support navbatini tartibli ravishda boshqaring.", path: "/admin", adminOnly: true },
 ];
 
@@ -127,6 +129,10 @@ function webAppButton(text: string, path: string) {
   return url ? { text, web_app: { url } } : { text };
 }
 
+function adminContactButton(lang: BotLang = 'uz') {
+  return { text: botText(lang).menuAdmin, url: ADMIN_TELEGRAM_URL };
+}
+
 const chatLanguages = new Map<string, BotLang>();
 
 export function getChatLanguage(chatId: number | string, fallback?: string) {
@@ -145,7 +151,8 @@ function buildMainKeyboard(lang: BotLang = 'uz') {
       [webAppButton(texts.menuOrders, "/orders"), webAppButton(texts.menuProfile, "/profile")],
       [webAppButton(texts.menuListings, "/profile"), { text: texts.menuWallet }],
       [{ text: texts.menuReferral }, { text: texts.menuRules }],
-      [{ text: texts.menuSupport }, { text: texts.menuLanguage }],
+      [{ text: texts.menuSupport }, { text: texts.menuAdmin }],
+      [{ text: texts.menuLanguage }],
       [{ text: texts.menuContact, request_contact: true }],
     ],
     resize_keyboard: true,
@@ -188,6 +195,7 @@ async function sendWelcome(chatId: number | string, lang: BotLang, name: string)
           { text: texts.menuWallet, callback_data: 'wallet_menu' },
           { text: texts.menuLanguage, callback_data: 'show_language' },
         ],
+        [adminContactButton(lang)],
       ],
     },
   });
@@ -200,9 +208,12 @@ async function sendRules(chatId: number | string, lang: BotLang) {
     text: `<b>${texts.rulesTitle}</b>\n\n${texts.rulesBody}`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
-    reply_markup: getTelegramMiniAppUrl('/rules')
-      ? { inline_keyboard: [[{ text: texts.openApp, web_app: { url: getTelegramMiniAppUrl('/rules') as string } }]] }
-      : undefined,
+    reply_markup: {
+      inline_keyboard: [
+        ...(getTelegramMiniAppUrl('/rules') ? [[{ text: texts.openApp, web_app: { url: getTelegramMiniAppUrl('/rules') as string } }]] : []),
+        [adminContactButton(lang)],
+      ],
+    },
   });
 }
 
@@ -226,10 +237,15 @@ async function sendSupport(chatId: number | string, lang: BotLang) {
   const texts = botText(lang);
   return await telegramApiRequest('sendMessage', {
     chat_id: chatId,
-    text: `<b>${texts.supportTitle}</b>\n\n${texts.supportBody}`,
+    text: `<b>${texts.supportTitle}</b>\n\n${texts.supportBody}\n\n👨‍💼 Admin: ${ADMIN_TELEGRAM_LABEL}`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
-    reply_markup: buildInlineKeyboard('/support'),
+    reply_markup: {
+      inline_keyboard: [
+        ...(buildInlineKeyboard('/support')?.inline_keyboard ?? []),
+        [adminContactButton(lang)],
+      ],
+    },
   });
 }
 
@@ -661,6 +677,16 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   if (command === 'support' || menuKey === 'menuSupport') {
     const sent = await sendSupport(chatId, lang);
     return { handled: true as const, command: 'support', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'contactadmin' || menuKey === 'menuAdmin') {
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `<b>${texts.adminTitle}</b>\n\n${texts.adminBody.replace('{admin}', ADMIN_TELEGRAM_LABEL)}`,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[adminContactButton(lang)]] },
+    });
+    return { handled: true as const, command: 'contactadmin', status: sent.status, sent: sent.ok };
   }
   if (command === 'language' || menuKey === 'menuLanguage') {
     const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.languageTitle, reply_markup: languageKeyboard() });

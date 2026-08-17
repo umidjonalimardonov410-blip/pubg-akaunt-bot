@@ -20,7 +20,7 @@ describe('seller media flow', () => {
   it('rejects unsupported types, oversized files, and too many selections', () => {
     expect(validateSellerMediaFiles([{ type: 'application/pdf', size: 1024 }])).toContain('Faqat');
     expect(validateSellerMediaFiles([{ type: 'image/png', size: SELLER_MEDIA_MAX_BYTES + 1 }])).toContain('8 MB');
-    expect(validateSellerMediaFiles(Array.from({ length: SELLER_MEDIA_MAX_FILES + 1 }, () => ({ type: 'image/png', size: 1024 })))).toContain('8 ta');
+    expect(validateSellerMediaFiles(Array.from({ length: SELLER_MEDIA_MAX_FILES + 1 }, () => ({ type: 'image/png', size: 1024 })))).toContain(`${SELLER_MEDIA_MAX_FILES} ta`);
   });
 
   it('renders an accessible per-file upload progress state', () => {

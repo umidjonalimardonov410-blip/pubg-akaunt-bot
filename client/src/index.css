@@ -277,3 +277,37 @@ button, a, input, select, textarea {
   .inferno-ember,
   .inferno-tracer { animation: none; }
 }
+
+/* ===== PUBG gamer animatsiyalari (mobilga mos) ===== */
+@keyframes pubgFloat { 0%,100% { transform: translate3d(0,0,0) scale(1.02); } 50% { transform: translate3d(0,-10px,0) scale(1.06); } }
+@keyframes pubgLive { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes pubgShine { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
+@keyframes pubgRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+.pubg-parallax { animation: pubgFloat 14s ease-in-out infinite; will-change: transform; }
+.pubg-live { animation: pubgLive 1.8s ease-in-out infinite; }
+.pubg-rise { animation: pubgRise .45s ease-out both; }
+
+.pubg-press { transition: transform .12s ease, filter .2s ease; }
+.pubg-press:active { transform: scale(.95); }
+
+.pubg-card {
+  position: relative;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease;
+  transform-style: preserve-3d;
+}
+.pubg-card:hover, .pubg-card:active {
+  transform: translateY(-4px) rotateX(4deg) rotateY(-4deg);
+  box-shadow: 0 18px 40px -18px rgba(220,38,38,.65), 0 0 0 1px rgba(245,197,66,.35);
+}
+.pubg-card::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.14) 50%, transparent 60%);
+  transform: translateX(-120%); border-radius: inherit;
+}
+.pubg-card:hover::after { animation: pubgShine .9s ease forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pubg-parallax, .pubg-live, .pubg-rise, .pubg-card::after { animation: none !important; }
+  .pubg-card:hover { transform: none; }
+}

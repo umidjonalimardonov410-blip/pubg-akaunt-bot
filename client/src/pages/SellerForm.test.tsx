@@ -14,7 +14,7 @@ vi.mock('@/_core/hooks/useAuth', () => ({
 
 vi.mock('@/lib/trpc', () => ({
   trpc: {
-    media: { upload: { useMutation: () => ({ mutateAsync: state.upload, isPending: false }) } },
+    media: { upload: { useMutation: () => ({ mutateAsync: state.upload, isPending: false }) }, presignUpload: { useMutation: () => ({ mutateAsync: state.presign ?? (async () => ({ uploadUrl: 'https://upload.test/put', url: 'https://cdn.test/file.mp4' })), isPending: false }) } },
     accounts: { create: { useMutation: () => ({ mutateAsync: state.create, isPending: false }) } },
   },
 }));
@@ -50,7 +50,7 @@ describe('SellPage upload and submit flow', () => {
       target: { files: [new File(['bad'], 'notes.txt', { type: 'text/plain' })] },
     });
 
-    expect(screen.getByRole('alert').textContent).toContain('Faqat JPG, PNG, WEBP, MP4 yoki WEBM');
+    expect(screen.getByRole('alert').textContent).toContain('Faqat JPG, PNG, WEBP, MP4, MOV yoki W');
     expect(state.upload).not.toHaveBeenCalled();
   });
 
