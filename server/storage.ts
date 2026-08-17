@@ -71,6 +71,33 @@ export async function storagePut(
   return { key, url: `/manus-storage/${key}` };
 }
 
+/** Presigned PUT URL so the browser can upload large files (e.g. 200 MB video) directly to S3. */
+export async function storagePresignPut(
+  relKey: string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; uploadUrl: string; url: string }> {
+  const { forgeUrl, forgeKey } = getForgeConfig();
+  const key = appendHashSuffix(normalizeKey(relKey));
+
+  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
+  presignUrl.searchParams.set("path", key);
+  presignUrl.searchParams.set("content_type", contentType);
+
+  const presignResp = await fetch(presignUrl, {
+    headers: { Authorization: `Bearer ${forgeKey}` },
+  });
+
+  if (!presignResp.ok) {
+    const msg = await presignResp.text().catch(() => presignResp.statusText);
+    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
+  }
+
+  const { url: uploadUrl } = (await presignResp.json()) as { url: string };
+  if (!uploadUrl) throw new Error("Forge returned empty presign URL");
+
+  return { key, uploadUrl, url: `/manus-storage/${key}` };
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: `/manus-storage/${key}` };

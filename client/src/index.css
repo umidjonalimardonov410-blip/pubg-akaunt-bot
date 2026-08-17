@@ -25,6 +25,10 @@
   --color-amber-500: oklch(0.762 0.148 82);
   --color-amber-600: oklch(0.652 0.128 74);
   --color-gold: oklch(0.834 0.152 88);
+  --color-blood-300: oklch(0.72 0.19 27);
+  --color-blood-400: oklch(0.637 0.237 25.33);
+  --color-blood-500: oklch(0.577 0.245 27.325);
+  --color-blood-600: oklch(0.505 0.213 27.5);
   --color-emerald-300: oklch(0.845 0.143 164.978);
   --color-emerald-400: oklch(0.765 0.177 163.223);
   --color-white: oklch(1 0 0);

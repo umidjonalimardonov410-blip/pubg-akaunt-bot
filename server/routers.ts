@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
 import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
 import { eq, and, gte, desc, sql, or, isNull } from "drizzle-orm";
-import { storagePut } from "./storage";
+import { storagePut, storagePresignPut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
@@ -238,6 +238,18 @@ export const appRouter = router({
         }
         const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
         return await storagePut(`users/${ctx.user.id}/accounts/${safeName}`, bytes, input.contentType);
+      }),
+
+    // Large media (video up to 200 MB): browser PUTs straight to S3 with a presigned URL.
+    presignUpload: protectedProcedure
+      .input(z.object({
+        fileName: z.string().min(1).max(180),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"]),
+        size: z.number().int().positive().max(200 * 1024 * 1024),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+        return await storagePresignPut(`users/${ctx.user.id}/accounts/${safeName}`, input.contentType);
       }),
   }),
 
