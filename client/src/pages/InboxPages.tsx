@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight, Bell, CheckCheck, MessageCircle, Shield } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BellRing, CheckCheck, Gavel, MessageCircle, Shield, Timer, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
 import { telegramHaptic } from '@/lib/telegram';
@@ -82,6 +82,48 @@ export function ChatInboxPage({ onNavigate }: { onNavigate: (path: string) => vo
   );
 }
 
+
+const uzMoney = (value: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(value))} so‘m`;
+
+const NOTIFICATION_STYLES: Record<string, { icon: React.ReactNode; tone: string; label: string }> = {
+  price_drop: { icon: <TrendingDown className="h-4 w-4" />, tone: 'bg-emerald-400/15 text-emerald-300', label: 'Narx tushdi' },
+  auction_ending: { icon: <Gavel className="h-4 w-4" />, tone: 'bg-red-400/15 text-red-300', label: 'Auksion' },
+  dispute_update: { icon: <Shield className="h-4 w-4" />, tone: 'bg-sky-400/15 text-sky-300', label: 'Nizo' },
+};
+
+/** Live countdown label for auctions, recomputed every second on the client. */
+export function useCountdown(endsAt: string | Date | null) {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  if (!endsAt) return { label: '—', ended: true, totalMs: 0 };
+  const totalMs = new Date(endsAt).getTime() - now;
+  if (totalMs <= 0) return { label: 'Yakunlandi', ended: true, totalMs: 0 };
+  const seconds = Math.floor(totalMs / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  const label = days > 0 ? `${days}k ${hours}s` : hours > 0 ? `${hours}s ${minutes}d` : `${minutes}d ${rest}s`;
+  return { label, ended: false, totalMs };
+}
+
+function AuctionCountdownRow({ auction, onNavigate }: { auction: any; onNavigate: (path: string) => void }) {
+  const countdown = useCountdown(auction.endsAt);
+  return (
+    <button type="button" onClick={() => onNavigate(`/account/${auction.accountId}`)} className="flex w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-black/20 p-3 text-left transition hover:border-amber-300/40">
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${countdown.totalMs < 3600_000 ? 'bg-red-400/15 text-red-300' : 'bg-amber-400/15 text-amber-200'}`}><Timer className="h-4 w-4" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-black text-white">{auction.playerName}</span>
+        <span className="mt-0.5 block text-[11px] text-white/45">Joriy taklif: {uzMoney(auction.currentBid)}</span>
+      </span>
+      <span className={`shrink-0 font-display text-sm font-black ${countdown.ended ? 'text-white/35' : countdown.totalMs < 3600_000 ? 'text-red-300' : 'text-amber-200'}`}>{countdown.label}</span>
+    </button>
+  );
+}
+
 export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
@@ -89,6 +131,11 @@ export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) =
   const markAsRead = trpc.notifications.markAsRead.useMutation({
     onSuccess: () => { utils.notifications.getAll.invalidate(); utils.notifications.getUnread.invalidate(); },
   });
+  const watchlistQuery = trpc.expansion.alerts.watchlist.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
+  const auctionsQuery = trpc.expansion.auctions.active.useQuery(undefined, { staleTime: 15_000, refetchInterval: 30_000 });
+  const alertsQuery = trpc.expansion.alerts.summary.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
+  const updatePrefs = trpc.expansion.alerts.updatePreferences.useMutation({ onSuccess: () => { alertsQuery.refetch(); } });
+  const unwatch = trpc.expansion.alerts.unwatch.useMutation({ onSuccess: () => { watchlistQuery.refetch(); } });
   if (!isAuthenticated) {
     return <LoginWall icon={<Bell className="h-6 w-6" />} title="Bildirishnomalar" text="Bitim, to‘lov va chat yangiliklarini ko‘rish uchun tizimga kiring." onNavigate={onNavigate} />;
   }
@@ -133,10 +180,11 @@ export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) =
                 className={`pubg-rise flex w-full items-start gap-3 px-4 py-4 text-left transition hover:bg-amber-400/[0.06] ${item.isRead ? '' : 'bg-amber-400/[0.04]'}`}
                 style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
               >
-                <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.isRead ? 'bg-white/[0.05] text-white/45' : 'bg-amber-400/15 text-amber-200'}`}><Bell className="h-4 w-4" /></span>
+                <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${NOTIFICATION_STYLES[item.type]?.tone ?? (item.isRead ? 'bg-white/[0.05] text-white/45' : 'bg-amber-400/15 text-amber-200')}`}>{NOTIFICATION_STYLES[item.type]?.icon ?? <Bell className="h-4 w-4" />}</span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate text-sm font-black text-white">{item.title}</span>
+                    {NOTIFICATION_STYLES[item.type] && <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white/55">{NOTIFICATION_STYLES[item.type].label}</span>}
                     {!item.isRead && <span className="pubg-live h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />}
                   </span>
                   <span className="mt-1 block text-[11px] leading-5 text-white/45">{item.message}</span>
@@ -147,6 +195,73 @@ export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) =
           </div>
         )}
       </section>
+
+      <section className="rounded-3xl border border-amber-400/20 bg-[#0e1013] p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-200"><BellRing className="h-5 w-5" /></span>
+          <div>
+            <h2 className="font-display text-lg font-black text-white">Bildirishnoma sozlamalari</h2>
+            <p className="mt-1 text-xs text-white/40">Telegram push va narx tushishi haqidagi ogohlantirishlar.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {([['telegramAlerts', 'Telegram push'], ['priceDropAlerts', 'Narx tushishi ogohlantirishi']] as const).map(([key, label]) => {
+            const prefs = alertsQuery.data?.prefs ?? { telegramAlerts: true, priceDropAlerts: true };
+            const enabled = Boolean((prefs as any)[key]);
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={updatePrefs.isPending}
+                onClick={() => { telegramHaptic('success'); updatePrefs.mutate({ ...prefs, [key]: !enabled } as any); }}
+                className={`flex min-h-12 items-center justify-between rounded-xl border px-4 text-xs font-black transition ${enabled ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-white/[0.03] text-white/50'}`}
+              >
+                {label}
+                <span className={`ml-3 h-5 w-9 rounded-full p-0.5 transition ${enabled ? 'bg-emerald-400/70' : 'bg-white/15'}`}><span className={`block h-4 w-4 rounded-full bg-white transition ${enabled ? 'translate-x-4' : ''}`} /></span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {(watchlistQuery.data?.length ?? 0) > 0 && (
+        <section className="rounded-3xl border border-emerald-400/20 bg-[#0e1013] p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300"><TrendingDown className="h-5 w-5" /></span>
+            <div>
+              <h2 className="font-display text-lg font-black text-white">Narx kuzatuvi</h2>
+              <p className="mt-1 text-xs text-white/40">Belgilangan narxga tushganda darhol xabar olasiz.</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {watchlistQuery.data?.map((watch: any) => (
+              <div key={watch.id} className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                <button type="button" onClick={() => onNavigate(`/account/${watch.accountId}`)} className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-sm font-black text-white">{watch.playerName}</span>
+                  <span className="mt-0.5 block text-[11px] text-white/45">Joriy: {uzMoney(watch.currentPrice)}{watch.targetPrice ? ` · Maqsad: ${uzMoney(watch.targetPrice)}` : ''}</span>
+                </button>
+                {watch.reached && <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] font-black text-emerald-300">Maqsadga yetdi</span>}
+                <button type="button" onClick={() => unwatch.mutate({ accountId: watch.accountId })} className="shrink-0 rounded-lg border border-white/10 px-2 py-1 text-[10px] font-black text-white/45 transition hover:text-white">O‘chirish</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(auctionsQuery.data?.length ?? 0) > 0 && (
+        <section className="rounded-3xl border border-red-400/20 bg-[#0e1013] p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-red-400/10 text-red-300"><Gavel className="h-5 w-5" /></span>
+            <div>
+              <h2 className="font-display text-lg font-black text-white">Auksion sanoq</h2>
+              <p className="mt-1 text-xs text-white/40">Tugashiga oz qolgan auksionlarni kuzating.</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {auctionsQuery.data?.map((auction: any) => <AuctionCountdownRow key={auction.id} auction={auction} onNavigate={onNavigate} />)}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

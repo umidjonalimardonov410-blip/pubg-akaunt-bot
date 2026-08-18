@@ -115,6 +115,9 @@ export async function searchPubgAccounts(filters: {
   verifiedSeller?: boolean;
   mediaAvailable?: boolean;
   category?: 'all' | 'pro' | 'conqueror' | 'classic';
+  minKd?: number;
+  minWinRate?: number;
+  sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'level_desc' | 'popular';
   limit?: number;
   offset?: number;
 }) {
@@ -172,14 +175,39 @@ export async function searchPubgAccounts(filters: {
       if (!selectedSkins.every(skin => inventory.some(item => item.includes(skin)))) return false;
     }
     if (filters.mediaAvailable && !((row.galleryUrls?.length ?? 0) > 0 || Boolean(row.videoUrl))) return false;
+    if (filters.minKd !== undefined && Number(row.kdRatio ?? 0) < filters.minKd) return false;
+    if (filters.minWinRate !== undefined && Number(row.winRate ?? 0) < filters.minWinRate) return false;
     if (filters.category && filters.category !== 'all') {
       if (derivedPubgAccountCategory(row) !== filters.category) return false;
     }
     return true;
   });
+  const sorted = sortPubgAccountRows(filteredRows, filters.sortBy);
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 20;
-  return filteredRows.slice(offset, offset + limit);
+  return sorted.slice(offset, offset + limit);
+}
+
+/** Marketplace sorting used by the advanced search filters. */
+export function sortPubgAccountRows<T extends { price: unknown; level?: number | null; viewCount?: number | null; createdAt?: Date | string | null }>(
+  rows: T[],
+  sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'level_desc' | 'popular',
+): T[] {
+  const copy = [...rows];
+  const time = (value: Date | string | null | undefined) => (value ? new Date(value).getTime() : 0);
+  switch (sortBy) {
+    case 'price_asc':
+      return copy.sort((a, b) => Number(a.price) - Number(b.price));
+    case 'price_desc':
+      return copy.sort((a, b) => Number(b.price) - Number(a.price));
+    case 'level_desc':
+      return copy.sort((a, b) => Number(b.level ?? 0) - Number(a.level ?? 0));
+    case 'popular':
+      return copy.sort((a, b) => Number(b.viewCount ?? 0) - Number(a.viewCount ?? 0));
+    case 'newest':
+    default:
+      return copy.sort((a, b) => time(b.createdAt) - time(a.createdAt));
+  }
 }
 
 export async function getPubgAccountById(id: number) {

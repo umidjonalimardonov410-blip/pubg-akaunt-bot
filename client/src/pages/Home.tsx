@@ -49,6 +49,8 @@ import { trpc } from "@/lib/trpc";
 import { accountShareUrl, authenticateTelegramWebApp, getTelegramPhoneLoginUrl, autoClaimTelegramReferral, getTelegramMiniAppLaunchUrl, getTelegramReferralCode, getTelegramWebApp, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
 import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
 import { AdminPanelPage, FulfillmentTracker, SupportFaqPage } from "@/pages/MarketplaceExtras";
+import { AdminAnalyticsPanel } from "@/pages/AdminAnalytics";
+import { PriceWatchButton, SellerLeaderboard, SellerTrustCard } from "@/pages/SellerTrust";
 import AdminPhrasesPanel from "@/components/AdminPhrasesPanel";
 import ThemePicker from "@/components/ThemePicker";
 import { compressImage, validateMediaFile } from "@/lib/mediaCompression";
@@ -100,6 +102,8 @@ type Listing = {
   galleryUrls?: string[];
   videoUrl?: string;
   accountId?: string;
+  sellerId?: number;
+  verifiedSeller?: boolean;
 };
 
 export function marketplaceLayoutClass(view: 'grid' | 'list', isSwitching: boolean) {
@@ -128,6 +132,8 @@ function normalizeAccount(row: any): Listing {
     galleryUrls,
     videoUrl: row.videoUrl ?? undefined,
     accountId: row.accountId ?? undefined,
+    sellerId: row.sellerId ? Number(row.sellerId) : undefined,
+    verifiedSeller: Boolean(row.sellerVerified ?? row.isVerifiedSeller),
   };
 }
 
@@ -352,6 +358,7 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
           <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-[2px] text-[9px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
+          {item.verifiedSeller && <span className="absolute left-1.5 top-7 inline-flex items-center gap-1 rounded bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-black leading-none text-black shadow"><BadgeCheck className="h-3 w-3" />ISHONCHLI</span>}
           <div className="absolute right-1.5 top-1.5 z-10" onClick={event => event.stopPropagation()}><FavoriteButton accountId={item.id} compact /></div>
           <div className="absolute inset-x-2 bottom-1.5">
             <p className="truncate text-xs font-black text-white drop-shadow">{item.playerName}</p>
@@ -389,49 +396,84 @@ type AccountFilters = {
   verifiedSeller?: boolean;
   mediaAvailable?: boolean;
   category?: 'all' | 'pro' | 'conqueror' | 'classic';
+  minKd?: number;
+  minWinRate?: number;
+  sortBy?: SortMode;
 };
+
+export type SortMode = 'newest' | 'price_asc' | 'price_desc' | 'level_desc' | 'popular';
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'newest', label: 'Eng yangi' },
+  { value: 'price_asc', label: 'Narx: arzondan' },
+  { value: 'price_desc', label: 'Narx: qimmatdan' },
+  { value: 'level_desc', label: 'Daraja bo‘yicha' },
+  { value: 'popular', label: 'Ommabop' },
+];
+
+type SearchDraft = {
+  search: string;
+  minPrice: string;
+  maxPrice: string;
+  minLevel: string;
+  maxLevel: string;
+  region: string;
+  category: 'all' | 'pro' | 'conqueror' | 'classic';
+  skins: string[];
+  minKd: string;
+  minWinRate: string;
+  sortBy: SortMode;
+};
+
+/** Single source of truth for turning the search form state into API filters. */
+export function buildAccountFilters(draft: SearchDraft, advanced: string[]): AccountFilters {
+  return {
+    search: draft.search.trim() || undefined,
+    minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
+    maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined,
+    minLevel: draft.minLevel ? Number(draft.minLevel) : undefined,
+    maxLevel: draft.maxLevel ? Number(draft.maxLevel) : undefined,
+    region: draft.region || undefined,
+    skins: draft.skins.length ? draft.skins : undefined,
+    hasGlacier: advanced.includes('glacier') || undefined,
+    hasXSuit: advanced.includes('xsuit') || undefined,
+    hasConquerorHistory: advanced.includes('conqueror') || undefined,
+    isOldAccount: advanced.includes('old') || undefined,
+    verifiedSeller: advanced.includes('verified') || undefined,
+    mediaAvailable: advanced.includes('media') || undefined,
+    category: draft.category === 'all' ? undefined : draft.category,
+    minKd: draft.minKd ? Number(draft.minKd) : undefined,
+    minWinRate: draft.minWinRate ? Number(draft.minWinRate) : undefined,
+    sortBy: draft.sortBy === 'newest' ? undefined : draft.sortBy,
+  };
+}
 
 export function SearchPanel({ onFilters }: { onFilters: (filters: AccountFilters) => void }) {
   const [showFilters, setShowFilters] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [advanced, setAdvanced] = useState<string[]>([]);
-  const [draft, setDraft] = useState({ search: "", minPrice: "", maxPrice: "", minLevel: "", maxLevel: "", region: "", category: "all" as 'all' | 'pro' | 'conqueror' | 'classic', skins: [] as string[] });
+  const [draft, setDraft] = useState<SearchDraft>({ search: "", minPrice: "", maxPrice: "", minLevel: "", maxLevel: "", region: "", category: "all", skins: [], minKd: "", minWinRate: "", sortBy: "newest" });
   const suggestionInput = useMemo(() => ({ query: draft.search }), [draft.search]);
   const suggestionQuery = trpc.accounts.suggestions.useQuery(suggestionInput, {
     enabled: draft.search.trim().length >= 2,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
-  const update = (key: keyof typeof draft, value: string) => {
-    const next = { ...draft, [key]: value };
-    setDraft(next as typeof draft);
-    onFilters({
-      search: next.search || undefined,
-      minPrice: next.minPrice ? Number(next.minPrice) : undefined,
-      maxPrice: next.maxPrice ? Number(next.maxPrice) : undefined,
-      minLevel: next.minLevel ? Number(next.minLevel) : undefined,
-      maxLevel: next.maxLevel ? Number(next.maxLevel) : undefined,
-      region: next.region || undefined,
-      skins: next.skins.length ? next.skins : undefined,
-      hasGlacier: advanced.includes('glacier') || undefined,
-      hasXSuit: advanced.includes('xsuit') || undefined,
-      hasConquerorHistory: advanced.includes('conqueror') || undefined,
-      isOldAccount: advanced.includes('old') || undefined,
-      verifiedSeller: advanced.includes('verified') || undefined,
-      mediaAvailable: advanced.includes('media') || undefined,
-      category: next.category === 'all' ? undefined : next.category,
-    });
+  const update = (key: keyof SearchDraft, value: string) => {
+    const next = { ...draft, [key]: value } as SearchDraft;
+    setDraft(next);
+    onFilters(buildAccountFilters(next, advanced));
   };
   const toggleSkin = (skin: string) => {
     const skins = draft.skins.includes(skin) ? draft.skins.filter(item => item !== skin) : [...draft.skins, skin];
     const next = { ...draft, skins };
     setDraft(next);
-    onFilters({ search: next.search || undefined, minPrice: next.minPrice ? Number(next.minPrice) : undefined, maxPrice: next.maxPrice ? Number(next.maxPrice) : undefined, minLevel: next.minLevel ? Number(next.minLevel) : undefined, maxLevel: next.maxLevel ? Number(next.maxLevel) : undefined, region: next.region || undefined, skins: skins.length ? skins : undefined, hasGlacier: advanced.includes('glacier') || undefined, hasXSuit: advanced.includes('xsuit') || undefined, hasConquerorHistory: advanced.includes('conqueror') || undefined, isOldAccount: advanced.includes('old') || undefined, verifiedSeller: advanced.includes('verified') || undefined, mediaAvailable: advanced.includes('media') || undefined, category: next.category === 'all' ? undefined : next.category });
+    onFilters(buildAccountFilters(next, advanced));
   };
   const toggleAdvanced = (key: string) => {
     const nextAdvanced = advanced.includes(key) ? advanced.filter(item => item !== key) : [...advanced, key];
     setAdvanced(nextAdvanced);
-    onFilters({ search: draft.search || undefined, minPrice: draft.minPrice ? Number(draft.minPrice) : undefined, maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined, minLevel: draft.minLevel ? Number(draft.minLevel) : undefined, maxLevel: draft.maxLevel ? Number(draft.maxLevel) : undefined, region: draft.region || undefined, skins: draft.skins.length ? draft.skins : undefined, hasGlacier: nextAdvanced.includes('glacier') || undefined, hasXSuit: nextAdvanced.includes('xsuit') || undefined, hasConquerorHistory: nextAdvanced.includes('conqueror') || undefined, isOldAccount: nextAdvanced.includes('old') || undefined, verifiedSeller: nextAdvanced.includes('verified') || undefined, mediaAvailable: nextAdvanced.includes('media') || undefined, category: draft.category === 'all' ? undefined : draft.category });
+    onFilters(buildAccountFilters(draft, nextAdvanced));
   };
   const applySuggestion = (suggestion: { type: string; value: string }) => {
     if (suggestion.type === 'Skin') {
@@ -442,7 +484,7 @@ export function SearchPanel({ onFilters }: { onFilters: (filters: AccountFilters
     setShowSuggestions(false);
   };
   const suggestions = suggestionQuery.data ?? [];
-  const activeFilterCount = advanced.length + [draft.minPrice, draft.maxPrice, draft.minLevel, draft.maxLevel, draft.region].filter(Boolean).length + (draft.skins.length ? 1 : 0) + (draft.category !== 'all' ? 1 : 0);
+  const activeFilterCount = advanced.length + [draft.minPrice, draft.maxPrice, draft.minLevel, draft.maxLevel, draft.region, draft.minKd, draft.minWinRate].filter(Boolean).length + (draft.skins.length ? 1 : 0) + (draft.category !== 'all' ? 1 : 0);
   const filterContent = (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Field label="Minimal narx"><input type="number" value={draft.minPrice} onChange={event => update('minPrice', event.target.value)} className="field-input" placeholder="100000" /></Field>
@@ -451,6 +493,9 @@ export function SearchPanel({ onFilters }: { onFilters: (filters: AccountFilters
       <Field label="Maksimal daraja"><input type="number" value={draft.maxLevel} onChange={event => update('maxLevel', event.target.value)} className="field-input" placeholder="100" /></Field>
       <Field label="Mintaqa"><select value={draft.region} onChange={event => update('region', event.target.value)} className="field-input"><option value="">Barcha mintaqalar</option><option value="KRJP">KRJP</option><option value="EU">EU</option><option value="ME">ME</option><option value="SEA">SEA</option><option value="NA">NA</option></select></Field>
       <Field label="Toifa"><select value={draft.category} onChange={event => update('category', event.target.value)} className="field-input"><option value="all">Barcha toifalar</option><option value="pro">Pro / X-Suit</option><option value="conqueror">Conqueror tarixi</option><option value="classic">Classic / oddiy</option></select></Field>
+      <Field label="Minimal K/D"><input type="number" step="0.1" value={draft.minKd} onChange={event => update('minKd', event.target.value)} className="field-input" placeholder="3.5" /></Field>
+      <Field label="Minimal win rate (%)"><input type="number" step="1" value={draft.minWinRate} onChange={event => update('minWinRate', event.target.value)} className="field-input" placeholder="15" /></Field>
+      <Field label="Saralash"><select value={draft.sortBy} onChange={event => update('sortBy', event.target.value)} className="field-input">{SORT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
       <div className="sm:col-span-2 lg:col-span-3"><span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-white/35">Maxsus skinlar</span><div className="mobile-scroll-row gap-2 pb-1">{['M416 Glacier', 'X-Suit', 'Gun Lab', 'Mythic outfit'].map(skin => <Chip key={skin} label={skin} active={draft.skins.includes(skin)} onToggle={() => toggleSkin(skin)} />)}</div></div>
       <div className="sm:col-span-2 lg:col-span-4"><span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-white/35">Pro filtrlari</span><div className="mobile-scroll-row gap-2 pb-1">{[['glacier', 'Glacier bor'], ['xsuit', 'X-Suit bor'], ['conqueror', 'Conqueror tarixi'], ['old', 'Eski akkaunt'], ['verified', 'Verifikatsiyalangan sotuvchi'], ['media', 'Rasm/video mavjud']].map(([key, label]) => <Chip key={key} label={label} active={advanced.includes(key)} onToggle={() => toggleAdvanced(key)} />)}</div></div>
     </div>
@@ -528,6 +573,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
     <main className="space-y-5 pb-2">
       <Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} />
       <TrustStrip />
+      <SellerLeaderboard />
       <section>
         <SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasi" onAction={() => onNavigate('/accounts')} />
         {featuredQuery.isLoading ? (
@@ -622,7 +668,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
   const createOrder = trpc.orders.create.useMutation({ onSuccess: () => { setBuying(false); toast.success("Buyurtma yaratildi. Kafolatli savdo bosqichi boshlandi."); onNavigate('/orders'); }, onError: () => { setBuying(false); toast.info("Kirishdan so'ng buyurtma berish mumkin."); } });
   const openChat = trpc.chat.open.useMutation({ onSuccess: thread => { telegramHaptic('success'); onNavigate(`/chat/${thread?.id}`); }, onError: error => toast.error(error.message) });
   const handleBuy = () => { if (!buying) { setBuying(true); createOrder.mutate({ accountId: item.id }); } };
-  return <main className="space-y-4 px-1 sm:px-0"><button onClick={onBack} className="inline-flex items-center gap-2 text-xs font-bold text-white/45 transition hover:text-white"><ArrowLeft className="h-4 w-4" />Bozorga qaytish</button><div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]"><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3"><div className="relative overflow-hidden rounded-2xl bg-black"><button type="button" onClick={() => setGalleryOpen(true)} className="group block w-full text-left" aria-label="Galereyani katta ko‘rish"><img src={activeImage} alt={item.playerName} className="aspect-video w-full object-cover transition duration-300 group-active:scale-[.99]" /><span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/55 px-2.5 py-2 text-[10px] font-bold text-white/80 backdrop-blur"><Grid2X2 className="h-3.5 w-3.5 text-amber-200" />Katta ko‘rish</span></button>{showVideo && <div className="absolute inset-0 grid place-items-center bg-black/75 p-3">{item.videoUrl ? <video src={item.videoUrl} controls playsInline className="max-h-full w-full rounded-xl" /> : <div className="rounded-2xl border border-amber-400/40 bg-[#121417]/90 p-5 text-center backdrop-blur"><Play className="mx-auto h-7 w-7 text-amber-200" /><p className="mt-2 text-xs font-bold text-white">Video hali yuklanmagan</p><p className="mt-1 text-[11px] text-white/40">Sotuvchi video qo‘shsa, shu oynada ko‘rishingiz mumkin.</p></div>}</div>}<button onClick={() => setShowVideo(!showVideo)} className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-xs font-bold text-white backdrop-blur"><Play className="h-3.5 w-3.5 text-amber-200" />{item.videoUrl ? 'Videoni ko‘rish' : 'Video holati'}</button></div><div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((image, index) => <button key={`${image}-${index}`} onClick={() => { setActiveImage(image); setShowVideo(false); }} className={`min-h-16 overflow-hidden rounded-xl border ${activeImage === image ? 'border-amber-300' : 'border-white/10'}`}><img src={image} alt={`${item.playerName} galereyasi ${index + 1}`} className="aspect-square w-full object-cover" /></button>)}</div>{galleryOpen && <div role="dialog" aria-modal="true" aria-label="Akkaunt galereyasi" className="fixed inset-0 z-[70] flex flex-col bg-[#050608]/[.98] p-3 pt-[calc(.75rem+env(safe-area-inset-top))] pb-[calc(.75rem+env(safe-area-inset-bottom))]"><div className="flex items-center justify-between"><div><p className="text-sm font-black text-white">{item.playerName}</p><p className="mt-1 text-[10px] text-white/40">Rasm {Math.max(1, gallery.indexOf(activeImage) + 1)} / {gallery.length}</p></div><button type="button" onClick={() => setGalleryOpen(false)} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-white/75" aria-label="Galereyani yopish"><X className="h-5 w-5" /></button></div><div className="flex min-h-0 flex-1 items-center justify-center py-4"><img src={activeImage} alt={`${item.playerName} katta ko‘rinish`} className="max-h-full w-full rounded-2xl object-contain" /></div><div className="mobile-scroll-row gap-2 pb-1">{gallery.map((image, index) => <button type="button" key={`${image}-full-${index}`} onClick={() => setActiveImage(image)} className={`w-16 shrink-0 overflow-hidden rounded-xl border ${activeImage === image ? 'border-amber-300' : 'border-white/10'}`}><img src={image} alt={`Miniatura ${index + 1}`} className="aspect-square w-full object-cover" /></button>)}</div></div>}</section><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><StatusPill tone="green"><BadgeCheck className="h-3 w-3" />Admin ko'rigidan o'tadi</StatusPill><h1 className="mt-3 font-display text-2xl font-black text-white sm:text-3xl">{item.playerName}</h1><p className="mt-1 text-xs text-white/45">LVL {item.level} • {item.rank} • {item.region}</p></div><FavoriteButton accountId={item.id} /></div><p className="mt-4 text-xs leading-6 text-white/55 sm:text-sm">{item.description}</p><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-1 block text-base font-black text-white">{value}</span></div>)}</div><div className="mt-5"><h2 className="font-display text-xs font-black text-white uppercase tracking-wider">Inventar va skinlar</h2><div className="mt-2 flex flex-wrap gap-1.5">{item.skins.map(skin => <span key={skin} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold text-amber-50"><Sparkles className="h-3 w-3 text-amber-200" />{skin}</span>)}</div></div><div className="mt-6 border-t border-white/[0.08] pt-4"><div className="flex items-end justify-between gap-3"><div><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Sotuv narxi</span><span className="font-display text-xl font-black text-amber-200 sm:text-2xl">{uzNumber(item.price)} <span className="font-sans text-xs">so'm</span></span></div><span className="text-right text-[10px] text-white/35">To'lov kafolatda<br />saqlanadi</span></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><PrimaryButton onClick={handleBuy} className="w-full">{buying ? 'Buyurtma berilmoqda...' : 'Kafolatli sotib olish'} <LockKeyhole className="h-4 w-4" /></PrimaryButton><PrimaryButton variant="ghost" onClick={() => { const text = `${item.playerName} — ${uzNumber(item.price)} so‘m. Inferno Stealth’da ko‘ring.`; telegramHaptic('light'); shareTelegramText(text, accountShareUrl(item.id)); }} className="w-full"><Send className="h-4 w-4" />Ulashish</PrimaryButton></div><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton variant="soft" disabled={openChat.isPending} onClick={() => openChat.mutate({ accountId: item.id })} className="w-full"><MessageCircle className="h-4 w-4" />{openChat.isPending ? 'Chat...' : 'Sotuvchiga yozish'}</PrimaryButton><PrimaryButton variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="h-4 w-4" />Qaytish</PrimaryButton></div></div></section></div><TrustStrip /></main>;
+  return <main className="space-y-4 px-1 sm:px-0"><button onClick={onBack} className="inline-flex items-center gap-2 text-xs font-bold text-white/45 transition hover:text-white"><ArrowLeft className="h-4 w-4" />Bozorga qaytish</button><div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]"><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3"><div className="relative overflow-hidden rounded-2xl bg-black"><button type="button" onClick={() => setGalleryOpen(true)} className="group block w-full text-left" aria-label="Galereyani katta ko‘rish"><img src={activeImage} alt={item.playerName} className="aspect-video w-full object-cover transition duration-300 group-active:scale-[.99]" /><span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/55 px-2.5 py-2 text-[10px] font-bold text-white/80 backdrop-blur"><Grid2X2 className="h-3.5 w-3.5 text-amber-200" />Katta ko‘rish</span></button>{showVideo && <div className="absolute inset-0 grid place-items-center bg-black/75 p-3">{item.videoUrl ? <video src={item.videoUrl} controls playsInline className="max-h-full w-full rounded-xl" /> : <div className="rounded-2xl border border-amber-400/40 bg-[#121417]/90 p-5 text-center backdrop-blur"><Play className="mx-auto h-7 w-7 text-amber-200" /><p className="mt-2 text-xs font-bold text-white">Video hali yuklanmagan</p><p className="mt-1 text-[11px] text-white/40">Sotuvchi video qo‘shsa, shu oynada ko‘rishingiz mumkin.</p></div>}</div>}<button onClick={() => setShowVideo(!showVideo)} className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-xs font-bold text-white backdrop-blur"><Play className="h-3.5 w-3.5 text-amber-200" />{item.videoUrl ? 'Videoni ko‘rish' : 'Video holati'}</button></div><div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((image, index) => <button key={`${image}-${index}`} onClick={() => { setActiveImage(image); setShowVideo(false); }} className={`min-h-16 overflow-hidden rounded-xl border ${activeImage === image ? 'border-amber-300' : 'border-white/10'}`}><img src={image} alt={`${item.playerName} galereyasi ${index + 1}`} className="aspect-square w-full object-cover" /></button>)}</div>{galleryOpen && <div role="dialog" aria-modal="true" aria-label="Akkaunt galereyasi" className="fixed inset-0 z-[70] flex flex-col bg-[#050608]/[.98] p-3 pt-[calc(.75rem+env(safe-area-inset-top))] pb-[calc(.75rem+env(safe-area-inset-bottom))]"><div className="flex items-center justify-between"><div><p className="text-sm font-black text-white">{item.playerName}</p><p className="mt-1 text-[10px] text-white/40">Rasm {Math.max(1, gallery.indexOf(activeImage) + 1)} / {gallery.length}</p></div><button type="button" onClick={() => setGalleryOpen(false)} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-white/75" aria-label="Galereyani yopish"><X className="h-5 w-5" /></button></div><div className="flex min-h-0 flex-1 items-center justify-center py-4"><img src={activeImage} alt={`${item.playerName} katta ko‘rinish`} className="max-h-full w-full rounded-2xl object-contain" /></div><div className="mobile-scroll-row gap-2 pb-1">{gallery.map((image, index) => <button type="button" key={`${image}-full-${index}`} onClick={() => setActiveImage(image)} className={`w-16 shrink-0 overflow-hidden rounded-xl border ${activeImage === image ? 'border-amber-300' : 'border-white/10'}`}><img src={image} alt={`Miniatura ${index + 1}`} className="aspect-square w-full object-cover" /></button>)}</div></div>}</section><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><StatusPill tone="green"><BadgeCheck className="h-3 w-3" />Admin ko'rigidan o'tadi</StatusPill><h1 className="mt-3 font-display text-2xl font-black text-white sm:text-3xl">{item.playerName}</h1><p className="mt-1 text-xs text-white/45">LVL {item.level} • {item.rank} • {item.region}</p></div><FavoriteButton accountId={item.id} /></div><p className="mt-4 text-xs leading-6 text-white/55 sm:text-sm">{item.description}</p><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-1 block text-base font-black text-white">{value}</span></div>)}</div><div className="mt-5"><h2 className="font-display text-xs font-black text-white uppercase tracking-wider">Inventar va skinlar</h2><div className="mt-2 flex flex-wrap gap-1.5">{item.skins.map(skin => <span key={skin} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold text-amber-50"><Sparkles className="h-3 w-3 text-amber-200" />{skin}</span>)}</div></div><div className="mt-6 border-t border-white/[0.08] pt-4"><div className="flex items-end justify-between gap-3"><div><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Sotuv narxi</span><span className="font-display text-xl font-black text-amber-200 sm:text-2xl">{uzNumber(item.price)} <span className="font-sans text-xs">so'm</span></span></div><span className="text-right text-[10px] text-white/35">To'lov kafolatda<br />saqlanadi</span></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><PrimaryButton onClick={handleBuy} className="w-full">{buying ? 'Buyurtma berilmoqda...' : 'Kafolatli sotib olish'} <LockKeyhole className="h-4 w-4" /></PrimaryButton><PrimaryButton variant="ghost" onClick={() => { const text = `${item.playerName} — ${uzNumber(item.price)} so‘m. Inferno Stealth’da ko‘ring.`; telegramHaptic('light'); shareTelegramText(text, accountShareUrl(item.id)); }} className="w-full"><Send className="h-4 w-4" />Ulashish</PrimaryButton></div><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton variant="soft" disabled={openChat.isPending} onClick={() => openChat.mutate({ accountId: item.id })} className="w-full"><MessageCircle className="h-4 w-4" />{openChat.isPending ? 'Chat...' : 'Sotuvchiga yozish'}</PrimaryButton><PrimaryButton variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="h-4 w-4" />Qaytish</PrimaryButton></div><div className="mt-3"><PriceWatchButton accountId={item.id} currentPrice={item.price} /></div></div></section></div><SellerTrustCard sellerId={item.sellerId} /><TrustStrip /></main>;
 }
 
 export const SELLER_MEDIA_MAX_FILES = 12;
@@ -1339,6 +1385,6 @@ export default function Home() {
     }
     return () => webApp.BackButton?.offClick?.(goBack);
   }, [location, page.key, setLocation]);
-  const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <div className="space-y-6"><ProfilePage onNavigate={navigate} /><ThemePicker /></div> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : <ReferralPage />;
+  const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <div className="space-y-6"><ProfilePage onNavigate={navigate} /><ThemePicker /></div> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminAnalyticsPanel /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : <ReferralPage />;
   return <div className="min-h-screen bg-[#08090b] text-white"><AppHeader onNavigate={navigate} />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div>;
 }

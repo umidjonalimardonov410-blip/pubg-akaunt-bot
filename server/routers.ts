@@ -13,6 +13,8 @@ import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
 import { sendTelegramNotification, setChatLanguage } from "./telegramBot";
+import { notifyPriceDrop } from "./notificationService";
+import { buildDailySeries, buildStatusBreakdown, buildTopSellers } from "./analytics";
 
 function escapeTelegramHtml(value: string) {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
@@ -127,6 +129,9 @@ export const appRouter = router({
         verifiedSeller: z.boolean().optional(),
         mediaAvailable: z.boolean().optional(),
         category: z.enum(['all', 'pro', 'conqueror', 'classic']).optional(),
+        minKd: z.number().optional(),
+        minWinRate: z.number().optional(),
+        sortBy: z.enum(['newest', 'price_asc', 'price_desc', 'level_desc', 'popular']).optional(),
         limit: z.number().optional().default(20),
         offset: z.number().optional().default(0),
       }))
@@ -273,6 +278,9 @@ export const appRouter = router({
         if (Object.keys(updateData).length === 0) return { success: true };
         const ownershipCondition = ctx.user.role === 'admin' ? eq(pubgAccounts.id, input.id) : and(eq(pubgAccounts.id, input.id), eq(pubgAccounts.sellerId, ctx.user.id));
         await db.update(pubgAccounts).set(updateData).where(ownershipCondition);
+        if (input.price !== undefined && input.price < Number(account.price)) {
+          await notifyPriceDrop(input.id, Number(account.price), input.price).catch(() => undefined);
+        }
         return { success: true };
       }),
   }),
@@ -1336,6 +1344,37 @@ export const appRouter = router({
           pendingDeposits: pendingDepositRows.length,
           pendingPayouts: pendingPayoutRows.length,
           openDisputes: disputeRows.length,
+        };
+      }),
+
+    /** Time-series analytics for the admin dashboard charts. */
+    getAnalytics: protectedProcedure
+      .input(z.object({ days: z.number().int().min(7).max(60).optional().default(14) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const days = input?.days ?? 14;
+        const [orderRows, userRows, listingRows] = await Promise.all([
+          db.select().from(orders),
+          db.select().from(users),
+          db.select().from(pubgAccounts),
+        ]);
+        const series = buildDailySeries({ orders: orderRows, users: userRows, listings: listingRows }, days);
+        const completed = orderRows.filter(row => row.status === 'completed');
+        return {
+          days,
+          series,
+          orderStatus: buildStatusBreakdown(orderRows),
+          listingStatus: buildStatusBreakdown(listingRows),
+          topSellers: buildTopSellers(orderRows, userRows),
+          totals: {
+            revenue: completed.reduce((sum, row) => sum + Number(row.price), 0),
+            orders: orderRows.length,
+            completedOrders: completed.length,
+            conversionRate: orderRows.length ? Number(((completed.length / orderRows.length) * 100).toFixed(1)) : 0,
+            averageOrderValue: completed.length ? Math.round(completed.reduce((sum, row) => sum + Number(row.price), 0) / completed.length) : 0,
+          },
         };
       }),
   }),

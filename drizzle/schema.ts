@@ -192,7 +192,7 @@ export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   
-  type: mysqlEnum("type", ["new_listing", "order_status", "review_received", "dispute_alert", "admin_message"]).notNull(),
+  type: mysqlEnum("type", ["new_listing", "order_status", "review_received", "dispute_alert", "admin_message", "price_drop", "auction_ending", "dispute_update"]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   
@@ -244,6 +244,25 @@ export const favorites = mysqlTable("favorites", {
 
 export type Favorite = typeof favorites.$inferSelect;
 export type InsertFavorite = typeof favorites.$inferInsert;
+
+/**
+ * Price-drop watchlist: a buyer tracks an account and gets alerted when the
+ * seller lowers the price (optionally below a target price).
+ */
+export const priceWatches = mysqlTable("price_watches", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId").notNull(),
+  targetPrice: decimal("targetPrice", { precision: 12, scale: 2 }),
+  lastNotifiedPrice: decimal("lastNotifiedPrice", { precision: 12, scale: 2 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({
+  userAccountUnique: uniqueIndex("price_watches_user_account_unique").on(table.userId, table.accountId),
+}));
+
+export type PriceWatch = typeof priceWatches.$inferSelect;
+export type InsertPriceWatch = typeof priceWatches.$inferInsert;
 
 /**
  * Private buyer/seller thread attached to an account or order.

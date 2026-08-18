@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, getInsertId, getOrderById, getPubgAccountById, getUserById } from "./db";
-import { chatThreads, disputes, notifications, orders, pubgAccounts, referrals, reviews, transactions, users } from "../drizzle/schema";
+import { auctions, chatThreads, disputes, notifications, orders, priceWatches, pubgAccounts, referrals, reviews, transactions, users } from "../drizzle/schema";
+import { formatAuctionCountdown, parseAlertPreferences, pushNotification } from "./notificationService";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { getTelegramDeliveryStatus, sendTelegramNotification } from "./telegramNotifications";
@@ -46,7 +47,72 @@ export const expansionRouter = router({
           { label: "Real yakunlangan savdolar", value: completed.length > 0 },
           { label: "2FA himoyasi", value: Boolean(seller.twoFactorEnabled) },
         ],
+        recentReviews: sellerReviews
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5)
+          .map(row => ({ id: row.id, rating: Number(row.rating), comment: row.comment ?? "", createdAt: row.createdAt })),
       };
+    }),
+
+    /** Compact trust data for marketplace cards / listing details. */
+    summary: publicProcedure.input(z.object({ userIds: z.array(z.number().int().positive()).min(1).max(60) })).query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const ids = Array.from(new Set<number>(input.userIds));
+      const [sellerRows, reviewRows, orderRows] = await Promise.all([
+        db.select().from(users).where(inArray(users.id, ids)),
+        db.select().from(reviews).where(inArray(reviews.sellerId, ids)),
+        db.select().from(orders).where(inArray(orders.sellerId, ids)),
+      ]);
+      return sellerRows.map(seller => {
+        const sellerReviews = reviewRows.filter(row => row.sellerId === seller.id);
+        const completed = orderRows.filter(row => row.sellerId === seller.id && row.status === "completed");
+        const rating = sellerReviews.length
+          ? sellerReviews.reduce((sum, row) => sum + Number(row.rating), 0) / sellerReviews.length
+          : Number(seller.sellerRating ?? 0);
+        return {
+          userId: seller.id,
+          name: seller.name || "Inferno sotuvchisi",
+          verified: Boolean(seller.isVerifiedSeller),
+          badgeKey: seller.sellerBadge,
+          rating: Number(rating.toFixed(2)),
+          reviewCount: sellerReviews.length,
+          totalSales: completed.length,
+        };
+      });
+    }),
+
+    /** Public seller leaderboard: best rated, most completed sales. */
+    leaderboard: publicProcedure.input(z.object({ limit: z.number().int().min(3).max(25).optional().default(10) }).optional()).query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const limit = input?.limit ?? 10;
+      const [sellerRows, reviewRows, orderRows] = await Promise.all([
+        db.select().from(users),
+        db.select().from(reviews),
+        db.select().from(orders),
+      ]);
+      return sellerRows
+        .map(seller => {
+          const sellerReviews = reviewRows.filter(row => row.sellerId === seller.id);
+          const completed = orderRows.filter(row => row.sellerId === seller.id && row.status === "completed");
+          const rating = sellerReviews.length
+            ? sellerReviews.reduce((sum, row) => sum + Number(row.rating), 0) / sellerReviews.length
+            : Number(seller.sellerRating ?? 0);
+          return {
+            userId: seller.id,
+            name: seller.name || `Sotuvchi #${seller.id}`,
+            verified: Boolean(seller.isVerifiedSeller),
+            badgeKey: seller.sellerBadge,
+            rating: Number(rating.toFixed(2)),
+            reviewCount: sellerReviews.length,
+            totalSales: completed.length,
+            revenue: completed.reduce((sum, row) => sum + Number(row.price), 0),
+          };
+        })
+        .filter(seller => seller.totalSales > 0 || seller.reviewCount > 0)
+        .sort((a, b) => b.totalSales - a.totalSales || b.rating - a.rating)
+        .slice(0, limit);
     }),
   }),
 
@@ -147,22 +213,116 @@ export const expansionRouter = router({
       const unread = await db.select().from(notifications).where(and(eq(notifications.userId, ctx.user.id), eq(notifications.isRead, false))).orderBy(desc(notifications.createdAt));
       const referralRows = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id));
       const userRecord = await getUserById(ctx.user.id);
-      let prefs = { telegramAlerts: true, priceDropAlerts: true };
-      try {
-        if (userRecord && (userRecord as any).alertPreferences) {
-          prefs = JSON.parse((userRecord as any).alertPreferences);
-        }
-      } catch { /* fallback */ }
-      return { unreadCount: unread.length, unread: unread.slice(0, 5), referralCount: referralRows.length, referralReward: referralRows.reduce((sum, row) => sum + Number(row.rewardAmount), 0), telegramDelivery: getTelegramDeliveryStatus(), prefs };
+      const prefs = parseAlertPreferences((userRecord as any)?.alertPreferences);
+      const watchRows = await db.select().from(priceWatches).where(and(eq(priceWatches.userId, ctx.user.id), eq(priceWatches.isActive, true)));
+      return { unreadCount: unread.length, unread: unread.slice(0, 5), referralCount: referralRows.length, referralReward: referralRows.reduce((sum, row) => sum + Number(row.rewardAmount), 0), telegramDelivery: getTelegramDeliveryStatus(), prefs, watchCount: watchRows.length };
     }),
     updatePreferences: protectedProcedure.input(z.object({ telegramAlerts: z.boolean(), priceDropAlerts: z.boolean() })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(users).set({ alertPreferences: JSON.stringify(input) } as any).where(eq(users.id, ctx.user.id));
       if (input.telegramAlerts) {
-        await sendTelegramNotification({ chatId: String(ctx.user.id), text: "Inferno Stealth: Telegram bildirishnomalari muvaffaqiyatli yoqildi." }).catch(() => {});
+        const record = await getUserById(ctx.user.id);
+        const chatId = record?.openId?.startsWith("telegram:") ? record.openId.slice("telegram:".length) : null;
+        if (chatId) {
+          await sendTelegramNotification({ chatId, text: "Inferno Stealth: Telegram bildirishnomalari muvaffaqiyatli yoqildi." }).catch(() => {});
+        }
       }
       return { success: true };
+    }),
+
+    /** Price-drop watchlist: accounts the buyer wants to be alerted about. */
+    watchlist: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db.select().from(priceWatches).where(eq(priceWatches.userId, ctx.user.id)).orderBy(desc(priceWatches.createdAt));
+      if (!rows.length) return [];
+      const accountRows = await db.select().from(pubgAccounts).where(inArray(pubgAccounts.id, rows.map(row => row.accountId)));
+      return rows.map(row => {
+        const account = accountRows.find(item => item.id === row.accountId);
+        return {
+          id: row.id,
+          accountId: row.accountId,
+          targetPrice: row.targetPrice === null ? null : Number(row.targetPrice),
+          isActive: row.isActive,
+          playerName: account?.playerName ?? "Akkaunt",
+          currentPrice: account ? Number(account.price) : 0,
+          status: account?.status ?? "delisted",
+          thumbnailUrl: account?.thumbnailUrl ?? null,
+          reached: account && row.targetPrice !== null ? Number(account.price) <= Number(row.targetPrice) : false,
+        };
+      });
+    }),
+    watch: protectedProcedure.input(z.object({ accountId: z.number().int().positive(), targetPrice: z.number().int().min(0).optional() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const account = await getPubgAccountById(input.accountId);
+      if (!account) throw new TRPCError({ code: "NOT_FOUND", message: "Akkaunt topilmadi" });
+      if (account.sellerId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "O‘z e’loningizni kuzatib bo‘lmaydi" });
+      const target = input.targetPrice === undefined ? null : input.targetPrice.toString();
+      await db.insert(priceWatches)
+        .values({ userId: ctx.user.id, accountId: input.accountId, targetPrice: target, isActive: true })
+        .onDuplicateKeyUpdate({ set: { targetPrice: target, isActive: true } });
+      return { success: true };
+    }),
+    unwatch: protectedProcedure.input(z.object({ accountId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(priceWatches).where(and(eq(priceWatches.userId, ctx.user.id), eq(priceWatches.accountId, input.accountId)));
+      return { success: true };
+    }),
+  }),
+
+  auctions: router({
+    /** Active auctions with a live countdown for the notifications screen. */
+    active: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db.select().from(auctions).where(eq(auctions.status, "active")).orderBy(auctions.endsAt);
+      if (!rows.length) return [];
+      const accountRows = await db.select().from(pubgAccounts).where(inArray(pubgAccounts.id, rows.map(row => row.accountId)));
+      const now = new Date();
+      return rows.map(row => {
+        const account = accountRows.find(item => item.id === row.accountId);
+        const countdown = formatAuctionCountdown(new Date(row.endsAt), now);
+        return {
+          id: row.id,
+          accountId: row.accountId,
+          playerName: account?.playerName ?? "Akkaunt",
+          thumbnailUrl: account?.thumbnailUrl ?? null,
+          currentBid: Number(row.currentBid),
+          startingBid: Number(row.startingBid),
+          endsAt: row.endsAt,
+          endsInMs: countdown.totalMs,
+          countdownLabel: countdown.label,
+          ended: countdown.ended,
+        };
+      });
+    }),
+    /** Notifies watchers about auctions that end within the given window. */
+    notifyEnding: protectedProcedure.input(z.object({ withinMinutes: z.number().int().min(5).max(1440).optional().default(60) })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await db.select().from(auctions).where(eq(auctions.status, "active"));
+      const now = Date.now();
+      const window = input.withinMinutes * 60_000;
+      let notified = 0;
+      for (const row of rows) {
+        const endsIn = new Date(row.endsAt).getTime() - now;
+        if (endsIn <= 0 || endsIn > window) continue;
+        if (!row.highestBidderId) continue;
+        const countdown = formatAuctionCountdown(new Date(row.endsAt));
+        await pushNotification({
+          userId: row.highestBidderId,
+          type: "auction_ending",
+          title: "Auksion tugayapti",
+          message: `Auksion #${row.id} ${countdown.label} ichida yakunlanadi.`,
+          accountId: row.accountId,
+        });
+        notified += 1;
+      }
+      return { notified };
     }),
   }),
 
