@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { PHRASES } from "./phrases";
 import { useI18n, type Lang } from "./i18n";
+import { getPhraseOverride, getPhraseOverridesVersion, subscribePhraseOverrides } from "./phraseStore";
 
 const ORIGINAL = new WeakMap<Node, string>();
 const ORIGINAL_ATTR = new WeakMap<Element, Record<string, string>>();
@@ -14,9 +15,12 @@ function normalize(value: string) {
 for (const [key, value] of Object.entries(PHRASES)) NORMALIZED[normalize(key)] = value;
 
 export function translatePhrase(text: string, lang: Lang): string | null {
-  if (lang === "uz") return null;
   const trimmed = text.trim();
   if (trimmed.length < 2) return null;
+  // Admin panelda tahrirlangan tarjima har doim ustun turadi (UZ ham).
+  const override = getPhraseOverride(trimmed, lang);
+  if (override) return text.replace(trimmed, override);
+  if (lang === "uz") return null;
   const entry = PHRASES[trimmed] ?? NORMALIZED[normalize(trimmed)];
   if (!entry) return null;
   const translated = entry[lang];
@@ -28,7 +32,7 @@ function applyToTextNode(node: Text, lang: Lang) {
   const original = ORIGINAL.get(node) ?? node.nodeValue ?? "";
   if (!original.trim()) return;
   if (!ORIGINAL.has(node)) ORIGINAL.set(node, original);
-  const next = lang === "uz" ? original : (translatePhrase(original, lang) ?? original);
+  const next = translatePhrase(original, lang) ?? original;
   if (node.nodeValue !== next) node.nodeValue = next;
 }
 
@@ -44,7 +48,7 @@ function applyToElement(element: Element, lang: Lang) {
       ORIGINAL_ATTR.set(element, store);
     }
     const original = store[attribute];
-    const next = lang === "uz" ? original : (translatePhrase(original, lang) ?? original);
+    const next = translatePhrase(original, lang) ?? original;
     if (current !== next) element.setAttribute(attribute, next);
   }
 }
@@ -78,6 +82,7 @@ function walk(root: Node, lang: Lang) {
  */
 export function AutoTranslate() {
   const { lang } = useI18n();
+  const overridesVersion = useSyncExternalStore(subscribePhraseOverrides, getPhraseOverridesVersion, () => 0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -115,7 +120,7 @@ export function AutoTranslate() {
       observer.disconnect();
       cancelAnimationFrame(frame);
     };
-  }, [lang]);
+  }, [lang, overridesVersion]);
 
   return null;
 }

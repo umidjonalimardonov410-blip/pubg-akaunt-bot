@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
-import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits } from "../drizzle/schema";
+import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits, phraseOverrides } from "../drizzle/schema";
 import { eq, and, gte, desc, sql, or, isNull } from "drizzle-orm";
 import { storagePut, storagePresignPut } from "./storage";
 import { notifyOwner } from "./_core/notification";
@@ -49,6 +49,54 @@ export const appRouter = router({
   categories: categoriesRouter,
   mediaModeration: mediaModerationRouter,
   tracking: trackingRouter,
+
+  /**
+   * UI tarjimalari (UZ/RU/EN). `list` ochiq — mijoz uni polling bilan
+   * yangilab turadi, shuning uchun admin tahriri real vaqtda ko'rinadi.
+   */
+  phrases: router({
+    list: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db.select().from(phraseOverrides).orderBy(desc(phraseOverrides.updatedAt));
+      return rows.map(row => ({ key: row.phraseKey, uz: row.uz, ru: row.ru, en: row.en, updatedAt: row.updatedAt }));
+    }),
+    upsert: protectedProcedure
+      .input(z.object({
+        key: z.string().trim().min(1).max(255),
+        uz: z.string().trim().max(2000).optional(),
+        ru: z.string().trim().max(2000).optional(),
+        en: z.string().trim().max(2000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const values = {
+          phraseKey: input.key,
+          uz: input.uz || null,
+          ru: input.ru || null,
+          en: input.en || null,
+          updatedBy: ctx.user.id,
+        };
+        const existing = await db.select().from(phraseOverrides).where(eq(phraseOverrides.phraseKey, input.key)).limit(1);
+        if (existing.length > 0) {
+          await db.update(phraseOverrides).set({ uz: values.uz, ru: values.ru, en: values.en, updatedBy: ctx.user.id }).where(eq(phraseOverrides.phraseKey, input.key));
+        } else {
+          await db.insert(phraseOverrides).values(values);
+        }
+        return { success: true } as const;
+      }),
+    remove: protectedProcedure
+      .input(z.object({ key: z.string().trim().min(1).max(255) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.delete(phraseOverrides).where(eq(phraseOverrides.phraseKey, input.key));
+        return { success: true } as const;
+      }),
+  }),
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -766,7 +814,7 @@ export const appRouter = router({
       return { ...user, ...ratingStats };
     }),
     update: protectedProcedure
-      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), languageCode: z.enum(['uz','ru','en']).optional() }))
+      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), languageCode: z.enum(['uz','ru','en']).optional(), themePreference: z.enum(['dark','neon','gamer']).optional() }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
@@ -775,6 +823,7 @@ export const appRouter = router({
         if (input.profileBio !== undefined) patch.profileBio = input.profileBio.trim() || null;
         if (input.phone !== undefined) patch.phone = input.phone.trim() || null;
         if (input.languageCode !== undefined) patch.languageCode = input.languageCode;
+        if (input.themePreference !== undefined) patch.themePreference = input.themePreference;
         if (Object.keys(patch).length > 0) await db.update(users).set(patch).where(eq(users.id, ctx.user.id));
         if (input.languageCode) {
           const current = await getUserById(ctx.user.id);

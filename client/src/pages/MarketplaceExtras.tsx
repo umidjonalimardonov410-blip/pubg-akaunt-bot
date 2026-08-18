@@ -43,9 +43,9 @@ export function FulfillmentTracker({ status, note, canManage = false, orderId, o
           const current = index === activeIndex;
           const Icon = step.icon;
           return (
-            <div key={step.key} className={`rounded-xl border p-3 transition ${current ? 'border-amber-300/50 bg-amber-400/[0.08] shadow-[0_0_22px_rgba(245,197,66,.12)]' : done ? 'border-emerald-400/25 bg-emerald-400/[0.05]' : 'border-white/[0.07] bg-white/[0.02]'}`}>
+            <div key={step.key} style={{ animationDelay: `${index * 70}ms` }} className={`step-card rounded-xl border p-3 transition ${current ? 'border-amber-300/50 bg-amber-400/[0.08] shadow-[0_0_22px_rgba(245,197,66,.12)]' : done ? 'border-emerald-400/25 bg-emerald-400/[0.05]' : 'border-white/[0.07] bg-white/[0.02]'}`}>
               <div className="flex items-center gap-2">
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border ${current ? 'border-amber-300 bg-amber-400/20 text-amber-100 animate-pulse' : done ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-200' : 'border-white/10 text-white/30'}`}>
+                <span className={`step-dot grid h-8 w-8 shrink-0 place-items-center rounded-full border ${current ? 'step-dot-current border-amber-300 bg-amber-400/20 text-amber-100' : done ? 'step-dot-done border-emerald-400/50 bg-emerald-400/15 text-emerald-200' : 'border-white/10 text-white/30'}`}>
                   {done && !current ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </span>
                 <span className={`text-xs font-black ${done ? 'text-white/85' : 'text-white/35'}`}>{step.label}</span>

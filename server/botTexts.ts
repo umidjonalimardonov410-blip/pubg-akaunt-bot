@@ -1,8 +1,15 @@
 export type BotLang = 'uz' | 'ru' | 'en';
 
+/** Telegram `language_code` ni UZ/RU/EN ga moslaydi. Zaxira til — uz. */
+const RU_FAMILY = ['ru', 'be', 'kk', 'ky', 'tg', 'tk', 'uk', 'az', 'hy', 'ka', 'mo'];
+
 export function normalizeBotLang(value?: string | null): BotLang {
-  if (value === 'ru' || value?.startsWith('ru')) return 'ru';
-  if (value === 'en' || value?.startsWith('en')) return 'en';
+  if (!value) return 'uz';
+  const code = value.toLowerCase().replace('_', '-');
+  const base = code.split('-')[0];
+  if (base === 'uz') return 'uz';
+  if (RU_FAMILY.includes(base)) return 'ru';
+  if (base === 'en') return 'en';
   return 'uz';
 }
 

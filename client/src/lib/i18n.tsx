@@ -3,26 +3,80 @@ import { useSyncExternalStore } from "react";
 export type Lang = "uz" | "ru" | "en";
 
 const STORAGE_KEY = "inferno-lang";
+const EXPLICIT_KEY = "inferno-lang-explicit";
 const listeners = new Set<() => void>();
+
+const SUPPORTED: Lang[] = ["uz", "ru", "en"];
+
+/** Fallback zanjiri: tanlangan til topilmasa keyingi tilga o'tadi. */
+const FALLBACK_CHAIN: Record<Lang, Lang[]> = {
+  uz: ["uz", "ru", "en"],
+  ru: ["ru", "uz", "en"],
+  en: ["en", "uz", "ru"],
+};
+
+/**
+ * Telegram user tilini (language_code) UZ/RU/EN ga moslaydi.
+ * Masalan: uz-Latn -> uz, ru/be/kk/ky/tg/uk -> ru, boshqalar -> en.
+ */
+export function mapLanguageCode(raw?: string | null): Lang | null {
+  if (!raw) return null;
+  const code = raw.toLowerCase().replace("_", "-");
+  const base = code.split("-")[0];
+  if (base === "uz") return "uz";
+  if (["ru", "be", "kk", "ky", "tg", "tk", "uk", "az", "hy", "ka", "mo"].includes(base)) return "ru";
+  if (base === "en") return "en";
+  return null;
+}
+
+export function detectTelegramLang(): Lang | null {
+  if (typeof window === "undefined") return null;
+  const tgLang = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code as string | undefined;
+  return mapLanguageCode(tgLang);
+}
+
+function detectBrowserLang(): Lang | null {
+  if (typeof navigator === "undefined") return null;
+  for (const candidate of navigator.languages ?? [navigator.language]) {
+    const mapped = mapLanguageCode(candidate);
+    if (mapped) return mapped;
+  }
+  return null;
+}
 
 function readLang(): Lang {
   if (typeof window === "undefined") return "uz";
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "uz" || stored === "ru" || stored === "en") return stored;
-  const tgLang = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code as string | undefined;
-  if (tgLang?.startsWith("ru")) return "ru";
-  if (tgLang?.startsWith("en")) return "en";
-  return "uz";
+  if (stored && (SUPPORTED as string[]).includes(stored)) return stored as Lang;
+  // 1) Telegram user tili, 2) brauzer tili, 3) zaxira: uz
+  return detectTelegramLang() ?? detectBrowserLang() ?? "uz";
 }
 
 let current: Lang = readLang();
 
-export function setLang(next: Lang) {
+function isExplicit() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(EXPLICIT_KEY) === "1";
+}
+
+export function setLang(next: Lang, options?: { explicit?: boolean }) {
+  const explicit = options?.explicit ?? true;
   current = next;
   try {
     window.localStorage.setItem(STORAGE_KEY, next);
+    if (explicit) window.localStorage.setItem(EXPLICIT_KEY, "1");
   } catch {}
   listeners.forEach(listener => listener());
+}
+
+/**
+ * Profil/Telegram tomonidan kelgan tilni qo'llaydi, lekin foydalanuvchi
+ * qo'lda til tanlagan bo'lsa uni bosib ketmaydi.
+ */
+export function applyDetectedLang(raw?: string | null) {
+  const mapped = mapLanguageCode(raw) ?? detectTelegramLang();
+  if (!mapped || isExplicit() || mapped === current) return;
+  setLang(mapped, { explicit: false });
 }
 
 function subscribe(listener: () => void) {
@@ -185,10 +239,18 @@ const en: Dict = {
 const dictionaries: Record<Lang, Dict> = { uz, ru, en };
 
 export function translate(lang: Lang, key: string) {
-  return dictionaries[lang][key] ?? dictionaries.uz[key] ?? key;
+  for (const candidate of FALLBACK_CHAIN[lang]) {
+    const value = dictionaries[candidate][key];
+    if (value) return value;
+  }
+  return key;
 }
 
 export function useI18n() {
   const lang = useSyncExternalStore(subscribe, () => current, () => "uz" as Lang);
   return { lang, setLang, t: (key: string) => translate(lang, key) };
+}
+
+export function getLang() {
+  return current;
 }

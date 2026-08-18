@@ -25,6 +25,7 @@ export const users = mysqlTable("users", {
   profileBio: text("profileBio"),
   referralCode: varchar("referralCode", { length: 32 }),
   alertPreferences: text("alertPreferences"),
+  themePreference: mysqlEnum("themePreference", ["dark", "neon", "gamer"]).default("dark").notNull(),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -600,3 +601,19 @@ export const faqItems = mysqlTable("faq_items", {
 
 export type FaqItem = typeof faqItems.$inferSelect;
 export type InsertFaqItem = typeof faqItems.$inferInsert;
+
+/**
+ * Admin panelda tahrirlanadigan UI tarjimalari (UZ/RU/EN override).
+ */
+export const phraseOverrides = mysqlTable("phrase_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  phraseKey: varchar("phraseKey", { length: 255 }).notNull().unique(),
+  uz: text("uz"),
+  ru: text("ru"),
+  en: text("en"),
+  updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PhraseOverride = typeof phraseOverrides.$inferSelect;

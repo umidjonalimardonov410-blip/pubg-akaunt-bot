@@ -1,9 +1,18 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+export type AppTheme = "dark" | "neon" | "gamer";
+
+export const APP_THEMES: { id: AppTheme; label: string; hint: string; swatch: string }[] = [
+  { id: "dark", label: "Dark", hint: "Klassik qora + tilla", swatch: "linear-gradient(135deg,#0b0c0f,#f5c542)" },
+  { id: "neon", label: "Neon", hint: "Siyan/pushti neon nur", swatch: "linear-gradient(135deg,#08111a,#35d0ff,#ff3ea5)" },
+  { id: "gamer", label: "Gamer", hint: "Yashil-pushti gaming", swatch: "linear-gradient(135deg,#07100c,#39ff88,#b026ff)" },
+];
+
+const STORAGE_KEY = "inferno-theme";
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: AppTheme;
+  setTheme: (next: AppTheme) => void;
   toggleTheme?: () => void;
   switchable: boolean;
 }
@@ -12,46 +21,47 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
   children: React.ReactNode;
-  defaultTheme?: Theme;
+  defaultTheme?: AppTheme;
   switchable?: boolean;
 }
 
-export function ThemeProvider({
-  children,
-  defaultTheme = "light",
-  switchable = false,
-}: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
-    }
-    return defaultTheme;
-  });
+function readStoredTheme(fallback: AppTheme): AppTheme {
+  if (typeof window === "undefined") return fallback;
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  return stored === "dark" || stored === "neon" || stored === "gamer" ? stored : fallback;
+}
+
+export function ThemeProvider({ children, defaultTheme = "dark", switchable = true }: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<AppTheme>(() => (switchable ? readStoredTheme(defaultTheme) : defaultTheme));
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-
+    // Barcha temalar dark asosida ishlaydi.
+    root.classList.add("dark");
+    root.classList.remove("theme-dark", "theme-neon", "theme-gamer");
+    root.classList.add(`theme-${theme}`);
+    root.dataset.theme = theme;
     if (switchable) {
-      localStorage.setItem("theme", theme);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, theme);
+      } catch {}
     }
   }, [theme, switchable]);
 
+  const setTheme = useCallback(
+    (next: AppTheme) => {
+      if (!switchable) return;
+      setThemeState(next);
+    },
+    [switchable],
+  );
+
   const toggleTheme = switchable
-    ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-      }
+    ? () => setThemeState(prev => (prev === "dark" ? "neon" : prev === "neon" ? "gamer" : "dark"))
     : undefined;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, switchable }}>{children}</ThemeContext.Provider>
   );
 }
 

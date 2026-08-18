@@ -1,14 +1,17 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import { lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
 import GamerIntro from "./components/GamerIntro";
 import LanguageSync from "./components/LanguageSync";
+import PageSkeleton from "./components/PageSkeleton";
 import { AutoTranslate } from "./lib/autoTranslate";
 
+// Lazy-loading: og'ir sahifalar faqat kerak bo'lganda yuklanadi -> start tezroq.
+const Home = lazy(() => import("./pages/Home"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -40,23 +43,21 @@ function Router() {
 }
 
 // NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
+// - Temalar: dark (klassik), neon, gamer. Tanlov localStorage + profilga saqlanadi
+//   (ThemePicker komponenti profil sahifasida).
 
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="dark"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster />
           <GamerIntro />
           <AutoTranslate />
           <LanguageSync />
-          <Router />
+          <Suspense fallback={<PageSkeleton />}>
+            <Router />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
