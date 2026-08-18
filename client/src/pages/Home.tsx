@@ -13,6 +13,7 @@ import {
   ChevronRight,
   CircleHelp,
   Clock3,
+  Copy,
   CreditCard,
   Edit3,
   FileCheck2,
@@ -77,70 +78,20 @@ function AdminContactButton({ label = 'Admin bilan bog‘lanish', className = ''
   );
 }
 
-const demoListings = [
-  {
-    id: 1,
-    playerName: "Inferno Warrior",
-    level: 78,
-    rank: "Conqueror",
-    price: 1499000,
-    region: "KRJP",
-    kd: "5.32",
-    winRate: "62.7%",
-    matches: "1 892",
-    skins: ["M416 Glacier", "X-Suit", "Glacier Set"],
-    image: CARD_IMAGE,
-    tag: "FLASH SAVDO",
-    description: "Conqueror darajasi, kuchli inventar va tekshiruv uchun to'liq media to'plami mavjud.",
-  },
-  {
-    id: 2,
-    playerName: "Blood Raven",
-    level: 72,
-    rank: "Ace Master",
-    price: 899000,
-    region: "EU",
-    kd: "4.28",
-    winRate: "58.3%",
-    matches: "1 245",
-    skins: ["X-Suit", "M416 Glacier", "Mythic Set"],
-    image: SQUAD_IMAGE,
-    tag: "EPIC E'LON",
-    description: "Ace Master darajasidagi hisob. Sotuvchi tavsifi va media fayllari admin ko'rigidan o'tadi.",
-  },
-  {
-    id: 3,
-    playerName: "Crimson Ghost",
-    level: 65,
-    rank: "Crown I",
-    price: 479000,
-    region: "ME",
-    kd: "3.86",
-    winRate: "51.9%",
-    matches: "908",
-    skins: ["M416 Glacier", "Legendary Qurol", "Vehicle Skin"],
-    image: SNIPER_IMAGE,
-    tag: "YANGI",
-    description: "Yangi joylangan e'lon. Xarid qilishdan avval barcha maydonlarni tekshiring.",
-  },
-  {
-    id: 4,
-    playerName: "Redline Scout",
-    level: 59,
-    rank: "Diamond V",
-    price: 289000,
-    region: "SEA",
-    kd: "3.12",
-    winRate: "47.4%",
-    matches: "674",
-    skins: ["X-Suit", "Rare Outfit", "Gun Lab"],
-    image: PORTRAIT_IMAGE,
-    tag: "TEJAMKOR",
-    description: "Tejamkor segment uchun tayyor e'lon. Batafsil inventar ro'yxati sahifada ko'rsatiladi.",
-  },
-];
-
-type Listing = (typeof demoListings)[number] & {
+type Listing = {
+  id: number;
+  playerName: string;
+  level: number;
+  rank: string;
+  price: number;
+  region: string;
+  kd: string;
+  winRate: string;
+  matches: string;
+  skins: string[];
+  image: string;
+  tag: string;
+  description: string;
   galleryUrls?: string[];
   videoUrl?: string;
   accountId?: string;
@@ -148,7 +99,7 @@ type Listing = (typeof demoListings)[number] & {
 
 export function marketplaceLayoutClass(view: 'grid' | 'list', isSwitching: boolean) {
   const motion = isSwitching ? 'translate-y-1 opacity-0' : 'translate-y-0 opacity-100';
-  const layout = view === 'grid' ? 'grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4' : 'space-y-3';
+  const layout = view === 'grid' ? 'grid gap-1.5 grid-cols-4 sm:gap-2 lg:grid-cols-5 xl:grid-cols-6' : 'space-y-3';
   return `transform-gpu transition-[opacity,transform] duration-300 ease-out ${motion} ${layout}`;
 }
 
@@ -559,7 +510,9 @@ function PromoBanner() {
 }
 
 function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
-  return <main className="space-y-8"><Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} /><TrustStrip /><PromoBanner /><section><SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasini ko'rish" onAction={() => onNavigate('/accounts')} /><div className="grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">{demoListings.map(item => <ListingCard key={item.id} item={item} onOpen={id => onNavigate(`/account/${id}`)} />)}</div></section><section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-start gap-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400/10 text-amber-200"><Shield className="h-6 w-6" /></span><div><h3 className="font-display text-lg font-black text-white">Kafolatli savdo qanday ishlaydi?</h3><p className="mt-2 text-sm leading-6 text-white/45">Bitimning har bir bosqichi tushunarli ko'rsatiladi: to'lov muzlatiladi, akkaunt tekshiriladi va xaridor tasdiqlagandan keyin savdo yakunlanadi.</p></div></div><div className="mt-6 grid gap-3 sm:grid-cols-3">{[['01','To‘lov muzlatildi'],['02','Akkaunt tekshiruvi'],['03','Xaridor tasdig‘i']].map(([num,label],i) => <div key={num} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><span className="text-xs font-black text-amber-300">{num}</span><span className="mt-2 block text-xs font-bold text-white/70">{label}</span><span className="mt-1 block text-[10px] text-white/35">Admin nazoratida</span></div>)}</div><PrimaryButton variant="soft" className="mt-5" onClick={() => onNavigate('/orders')}>Jarayonni ko'rish <ArrowRight className="h-4 w-4" /></PrimaryButton></div><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-300/10 text-amber-200"><CircleHelp className="h-5 w-5" /></span><div><h3 className="font-display text-lg font-black text-white">Yordam kerakmi?</h3><p className="mt-1 text-sm text-white/45">Qoidalar va tez-tez so'raladigan savollar</p></div></div><div className="mt-5 space-y-2">{['Akkaunt qanday tekshiriladi?', 'Xarid paytida login/parol qayerda beriladi?', 'Muammo bo‘lsa kimga murojaat qilaman?'].map(q => <button key={q} onClick={() => onNavigate('/support')} className="flex w-full items-center justify-between rounded-xl border border-white/[0.07] px-3 py-3 text-left text-xs font-semibold text-white/65 transition hover:border-amber-400/30 hover:text-white"><span>{q}</span><ChevronRight className="h-4 w-4 text-white/30" /></button>)}</div></div></section></main>;
+  const featuredQuery = trpc.accounts.search.useQuery({ limit: 8, offset: 0 }, { staleTime: 20_000, refetchOnWindowFocus: false });
+  const featured = (featuredQuery.data ?? []).map(normalizeAccount);
+  return <main className="space-y-8"><Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} /><TrustStrip /><PromoBanner /><section><SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasini ko'rish" onAction={() => onNavigate('/accounts')} />{featuredQuery.isLoading ? <div className="grid grid-cols-4 gap-1.5 sm:gap-2">{[0,1,2,3].map(i => <div key={i} className="h-40 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />)}</div> : featured.length === 0 ? <div className="rounded-2xl border border-dashed border-amber-300/25 bg-[#0e1013] p-8 text-center"><Shield className="mx-auto h-8 w-8 text-amber-200" /><h3 className="mt-3 font-display text-lg font-black text-white">Bozor hozircha bo‘sh</h3><p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/40">Hech qanday namunaviy akkaunt ko‘rsatilmaydi — faqat haqiqiy sotuvchilar e’lonlari chiqadi.</p><PrimaryButton className="mt-4" onClick={() => onNavigate('/sell')}><Plus className="h-4 w-4" />Birinchi e’lonni joylash</PrimaryButton></div> : <div className="grid grid-cols-4 gap-1.5 sm:gap-2 xl:grid-cols-6">{featured.map(item => <ListingCard key={item.id} item={item} onOpen={id => onNavigate(`/account/${id}`)} />)}</div>}</section><section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-start gap-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400/10 text-amber-200"><Shield className="h-6 w-6" /></span><div><h3 className="font-display text-lg font-black text-white">Kafolatli savdo qanday ishlaydi?</h3><p className="mt-2 text-sm leading-6 text-white/45">Bitimning har bir bosqichi tushunarli ko'rsatiladi: to'lov muzlatiladi, akkaunt tekshiriladi va xaridor tasdiqlagandan keyin savdo yakunlanadi.</p></div></div><div className="mt-6 grid gap-3 sm:grid-cols-3">{[['01','To‘lov muzlatildi'],['02','Akkaunt tekshiruvi'],['03','Xaridor tasdig‘i']].map(([num,label],i) => <div key={num} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><span className="text-xs font-black text-amber-300">{num}</span><span className="mt-2 block text-xs font-bold text-white/70">{label}</span><span className="mt-1 block text-[10px] text-white/35">Admin nazoratida</span></div>)}</div><PrimaryButton variant="soft" className="mt-5" onClick={() => onNavigate('/orders')}>Jarayonni ko'rish <ArrowRight className="h-4 w-4" /></PrimaryButton></div><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-300/10 text-amber-200"><CircleHelp className="h-5 w-5" /></span><div><h3 className="font-display text-lg font-black text-white">Yordam kerakmi?</h3><p className="mt-1 text-sm text-white/45">Qoidalar va tez-tez so'raladigan savollar</p></div></div><div className="mt-5 space-y-2">{['Akkaunt qanday tekshiriladi?', 'Xarid paytida login/parol qayerda beriladi?', 'Muammo bo‘lsa kimga murojaat qilaman?'].map(q => <button key={q} onClick={() => onNavigate('/support')} className="flex w-full items-center justify-between rounded-xl border border-white/[0.07] px-3 py-3 text-left text-xs font-semibold text-white/65 transition hover:border-amber-400/30 hover:text-white"><span>{q}</span><ChevronRight className="h-4 w-4 text-white/30" /></button>)}</div></div></section></main>;
 }
 
 function SectionHeading({ eyebrow, title, actionLabel, onAction }: { eyebrow: string; title: string; actionLabel?: string; onAction?: () => void }) {
@@ -574,15 +527,7 @@ function AccountsPage({ onOpen }: { onOpen: (id: number) => void }) {
   const input = useMemo(() => ({ ...filters, limit: 40, offset: 0 }), [filters]);
   const accountsQuery = trpc.accounts.search.useQuery(input, { staleTime: 20_000, refetchOnWindowFocus: false });
   const remoteListings = (accountsQuery.data ?? []).map(normalizeAccount);
-  const fallback = useMemo(() => {
-    const query = (filters.search ?? '').toLowerCase();
-    return demoListings.filter(item => {
-      const matchesText = `${item.playerName} ${item.region} ${item.skins.join(' ')}`.toLowerCase().includes(query);
-      const matchesSkins = !filters.skins?.length || filters.skins.every(skin => item.skins.includes(skin));
-      return matchesText && (!filters.region || item.region === filters.region) && (!filters.minPrice || item.price >= filters.minPrice) && (!filters.maxPrice || item.price <= filters.maxPrice) && (!filters.minLevel || item.level >= filters.minLevel) && (!filters.maxLevel || item.level <= filters.maxLevel) && matchesSkins;
-    });
-  }, [filters]);
-  const listings = remoteListings.length ? remoteListings : fallback;
+  const listings = remoteListings;
   const changeView = (nextView: 'grid' | 'list') => {
     if (nextView === view || isSwitching) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
@@ -629,7 +574,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
   useEffect(() => {
     if (accountQuery.data?.id) recordView.mutate({ accountId: accountQuery.data.id });
   }, [accountQuery.data?.id]);
-  const item: Listing = accountQuery.data ? normalizeAccount(accountQuery.data) : (demoListings.find(listing => listing.id === id) ?? demoListings[0]) as Listing;
+  const item: Listing = accountQuery.data ? normalizeAccount(accountQuery.data) : ({ id, playerName: 'Akkaunt yuklanmoqda...', level: 0, rank: '—', price: 0, region: '—', kd: '0', winRate: '0%', matches: '0', skins: [], image: CARD_IMAGE, tag: 'YUKLANMOQDA', description: 'Ma’lumot yuklanmoqda yoki e’lon o‘chirilgan.' } as Listing);
   const gallery: string[] = item.galleryUrls?.length ? item.galleryUrls : [item.image, CARD_IMAGE, PORTRAIT_IMAGE, HERO_IMAGE];
   const [activeImage, setActiveImage] = useState(gallery[0] ?? item.image);
   const [showVideo, setShowVideo] = useState(false);
@@ -642,7 +587,8 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
 }
 
 export const SELLER_MEDIA_MAX_FILES = 12;
-export const SELLER_MEDIA_MAX_BYTES = 8 * 1024 * 1024;
+export const SELLER_MEDIA_MAX_BYTES = 200 * 1024 * 1024;
+export const SELLER_DIRECT_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
 export const SELLER_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 export const SELLER_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'] as const;
 
@@ -718,7 +664,7 @@ export function buildSellerAccountPayload(form: SellerFormState, uploaded: Array
 
 export function validateSellerMediaFiles(files: Array<Pick<File, 'type' | 'size'>>): string | null {
   if (files.length > SELLER_MEDIA_MAX_FILES) return `Ko‘pi bilan ${SELLER_MEDIA_MAX_FILES} ta rasm yoki video tanlash mumkin.`;
-  if (files.some(file => file.type.startsWith('image/') && file.size > SELLER_MEDIA_MAX_BYTES)) return 'Har bir rasm 8 MB dan kichik bo‘lishi kerak.';
+  if (files.some(file => file.type.startsWith('image/') && file.size > SELLER_MEDIA_MAX_BYTES)) return 'Har bir rasm 200 MB dan kichik bo‘lishi kerak.';
   if (files.some(file => file.type.startsWith('video/') && file.size > SELLER_VIDEO_MAX_BYTES)) return 'Video 200 MB dan kichik bo‘lishi kerak.';
   if (files.some(file => !SELLER_MEDIA_TYPES.includes(file.type as typeof SELLER_MEDIA_TYPES[number]))) return 'Faqat JPG, PNG, WEBP, MP4, MOV yoki WEBM fayllari qabul qilinadi.';
   return null;
@@ -823,7 +769,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           setMediaError(validationError);
           throw new Error(validationError);
         }
-        if (file.type.startsWith('video/') || file.size > SELLER_MEDIA_MAX_BYTES) {
+        if (file.type.startsWith('video/') || file.size > SELLER_DIRECT_UPLOAD_MAX_BYTES) {
           // Katta fayllar (200 MB gacha video) to‘g‘ridan-to‘g‘ri S3 ga yuboriladi.
           const presigned = await presignMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'video/mp4' | 'video/webm' | 'video/quicktime' | 'image/jpeg' | 'image/png' | 'image/webp', size: file.size });
           setVideoPercent(0);
@@ -859,7 +805,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
   };
   if (!isAuthenticated) return <TelegramLoginGate title="Akkaunt sotish uchun Telegram orqali kiring" description="Profilingiz, media fayllaringiz va sotuvchi e’lonlaringiz xavfsiz Telegram sessiyasi bilan bog‘lanadi." />;
   if (submitted) return <main className="mx-auto max-w-2xl"><div className="rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] p-8 text-center"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-300"><TicketCheck className="h-8 w-8" /></span><h1 className="mt-5 font-display text-2xl font-black text-white">E'lon bozorga joylandi</h1><p className="mt-3 text-sm leading-6 text-white/50">Media S3 xotirasiga saqlandi va akkaunt ma’lumotlari ommaviy bozorga chiqarildi. Profil bo‘limidan narx, tavsif va asosiy ma’lumotlarni tahrirlashingiz mumkin.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><PrimaryButton onClick={reset}>Yana e'lon berish</PrimaryButton><PrimaryButton variant="ghost" onClick={() => onNavigate('/accounts')}>Bozorga o'tish</PrimaryButton></div></div></main>;
-  return <main className="space-y-6"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Sotuvchi markazi</span><h1 className="mt-2 font-display text-3xl font-black text-white">Akkaunt sotish</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">Akkaunt haqida to‘liq ma’lumot va media qo‘shing. Rasm va videolar xavfsiz S3 xotirasiga yuboriladi.</p></div><div className="grid gap-6 xl:grid-cols-[1fr_.4fr]"><form onSubmit={submit} className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5 md:p-7">{formError && <p role="alert" className="mb-4 rounded-xl border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{formError}</p>}<div className="grid gap-4 md:grid-cols-2"><Field label="Akkaunt ID"><input required value={form.accountId} onChange={setField('accountId')} className="field-input" placeholder="PUBG ID" /></Field><Field label="O'yinchi nomi"><input required value={form.playerName} onChange={setField('playerName')} className="field-input" placeholder="O'yinchi nomi" /></Field><Field label="Daraja"><input required type="number" min="1" max="100" value={form.level} onChange={setField('level')} className="field-input" placeholder="75" /></Field><Field label="Mintaqa"><select value={form.region} onChange={setField('region')} className="field-input"><option>KRJP</option><option>EU</option><option>ME</option><option>SEA</option><option>NA</option></select></Field><Field label="K/D nisbati"><input type="number" step="0.01" value={form.kdRatio} onChange={setField('kdRatio')} className="field-input" placeholder="4.50" /></Field><Field label="G'alaba foizi"><input type="number" step="0.01" value={form.winRate} onChange={setField('winRate')} className="field-input" placeholder="55" /></Field><Field label="Jami o'yin"><input type="number" value={form.totalMatches} onChange={setField('totalMatches')} className="field-input" placeholder="1200" /></Field><Field label="Headshot foizi"><input type="number" step="0.01" value={form.headshotPercentage} onChange={setField('headshotPercentage')} className="field-input" placeholder="24" /></Field><Field label="UC balansi"><input type="number" value={form.ucBalance} onChange={setField('ucBalance')} className="field-input" placeholder="5200" /></Field><Field label="Kiyimlar soni"><input type="number" value={form.outfitCount} onChange={setField('outfitCount')} className="field-input" placeholder="128" /></Field><Field label="Qurol skinlari"><input type="number" value={form.gunSkinCount} onChange={setField('gunSkinCount')} className="field-input" placeholder="156" /></Field><Field label="Transport soni"><input type="number" value={form.vehicleCount} onChange={setField('vehicleCount')} className="field-input" placeholder="23" /></Field><Field label="Akkaunt ochilgan yil"><input type="number" min="2008" max="2030" value={form.accountCreatedYear} onChange={setField('accountCreatedYear')} className="field-input" placeholder="2021" /></Field><Field label="Narxi (so'm)"><input required type="number" min="0" value={form.price} onChange={setField('price')} className="field-input" placeholder="1000000" /></Field><Field label="Asosiy skinlar"><input value={form.skins} onChange={setField('skins')} className="field-input" placeholder="M416 Glacier, X-Suit" /></Field><div className="md:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs font-bold text-white/70"><input type="checkbox" checked={form.hasConquerorHistory} onChange={toggleFlag('hasConquerorHistory')} className="h-4 w-4 accent-amber-400" />Conqueror tarixi bor</label><label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs font-bold text-white/70"><input type="checkbox" checked={form.hasXSuit} onChange={toggleFlag('hasXSuit')} className="h-4 w-4 accent-amber-400" />X-Suit mavjud</label></div></div><div className="mt-4"><Field label="Batafsil tavsif"><textarea value={form.description} onChange={setField('description')} className="field-input min-h-32 resize-y" placeholder="Inventar, bog'langan platformalar, topshirish shartlari va boshqa ma'lumotlar..." /></Field></div><div className="mt-5"><span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-white/35">Media fayllar</span><label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/30 bg-amber-400/[0.04] px-5 text-center transition hover:bg-amber-400/[0.08]"><Upload className="h-6 w-6 text-amber-200" /><span className="mt-3 text-sm font-bold text-white">Rasm va videolarni tanlang</span><span className="mt-1 text-xs text-white/40">Rasmlar 8 MB gacha • Video (MP4, MOV, WEBM) 200 MB gacha</span><input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={handleFiles} className="hidden" /></label>{mediaError && <p role="alert" className="mt-2 rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{mediaError}</p>}{uploading && <SellerUploadProgress completed={uploadProgress.completed} total={uploadProgress.total} />}{uploading && videoPercent > 0 && videoPercent < 100 && <div className="mt-2 rounded-xl border border-blood-400/30 bg-blood-500/[0.08] p-3"><div className="flex items-center justify-between text-xs font-bold text-white"><span>Video yuklanmoqda</span><span className="text-amber-200">{videoPercent}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-blood-500 to-amber-300 transition-[width] duration-200" style={{ width: `${videoPercent}%` }} /></div></div>}{files.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{files.map(file => <SellerMediaPreview key={`${file.name}-${file.size}`} file={file} />)}</div>}</div><div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end"><PrimaryButton variant="ghost" onClick={() => onNavigate('/accounts')}>Bekor qilish</PrimaryButton><PrimaryButton type="submit" disabled={uploading || createMutation.isPending}>{uploading ? 'Media yuklanmoqda...' : createMutation.isPending ? 'E’lon saqlanmoqda...' : <><TicketCheck className="h-4 w-4" />Bozorga joylash</>}</PrimaryButton></div></form><aside className="space-y-4"><div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-5"><Shield className="h-6 w-6 text-amber-200" /><h2 className="mt-4 font-display text-base font-black text-white">Yaxshi e'lon formulasi</h2><p className="mt-2 text-sm leading-6 text-white/50">Aniq statistika, inventar ro'yxati va sifatli media xaridor savollarini kamaytiradi.</p><div className="mt-4 space-y-2 text-xs text-white/55">{['Barcha maydonlarni to‘ldiring', 'Kamida 3 ta rasm qo‘shing', 'Video bo‘lsa, afzallik beradi', 'Login/parolni e’longa yozmang'].map(item => <div key={item} className="flex items-center gap-2"><Check className="h-4 w-4 text-amber-200" />{item}</div>)}</div></div><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5"><h2 className="font-display text-base font-black text-white">Jarayon</h2><div className="mt-4 space-y-4">{[["01","E'lon yuboriladi"],["02","Bozorda darhol ko‘rinadi"],["03","Profil orqali tahrirlanadi"]].map(([num,label]) => <div key={num} className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] text-xs font-black text-amber-200">{num}</span><span className="text-xs font-semibold text-white/65">{label}</span></div>)}</div></div></aside></div></main>;
+  return <main className="space-y-6"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Sotuvchi markazi</span><h1 className="mt-2 font-display text-3xl font-black text-white">Akkaunt sotish</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">Akkaunt haqida to‘liq ma’lumot va media qo‘shing. Rasm va videolar xavfsiz S3 xotirasiga yuboriladi.</p></div><div className="grid gap-6 xl:grid-cols-[1fr_.4fr]"><form onSubmit={submit} className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5 md:p-7">{formError && <p role="alert" className="mb-4 rounded-xl border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{formError}</p>}<div className="grid gap-4 md:grid-cols-2"><Field label="Akkaunt ID"><input required value={form.accountId} onChange={setField('accountId')} className="field-input" placeholder="PUBG ID" /></Field><Field label="O'yinchi nomi"><input required value={form.playerName} onChange={setField('playerName')} className="field-input" placeholder="O'yinchi nomi" /></Field><Field label="Daraja"><input required type="number" min="1" max="100" value={form.level} onChange={setField('level')} className="field-input" placeholder="75" /></Field><Field label="Mintaqa"><select value={form.region} onChange={setField('region')} className="field-input"><option>KRJP</option><option>EU</option><option>ME</option><option>SEA</option><option>NA</option></select></Field><Field label="K/D nisbati"><input type="number" step="0.01" value={form.kdRatio} onChange={setField('kdRatio')} className="field-input" placeholder="4.50" /></Field><Field label="G'alaba foizi"><input type="number" step="0.01" value={form.winRate} onChange={setField('winRate')} className="field-input" placeholder="55" /></Field><Field label="Jami o'yin"><input type="number" value={form.totalMatches} onChange={setField('totalMatches')} className="field-input" placeholder="1200" /></Field><Field label="Headshot foizi"><input type="number" step="0.01" value={form.headshotPercentage} onChange={setField('headshotPercentage')} className="field-input" placeholder="24" /></Field><Field label="UC balansi"><input type="number" value={form.ucBalance} onChange={setField('ucBalance')} className="field-input" placeholder="5200" /></Field><Field label="Kiyimlar soni"><input type="number" value={form.outfitCount} onChange={setField('outfitCount')} className="field-input" placeholder="128" /></Field><Field label="Qurol skinlari"><input type="number" value={form.gunSkinCount} onChange={setField('gunSkinCount')} className="field-input" placeholder="156" /></Field><Field label="Transport soni"><input type="number" value={form.vehicleCount} onChange={setField('vehicleCount')} className="field-input" placeholder="23" /></Field><Field label="Akkaunt ochilgan yil"><input type="number" min="2008" max="2030" value={form.accountCreatedYear} onChange={setField('accountCreatedYear')} className="field-input" placeholder="2021" /></Field><Field label="Narxi (so'm)"><input required type="number" min="0" value={form.price} onChange={setField('price')} className="field-input" placeholder="1000000" /></Field><Field label="Asosiy skinlar"><input value={form.skins} onChange={setField('skins')} className="field-input" placeholder="M416 Glacier, X-Suit" /></Field><div className="md:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs font-bold text-white/70"><input type="checkbox" checked={form.hasConquerorHistory} onChange={toggleFlag('hasConquerorHistory')} className="h-4 w-4 accent-amber-400" />Conqueror tarixi bor</label><label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs font-bold text-white/70"><input type="checkbox" checked={form.hasXSuit} onChange={toggleFlag('hasXSuit')} className="h-4 w-4 accent-amber-400" />X-Suit mavjud</label></div></div><div className="mt-4"><Field label="Batafsil tavsif"><textarea value={form.description} onChange={setField('description')} className="field-input min-h-32 resize-y" placeholder="Inventar, bog'langan platformalar, topshirish shartlari va boshqa ma'lumotlar..." /></Field></div><div className="mt-5"><span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-white/35">Media fayllar</span><label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/30 bg-amber-400/[0.04] px-5 text-center transition hover:bg-amber-400/[0.08]"><Upload className="h-6 w-6 text-amber-200" /><span className="mt-3 text-sm font-bold text-white">Rasm va videolarni tanlang</span><span className="mt-1 text-xs text-white/40">Rasm va video 200 MB gacha (JPG, PNG, WEBP, MP4, MOV, WEBM)</span><input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={handleFiles} className="hidden" /></label>{mediaError && <p role="alert" className="mt-2 rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{mediaError}</p>}{uploading && <SellerUploadProgress completed={uploadProgress.completed} total={uploadProgress.total} />}{uploading && videoPercent > 0 && videoPercent < 100 && <div className="mt-2 rounded-xl border border-blood-400/30 bg-blood-500/[0.08] p-3"><div className="flex items-center justify-between text-xs font-bold text-white"><span>Video yuklanmoqda</span><span className="text-amber-200">{videoPercent}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-blood-500 to-amber-300 transition-[width] duration-200" style={{ width: `${videoPercent}%` }} /></div></div>}{files.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{files.map(file => <SellerMediaPreview key={`${file.name}-${file.size}`} file={file} />)}</div>}</div><div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end"><PrimaryButton variant="ghost" onClick={() => onNavigate('/accounts')}>Bekor qilish</PrimaryButton><PrimaryButton type="submit" disabled={uploading || createMutation.isPending}>{uploading ? 'Media yuklanmoqda...' : createMutation.isPending ? 'E’lon saqlanmoqda...' : <><TicketCheck className="h-4 w-4" />Bozorga joylash</>}</PrimaryButton></div></form><aside className="space-y-4"><div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-5"><Shield className="h-6 w-6 text-amber-200" /><h2 className="mt-4 font-display text-base font-black text-white">Yaxshi e'lon formulasi</h2><p className="mt-2 text-sm leading-6 text-white/50">Aniq statistika, inventar ro'yxati va sifatli media xaridor savollarini kamaytiradi.</p><div className="mt-4 space-y-2 text-xs text-white/55">{['Barcha maydonlarni to‘ldiring', 'Kamida 3 ta rasm qo‘shing', 'Video bo‘lsa, afzallik beradi', 'Login/parolni e’longa yozmang'].map(item => <div key={item} className="flex items-center gap-2"><Check className="h-4 w-4 text-amber-200" />{item}</div>)}</div></div><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5"><h2 className="font-display text-base font-black text-white">Jarayon</h2><div className="mt-4 space-y-4">{[["01","E'lon yuboriladi"],["02","Bozorda darhol ko‘rinadi"],["03","Profil orqali tahrirlanadi"]].map(([num,label]) => <div key={num} className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] text-xs font-black text-amber-200">{num}</span><span className="text-xs font-semibold text-white/65">{label}</span></div>)}</div></div></aside></div></main>;
 }
 
 function OrdersPage({ onNavigate }: { onNavigate: (path: string) => void }) {
@@ -1001,7 +947,175 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   };
   const walletBusy = uploadReceipt.isPending || submitReceipt.isPending || withdraw.isPending;
   if (!isAuthenticated) return <TelegramLoginGate title="Profilga Telegram orqali kiring" description="Sotuvlaringiz, balansingiz, saqlangan akkauntlaringiz va media boshqaruvi shu profilga ulanadi." />;
-  return <main className="space-y-6"><div className="relative -mx-1 overflow-hidden rounded-3xl border border-amber-400/25 sm:mx-0"><img src={PROFILE_BANNER} alt="PUBG jangchi profili" className="h-36 w-full object-cover sm:h-48" /><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.2),rgba(10,11,13,.94))]" /><div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-3"><div><span className="pubg-live inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100"><span className="h-1.5 w-1.5 rounded-full bg-red-400" />{badge}</span><h2 className="mt-2 font-display text-2xl font-black text-white drop-shadow">{displayName}</h2><p className="text-xs font-bold text-white/55">⭐ {averageRating.toFixed(1)} • {salesCount} savdo • {listingsCount} e‘lon</p></div><AdminContactButton label="Admin" /></div></div><div className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6 md:flex-row md:items-center"><span className="grid h-20 w-20 place-items-center rounded-3xl border border-amber-400/30 bg-amber-400/10 text-amber-200"><UserRound className="h-9 w-9" /></span><div className="flex-1"><StatusPill tone={salesCount >= 5 ? 'green' : 'gold'}>{salesCount >= 5 ? <BadgeCheck className="h-3 w-3" /> : <Star className="h-3 w-3" />}{badge}</StatusPill><h1 className="mt-3 font-display text-2xl font-black text-white">{displayName}</h1><p className="mt-1 text-sm text-white/45">Akkauntlar, hamyon va savdo faoliyatingiz</p><div className="mt-3 flex flex-wrap items-center gap-3"><div className="flex items-center gap-0.5" aria-label={`${averageRating.toFixed(1)} / 5 reyting`}>{[1, 2, 3, 4, 5].map(star => <Star key={star} className={`h-4 w-4 ${star <= Math.round(averageRating) ? 'fill-amber-300 text-amber-300' : 'text-white/20'}`} />)}</div><span className="text-xs font-bold text-white/60">{reviews.length ? `${averageRating.toFixed(1)} / 5 · ${reviews.length} ta sharh` : 'Hali xaridor sharhi yo‘q'}</span>{salesCount >= 5 && <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-[10px] font-black text-emerald-200"><BadgeCheck className="h-3 w-3" />Tasdiqlangan sotuvchi</span>}</div></div><PrimaryButton variant="ghost" onClick={openProfileEditor}><Edit3 className="h-4 w-4" />Tahrirlash</PrimaryButton></div><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5"><div className="flex items-center justify-between gap-3"><p className="text-xs font-black uppercase tracking-widest text-white/45">Shaxsiy ma’lumotlar</p>{!editingProfile && <button onClick={openProfileEditor} className="text-[11px] font-bold text-amber-200">Tahrirlash</button>}</div>{!editingProfile ? <div className="mt-4 grid gap-2 sm:grid-cols-3"><button type="button" onClick={() => telegramId !== '—' && copyText(telegramId, 'Telegram ID')} className="rounded-xl border border-white/10 bg-black/25 p-3 text-left transition hover:border-amber-400/40"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Telegram ID</span><span className="mt-1 block font-mono text-sm font-black text-amber-200">{telegramId}</span></button><button type="button" onClick={() => profilePhone && copyText(profilePhone, 'Telefon raqam')} className="rounded-xl border border-white/10 bg-black/25 p-3 text-left transition hover:border-amber-400/40"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">Telefon raqam</span><span className="mt-1 block font-mono text-sm font-black text-white">{profilePhone || 'Kiritilmagan'}</span></button><div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">To‘liq ism</span><span className="mt-1 block text-sm font-black text-white">{displayName}</span></div></div> : <div className="mt-4 grid gap-3 sm:grid-cols-2"><EditField label="To‘liq ism"><input className="field-input" value={profileDraft.name} onChange={event => setProfileDraft(previous => ({ ...previous, name: event.target.value }))} placeholder="Ism Familiya" /></EditField><EditField label="Telefon raqam"><input className="field-input" value={profileDraft.phone} onChange={event => setProfileDraft(previous => ({ ...previous, phone: event.target.value }))} placeholder="+998 90 123 45 67" /></EditField><div className="sm:col-span-2 flex gap-2"><PrimaryButton disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ name: profileDraft.name.trim() || undefined, phone: profileDraft.phone.trim() })}>{updateProfile.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Saqlash</PrimaryButton><PrimaryButton variant="ghost" onClick={() => setEditingProfile(false)}>Bekor qilish</PrimaryButton></div></div>}</section><div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><section className="rounded-2xl border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,197,66,.14),rgba(245,197,66,.03))] p-6"><div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-widest text-white/50">Hamyon balansi</span><WalletCards className="h-5 w-5 text-amber-200" /></div><div className="mt-4 font-display text-3xl font-black text-white">{uzNumber(balance)} <span className="font-sans text-sm text-white/45">so'm</span></div><p className="mt-2 text-xs text-white/40">{isAuthenticated ? 'Kafolatli savdo uchun mavjud balans' : 'Balansni ko‘rish uchun tizimga kiring'}</p><div className="mt-6 flex flex-wrap gap-2"><PrimaryButton onClick={() => { setWalletAction('manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }}><CreditCard className="h-4 w-4" />Balans to‘ldirish</PrimaryButton><PrimaryButton variant="ghost" onClick={() => { setWalletAction('withdraw'); setAmount(''); }}>Yechib olish</PrimaryButton></div>{walletAction === 'manual_topup' && <div className="mt-5 rounded-2xl border border-amber-300/20 bg-black/20 p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-black text-white">Manual to‘lov</p><p className="mt-1 text-xs leading-5 text-white/40">Summani tanlang, kartaga o‘tkazing va chek rasmini yuboring. Balans faqat admin tasdig‘idan keyin qo‘shiladi.</p></div><button onClick={() => setWalletAction(null)} className="text-xs font-bold text-white/40 hover:text-white">Yopish</button></div><div className="mt-4 grid grid-cols-3 gap-2">{(topupInstructionsQuery.data?.amounts ?? [10000, 20000, 50000]).map(option => <button key={option} type="button" onClick={() => setSelectedTopupAmount(option as 10000 | 20000 | 50000)} className={`rounded-xl border px-2 py-3 text-xs font-black transition ${selectedTopupAmount === option ? 'border-amber-300 bg-amber-400/20 text-amber-50' : 'border-white/10 bg-white/[0.03] text-white/60'}`}>{uzNumber(option)} so‘m</button>)}</div><div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-500/[0.07] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-amber-200/70">Karta ma’lumoti</p><div className="mt-2 flex items-center gap-2"><p className="min-w-0 flex-1 break-all font-mono text-sm font-black text-white">{topupInstructionsQuery.data?.cardNumber || 'Admin karta raqami sozlanmagan'}</p><button type="button" onClick={() => topupInstructionsQuery.data?.cardNumber && copyText(String(topupInstructionsQuery.data.cardNumber), 'Karta raqami')} className="shrink-0 rounded-lg border border-amber-300/40 bg-amber-400/15 px-2.5 py-1.5 text-[10px] font-black text-amber-100">Nusxa olish</button></div><p className="mt-1 text-xs text-white/45">Karta egasi: <strong className="text-white/80">{topupInstructionsQuery.data?.cardHolder || 'Admin karta egasi sozlanmagan'}</strong></p></div><label className="mt-4 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/30 bg-amber-400/[0.05] px-3 py-4 text-center"><Upload className="h-5 w-5 text-amber-200" /><span className="mt-2 text-xs font-bold text-white">{receiptFile ? receiptFile.name : '📸 To‘lov chekini tanlang'}</span><span className="mt-1 text-[10px] text-white/35">JPG, PNG yoki WEBP · maksimum 8 MB</span><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => setReceiptFile(event.target.files?.[0] ?? null)} /></label><PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Chek yuborilmoqda...</> : <>Chekni adminlarga yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>{walletBusy && <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.07] px-3 py-2 text-[11px] font-bold text-amber-200"><LoaderCircle className="h-3.5 w-3.5 animate-spin" />Rasm yuklanmoqda va chek xavfsiz tekshiruv navbatiga qo‘shilmoqda...</div>}</div>}{walletAction === 'withdraw' && <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black text-white">Mablag‘ yechib olish</p><p className="mt-1 text-xs text-white/40">Minimum 10 000 so‘m; so‘rov admin tomonidan ko‘rib chiqiladi</p></div><button onClick={() => setWalletAction(null)} className="text-xs font-bold text-white/40 hover:text-white">Yopish</button></div><input className="field-input mt-4" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value)} placeholder="Summa, masalan 100000" /><input className="field-input mt-3" value={destination} onChange={event => setDestination(event.target.value)} placeholder="Karta raqami yoki hamyon manzili" /><PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>So‘rov yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton></div>}<div className="mt-5 border-t border-white/[0.08] pt-4"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Chek holati</span><button type="button" onClick={() => receiptsQuery.refetch()} className="text-[10px] font-bold text-amber-200">Yangilash</button></div>{receiptsQuery.isLoading ? <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-xs font-bold text-white/60"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Chek holatlari yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-3 text-xs text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-3 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2"><div><p className="text-xs font-bold text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-1 text-[10px] text-white/35">{new Date(receipt.createdAt).toLocaleString()}</p></div><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? 'Tasdiqlandi' : receipt.status === 'rejected' ? 'Rad etildi' : 'Kutilmoqda'}</StatusPill></div>)}</div>}</div></section><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><SectionHeading eyebrow="Faoliyat" title="Qisqa ma'lumot" /><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[['E’lonlarim', String(listingsCount)],['Savdolarim', String(salesCount)],['Sharhlar', reviews.length ? `${averageRating.toFixed(1)} / 5` : '—'],['Badge', badge]].map(([label,value]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-2 block truncate font-display text-xl font-black text-white">{value}</span></div>)}</div><div className="mt-5 flex flex-wrap gap-2"><PrimaryButton variant="soft" onClick={() => onNavigate('/sell')}><Plus className="h-4 w-4" />Akkaunt sotish</PrimaryButton><PrimaryButton variant="ghost" onClick={() => onNavigate('/orders')}><ShoppingBag className="h-4 w-4" />Buyurtmalar</PrimaryButton><PrimaryButton variant="ghost" onClick={() => onNavigate('/transactions')}><Clock3 className="h-4 w-4" />Tranzaksiyalar</PrimaryButton><PrimaryButton variant="ghost" onClick={() => onNavigate('/reviews')}><Star className="h-4 w-4" />Sharhlar</PrimaryButton></div>{reviews.length > 0 && <div className="mt-5 border-t border-white/[0.08] pt-4"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Xaridorlar fikri</span><button type="button" onClick={() => onNavigate('/reviews')} className="text-[10px] font-bold text-amber-200">Barchasi</button></div><div className="mt-3 space-y-2">{reviews.slice(0, 3).map(review => <article key={review.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map(star => <Star key={star} className={`h-3.5 w-3.5 ${star <= Number(review.rating) ? 'fill-amber-300 text-amber-300' : 'text-white/20'}`} />)}</div><span className="text-[10px] text-white/35">{new Date(review.createdAt).toLocaleDateString()}</span></div>{review.comment && <p className="mt-2 text-xs leading-5 text-white/65">“{review.comment}”</p>}<div className="mt-2 flex justify-end"><button type="button" disabled={reportReview.isPending} onClick={() => reportReview.mutate({ reviewId: review.id, reason: 'Spam yoki haqoratli kontent' })} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-[10px] font-bold text-white/40 transition hover:border-rose-400/35 hover:text-rose-200 disabled:opacity-50"><Flag className="h-3 w-3" />{reportReview.isPending ? 'Yuborilmoqda...' : 'Shikoyat qilish'}</button></div></article>)}</div></div>}</section></div><SellerListingsPanel /><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><SectionHeading eyebrow="Tranzaksiyalar" title="Oxirgi moliyaviy harakatlar" />{transactions.length === 0 ? <p className="mt-4 text-sm text-white/40">Hozircha tranzaksiyalar mavjud emas.</p> : <div className="mt-4 divide-y divide-white/[0.07]">{transactions.slice(0, 5).map(transaction => { const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund'; const label = transaction.type === 'topup' ? 'Balans to‘ldirildi' : transaction.type === 'withdrawal' ? 'Yechib olish so‘rovi' : transaction.type === 'seller_payout' ? 'Sotuvchi to‘lovi' : transaction.type === 'order_refund' ? 'Buyurtma qaytarimi' : 'Buyurtma to‘lovi'; return <div key={transaction.id} className="flex items-center justify-between gap-3 py-3"><div><p className="text-sm font-bold text-white">{label}</p><p className="mt-1 text-xs text-white/35">{transaction.status === 'completed' ? 'Yakunlangan' : 'Kutilmoqda'}</p></div><span className={`font-display text-sm font-black ${isCredit ? 'text-emerald-300' : 'text-amber-200'}`}>{isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))} so'm</span></div>; })}</div>}</section><section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><SectionHeading eyebrow="Ishonch" title="Sotuvchi uchun tavsiyalar" /><div className="grid gap-3 md:grid-cols-3">{[['Media qo‘shing', 'Rasm va video xaridorga aniq tasavvur beradi.', ImagePlus], ['Qoidalarni o‘qing', 'Login/parolni ochiq joyga yozmang.', Shield], ['Savdoni kuzating', 'Buyurtmalar bo‘limida har bir bosqich ko‘rinadi.', Clock3]].map(([title, text, Icon]) => <div key={title as string} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4"><Icon className="h-5 w-5 text-amber-200" /><h3 className="mt-3 text-sm font-bold text-white">{title as string}</h3><p className="mt-1 text-xs leading-5 text-white/40">{text as string}</p></div>)}</div></section></main>;
+  return (
+    <main className="space-y-4 pb-4">
+      {/* ===== Pro live hero ===== */}
+      <section className="pro-live pro-clip relative -mx-1 overflow-hidden rounded-3xl border border-amber-400/25 sm:mx-0">
+        <div className="pro-live__frame" style={{ backgroundImage: `url(${PROFILE_BANNER})` }} />
+        <div className="pro-live__frame" style={{ backgroundImage: `url(${HERO_IMAGE})` }} />
+        <div className="pro-live__frame" style={{ backgroundImage: `url(${SQUAD_IMAGE})` }} />
+        <div className="pro-live__frame" style={{ backgroundImage: `url(${SNIPER_IMAGE})` }} />
+        <div className="pro-live__grid" />
+        <div className="pro-live__scan" />
+        <div className="pro-live__veil" />
+        {[8, 26, 44, 62, 80, 92].map((left, index) => (
+          <span key={left} className="pro-ember" style={{ left: `${left}%`, animationDelay: `${index * 0.85}s` }} />
+        ))}
+        <div className="relative px-4 pb-4 pt-24 sm:px-6 sm:pt-32">
+          <div className="flex items-end gap-3">
+            <div className="relative shrink-0">
+              <span className="pro-ring" />
+              <span className="relative grid h-16 w-16 place-items-center rounded-full border border-amber-300/40 bg-black/60 text-amber-200 sm:h-20 sm:w-20">
+                <UserRound className="h-8 w-8 sm:h-9 sm:w-9" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="pubg-live inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-amber-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400" />{badge}
+              </span>
+              <h1 className="mt-1.5 truncate font-display text-xl font-black leading-tight text-white drop-shadow sm:text-3xl">{displayName}</h1>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-white/60">
+                <span className="text-amber-200">★ {averageRating.toFixed(1)}</span>
+                <span className="text-white/25">•</span>
+                <span>{salesCount} savdo</span>
+                <span className="text-white/25">•</span>
+                <span>{listingsCount} e‘lon</span>
+              </p>
+            </div>
+            <button type="button" onClick={openProfileEditor} aria-label="Profilni tahrirlash" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-300/35 bg-black/40 text-amber-100 active:scale-95">
+              <Edit3 className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-4 gap-1.5">
+            {[['Balans', `${uzNumber(balance)}`], ['E‘lon', String(listingsCount)], ['Savdo', String(salesCount)], ['Reyting', reviews.length ? averageRating.toFixed(1) : '—']].map(([label, value]) => (
+              <div key={label} className="pro-glass rounded-xl px-1.5 py-2 text-center">
+                <span className="block text-[8px] font-black uppercase tracking-wider text-white/40">{label}</span>
+                <span className="mt-1 block truncate font-display text-[13px] font-black text-white">{value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mobile-scroll-row mt-3 gap-2">
+            <button onClick={() => onNavigate('/sell')} className="pubg-press inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-amber-400 px-3 text-[11px] font-black text-black active:scale-95"><Plus className="h-3.5 w-3.5" />Akkaunt sotish</button>
+            <button onClick={() => onNavigate('/orders')} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-black/40 px-3 text-[11px] font-bold text-white/80 active:scale-95"><ShoppingBag className="h-3.5 w-3.5 text-amber-200" />Buyurtmalar</button>
+            <button onClick={() => onNavigate('/transactions')} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-black/40 px-3 text-[11px] font-bold text-white/80 active:scale-95"><Clock3 className="h-3.5 w-3.5 text-amber-200" />Tranzaksiya</button>
+            <button onClick={() => onNavigate('/reviews')} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-black/40 px-3 text-[11px] font-bold text-white/80 active:scale-95"><Star className="h-3.5 w-3.5 text-amber-200" />Sharhlar</button>
+            <AdminContactButton label="Admin" />
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Wallet ===== */}
+      <section className="pro-clip overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,197,66,.16),rgba(14,16,19,.98))] p-4 sm:p-5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Hamyon balansi</span>
+          <WalletCards className="h-5 w-5 text-amber-200" />
+        </div>
+        <div className="mt-2 font-display text-3xl font-black text-white">{uzNumber(balance)} <span className="font-sans text-sm text-white/45">so‘m</span></div>
+        <div className="pro-bar mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><span className="block h-full rounded-full bg-gradient-to-r from-amber-300 to-red-500" style={{ width: `${Math.min(100, Math.max(6, Math.round((balance / 1000000) * 100)))}%` }} /></div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <PrimaryButton onClick={() => { setWalletAction('manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }}><CreditCard className="h-4 w-4" />To‘ldirish</PrimaryButton>
+          <PrimaryButton variant="ghost" onClick={() => { setWalletAction('withdraw'); setAmount(''); }}>Yechib olish</PrimaryButton>
+        </div>
+        {walletAction === 'manual_topup' && <div className="mt-4 rounded-2xl border border-amber-300/20 bg-black/30 p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-sm font-black text-white">Manual to‘lov</p><p className="mt-1 text-[11px] leading-5 text-white/45">Summani tanlang, kartaga o‘tkazing va chek rasmini yuboring. Balans admin tasdig‘idan keyin qo‘shiladi.</p></div>
+            <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">{(topupInstructionsQuery.data?.amounts ?? [10000, 20000, 50000]).map(option => <button key={option} type="button" onClick={() => setSelectedTopupAmount(option as 10000 | 20000 | 50000)} className={`rounded-xl border px-1 py-3 text-[11px] font-black transition ${selectedTopupAmount === option ? 'border-amber-300 bg-amber-400/20 text-amber-50' : 'border-white/10 bg-white/[0.03] text-white/60'}`}>{uzNumber(option)}</button>)}</div>
+          <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-500/[0.07] p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200/70">Karta ma’lumoti</p>
+            <div className="mt-2 flex items-center gap-2">
+              <p className="min-w-0 flex-1 break-all font-mono text-sm font-black text-white">{topupInstructionsQuery.data?.cardNumber || 'Admin karta raqami sozlanmagan'}</p>
+              <button type="button" onClick={() => topupInstructionsQuery.data?.cardNumber && copyText(String(topupInstructionsQuery.data.cardNumber), 'Karta raqami')} className="shrink-0 rounded-lg border border-amber-300/40 bg-amber-400/15 px-2.5 py-1.5 text-[10px] font-black text-amber-100">Nusxa</button>
+            </div>
+            <p className="mt-1 text-[11px] text-white/45">Karta egasi: <strong className="text-white/80">{topupInstructionsQuery.data?.cardHolder || 'Admin karta egasi sozlanmagan'}</strong></p>
+          </div>
+          <label className="mt-3 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/30 bg-amber-400/[0.05] px-3 py-4 text-center">
+            <Upload className="h-5 w-5 text-amber-200" />
+            <span className="mt-2 text-xs font-bold text-white">{receiptFile ? receiptFile.name : '📸 To‘lov chekini tanlang'}</span>
+            <span className="mt-1 text-[10px] text-white/35">JPG, PNG yoki WEBP · maksimum 8 MB</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => setReceiptFile(event.target.files?.[0] ?? null)} />
+          </label>
+          <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>Chekni adminlarga yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
+        </div>}
+        {walletAction === 'withdraw' && <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-sm font-black text-white">Mablag‘ yechib olish</p><p className="mt-1 text-[11px] text-white/45">Minimum 10 000 so‘m; so‘rov admin tomonidan ko‘rib chiqiladi</p></div>
+            <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
+          </div>
+          <input className="field-input mt-3" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value)} placeholder="Summa, masalan 100000" />
+          <input className="field-input mt-2" value={destination} onChange={event => setDestination(event.target.value)} placeholder="Karta raqami yoki hamyon manzili" />
+          <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>So‘rov yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
+        </div>}
+        <div className="mt-4 border-t border-white/[0.08] pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/35">Chek holati</span>
+            <button type="button" onClick={() => receiptsQuery.refetch()} className="text-[10px] font-bold text-amber-200">Yangilash</button>
+          </div>
+          {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+            <div><p className="text-[11px] font-bold text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-0.5 text-[10px] text-white/35">{new Date(receipt.createdAt).toLocaleString()}</p></div>
+            <StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? 'Tasdiqlandi' : receipt.status === 'rejected' ? 'Rad etildi' : 'Kutilmoqda'}</StatusPill>
+          </div>)}</div>}
+        </div>
+      </section>
+
+      {/* ===== Identity card ===== */}
+      <section className="pro-glass pro-clip rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Shaxsiy ma’lumotlar</p>
+          {!editingProfile && <button onClick={openProfileEditor} className="text-[11px] font-bold text-amber-200">Tahrirlash</button>}
+        </div>
+        {!editingProfile ? <div className="mt-3 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => telegramId !== '—' && copyText(telegramId, 'Telegram ID')} className="rounded-xl border border-white/10 bg-black/25 p-3 text-left active:scale-[.98]">
+            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white/35"><Copy className="h-3 w-3" />Telegram ID</span>
+            <span className="mt-1 block truncate font-mono text-sm font-black text-amber-200">{telegramId}</span>
+          </button>
+          <button type="button" onClick={() => profilePhone && copyText(profilePhone, 'Telefon raqam')} className="rounded-xl border border-white/10 bg-black/25 p-3 text-left active:scale-[.98]">
+            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white/35"><Phone className="h-3 w-3" />Telefon</span>
+            <span className="mt-1 block truncate font-mono text-sm font-black text-white">{profilePhone || 'Kiritilmagan'}</span>
+          </button>
+          <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-3">
+            <span className="block text-[9px] font-black uppercase tracking-wider text-white/35">To‘liq ism</span>
+            <span className="mt-1 block text-sm font-black text-white">{displayName}</span>
+          </div>
+        </div> : <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <EditField label="To‘liq ism"><input className="field-input" value={profileDraft.name} onChange={event => setProfileDraft(previous => ({ ...previous, name: event.target.value }))} placeholder="Ism Familiya" /></EditField>
+          <EditField label="Telefon raqam"><input className="field-input" value={profileDraft.phone} onChange={event => setProfileDraft(previous => ({ ...previous, phone: event.target.value }))} placeholder="+998 90 123 45 67" /></EditField>
+          <div className="flex gap-2 sm:col-span-2">
+            <PrimaryButton disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ name: profileDraft.name.trim() || undefined, phone: profileDraft.phone.trim() })}>{updateProfile.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Saqlash</PrimaryButton>
+            <PrimaryButton variant="ghost" onClick={() => setEditingProfile(false)}>Bekor qilish</PrimaryButton>
+          </div>
+        </div>}
+      </section>
+
+      {/* ===== Reviews ===== */}
+      {reviews.length > 0 && <section className="pro-glass pro-clip rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Xaridorlar fikri</p>
+          <button type="button" onClick={() => onNavigate('/reviews')} className="text-[10px] font-bold text-amber-200">Barchasi</button>
+        </div>
+        <div className="mt-3 space-y-2">{reviews.slice(0, 3).map(review => <article key={review.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map(star => <Star key={star} className={`h-3.5 w-3.5 ${star <= Number(review.rating) ? 'fill-amber-300 text-amber-300' : 'text-white/20'}`} />)}</div>
+            <span className="text-[10px] text-white/35">{new Date(review.createdAt).toLocaleDateString()}</span>
+          </div>
+          {review.comment && <p className="mt-2 text-[11px] leading-5 text-white/65">“{review.comment}”</p>}
+          <div className="mt-2 flex justify-end"><button type="button" disabled={reportReview.isPending} onClick={() => reportReview.mutate({ reviewId: review.id, reason: 'Spam yoki haqoratli kontent' })} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-[10px] font-bold text-white/40 active:scale-95"><Flag className="h-3 w-3" />{reportReview.isPending ? 'Yuborilmoqda...' : 'Shikoyat'}</button></div>
+        </article>)}</div>
+      </section>}
+
+      <SellerListingsPanel />
+
+      {/* ===== Transactions ===== */}
+      <section className="pro-glass pro-clip rounded-2xl p-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Oxirgi moliyaviy harakatlar</p>
+        {transactions.length === 0 ? <p className="mt-3 text-[11px] text-white/40">Hozircha tranzaksiyalar mavjud emas.</p> : <div className="mt-2 divide-y divide-white/[0.07]">{transactions.slice(0, 5).map(transaction => { const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund'; const label = transaction.type === 'topup' ? 'Balans to‘ldirildi' : transaction.type === 'withdrawal' ? 'Yechib olish so‘rovi' : transaction.type === 'seller_payout' ? 'Sotuvchi to‘lovi' : transaction.type === 'order_refund' ? 'Buyurtma qaytarimi' : 'Buyurtma to‘lovi'; return <div key={transaction.id} className="flex items-center justify-between gap-3 py-2.5">
+          <div><p className="text-[12px] font-bold text-white">{label}</p><p className="mt-0.5 text-[10px] text-white/35">{transaction.status === 'completed' ? 'Yakunlangan' : 'Kutilmoqda'}</p></div>
+          <span className={`font-display text-sm font-black ${isCredit ? 'text-emerald-300' : 'text-amber-200'}`}>{isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))}</span>
+        </div>; })}</div>}
+      </section>
+    </main>
+  );
 }
 
 function EscrowPage({ id, onBack }: { id: number; onBack: () => void }) {

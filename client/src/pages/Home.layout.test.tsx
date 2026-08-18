@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { marketplaceLayoutClass } from "./Home";
 
 describe("marketplace layout transition", () => {
-  it("keeps the browse mode three columns and fades it in when settled", () => {
+  it("keeps the browse mode four columns and fades it in when settled", () => {
     const classes = marketplaceLayoutClass("grid", false);
 
-    expect(classes).toContain("grid-cols-3");
+    expect(classes).toContain("grid-cols-4");
     expect(classes).toContain("translate-y-0");
     expect(classes).toContain("opacity-100");
   });

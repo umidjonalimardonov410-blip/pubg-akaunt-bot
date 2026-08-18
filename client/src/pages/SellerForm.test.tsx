@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   authenticated: true,
   upload: vi.fn(),
+  presign: undefined as undefined | ((input: unknown) => Promise<{ uploadUrl: string; url: string }>),
   create: vi.fn(),
 }));
 
