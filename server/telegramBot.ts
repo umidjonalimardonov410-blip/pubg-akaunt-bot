@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 
 import { getDb, getUserByOpenId, getInsertId, searchPubgAccounts, upsertUser } from './db';
 import { createTelegramLoginToken } from './telegramLoginTokens';
+import { listFaq } from './faqData';
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 import { botText, matchMenuKey, normalizeBotLang, type BotLang } from './botTexts';
 import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
 import { storagePut } from './storage';
@@ -670,6 +672,21 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   if (command === 'support' || menuKey === 'menuSupport') {
     const sent = await sendSupport(chatId, lang);
     return { handled: true as const, command: 'support', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'faq') {
+    const items = await listFaq();
+    const body = items
+      .slice(0, 10)
+      .map((item: any, index: number) => `<b>${index + 1}. ${escapeHtml(item.question)}</b>\n${escapeHtml(item.answer)}`)
+      .join('\n\n');
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `<b>❓ Tez-tez so‘raladigan savollar</b>\n\n${body}`,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      reply_markup: buildInlineKeyboard('/support'),
+    });
+    return { handled: true as const, command: 'faq', status: sent.status, sent: sent.ok };
   }
   if (command === 'contactadmin' || menuKey === 'menuAdmin') {
     const sent = await telegramApiRequest('sendMessage', {

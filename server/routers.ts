@@ -11,6 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
+import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
 import { sendTelegramNotification } from "./telegramBot";
 
 function escapeTelegramHtml(value: string) {
@@ -43,6 +44,11 @@ export function getReviewModerationReason(comment?: string) {
 export const appRouter = router({
   system: systemRouter,
   expansion: expansionRouter,
+  support: supportRouter,
+  faqAdmin: faqAdminRouter,
+  categories: categoriesRouter,
+  mediaModeration: mediaModerationRouter,
+  tracking: trackingRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

@@ -107,6 +107,11 @@ export const orders = mysqlTable("orders", {
   isAccountVerified: boolean("isAccountVerified").default(false).notNull(),
   verificationNotes: text("verificationNotes"),
   
+  // Fulfillment tracking (kutilmoqda / yaratilmoqda / yuborildi)
+  fulfillmentStatus: mysqlEnum("fulfillmentStatus", ["waiting", "preparing", "delivered"]).default("waiting").notNull(),
+  fulfillmentNote: text("fulfillmentNote"),
+  deliveredAt: timestamp("deliveredAt"),
+
   // Buyer confirmation
   buyerConfirmed: boolean("buyerConfirmed").default(false).notNull(),
   buyerConfirmedAt: timestamp("buyerConfirmedAt"),
@@ -539,3 +544,59 @@ export const depositReceipts = mysqlTable("deposit_receipts", {
 
 export type DepositReceipt = typeof depositReceipts.$inferSelect;
 export type InsertDepositReceipt = typeof depositReceipts.$inferInsert;
+
+
+/**
+ * Marketplace categories managed from the admin panel.
+ */
+export const categories = mysqlTable("categories", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 96 }).notNull(),
+  emoji: varchar("emoji", { length: 16 }),
+  description: varchar("description", { length: 255 }),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = typeof categories.$inferInsert;
+
+/**
+ * Every uploaded image/video goes through admin moderation before it is public.
+ */
+export const mediaUploads = mysqlTable("media_uploads", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  accountId: int("accountId"),
+  url: varchar("url", { length: 500 }).notNull(),
+  kind: mysqlEnum("kind", ["image", "video"]).default("image").notNull(),
+  contentType: varchar("contentType", { length: 64 }).notNull(),
+  sizeBytes: int("sizeBytes").default(0).notNull(),
+  originalSizeBytes: int("originalSizeBytes").default(0).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  reviewNote: varchar("reviewNote", { length: 255 }),
+  reviewedBy: int("reviewedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MediaUpload = typeof mediaUploads.$inferSelect;
+export type InsertMediaUpload = typeof mediaUploads.$inferInsert;
+
+/**
+ * FAQ entries shown both in the Mini App and inside the Telegram bot.
+ */
+export const faqItems = mysqlTable("faq_items", {
+  id: int("id").autoincrement().primaryKey(),
+  question: varchar("question", { length: 255 }).notNull(),
+  answer: text("answer").notNull(),
+  category: varchar("category", { length: 64 }).default("umumiy").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FaqItem = typeof faqItems.$inferSelect;
+export type InsertFaqItem = typeof faqItems.$inferInsert;
