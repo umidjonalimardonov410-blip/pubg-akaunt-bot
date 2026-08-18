@@ -400,3 +400,78 @@ button, a, input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .pubg-glow, .pubg-slide-up { animation: none !important; }
 }
+
+/* ==== Gamer intro (boot) animatsiyasi ==== */
+.intro-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 10%, #1a1206 0%, #0a0b0d 55%, #050506 100%);
+  animation: intro-fade-in 220ms ease-out;
+}
+.intro-root.intro-leaving { animation: intro-fade-out 600ms cubic-bezier(.65,0,.35,1) forwards; }
+.intro-grid {
+  position: absolute;
+  inset: -40%;
+  background-image: linear-gradient(rgba(245,197,66,.10) 1px, transparent 1px), linear-gradient(90deg, rgba(245,197,66,.10) 1px, transparent 1px);
+  background-size: 46px 46px;
+  transform: perspective(600px) rotateX(62deg);
+  animation: intro-grid-move 2.4s linear infinite;
+  opacity: .55;
+}
+.intro-scan {
+  position: absolute;
+  left: 0; right: 0; height: 28%;
+  background: linear-gradient(180deg, transparent, rgba(245,197,66,.14), transparent);
+  animation: intro-scan-move 1.5s ease-in-out infinite;
+}
+.intro-center { position: relative; display: flex; flex-direction: column; align-items: center; gap: .55rem; padding: 0 1.5rem; text-align: center; }
+.intro-hex { position: relative; display: grid; place-items: center; width: 96px; height: 96px; margin-bottom: .5rem; }
+.intro-hex-ring {
+  position: absolute; inset: 0;
+  border: 2px solid rgba(245,197,66,.85);
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  box-shadow: 0 0 34px rgba(245,197,66,.45);
+  animation: intro-hex-spin 2.2s cubic-bezier(.7,0,.3,1) infinite;
+}
+.intro-hex-core {
+  font-family: inherit; font-weight: 900; font-size: 1.75rem; letter-spacing: .08em;
+  color: #f5c542; text-shadow: 0 0 18px rgba(245,197,66,.7);
+  animation: intro-core-pulse 1.1s ease-in-out infinite;
+}
+.intro-title {
+  position: relative;
+  font-weight: 900; letter-spacing: .18em; font-size: clamp(1.1rem, 5vw, 1.7rem);
+  color: #fff; text-shadow: 0 0 24px rgba(245,197,66,.35);
+  animation: intro-title-in 700ms cubic-bezier(.16,1,.3,1) both;
+}
+.intro-title::before, .intro-title::after {
+  content: attr(data-text); position: absolute; inset: 0; opacity: .8;
+}
+.intro-title::before { color: #ff3b3b; animation: intro-glitch-a 1.6s infinite steps(2, end); }
+.intro-title::after { color: #35d0ff; animation: intro-glitch-b 1.6s infinite steps(2, end); }
+.intro-tag { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.5); animation: intro-title-in 900ms 120ms cubic-bezier(.16,1,.3,1) both; }
+.intro-bar { margin-top: .85rem; width: min(260px, 70vw); height: 6px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.intro-bar > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f5c542, #ff8a1f); box-shadow: 0 0 16px rgba(245,197,66,.7); transition: width 140ms ease-out; }
+.intro-status { font-size: .625rem; letter-spacing: .22em; text-transform: uppercase; color: rgba(245,197,66,.75); }
+
+@keyframes intro-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes intro-fade-out { to { opacity: 0; transform: scale(1.06); filter: blur(6px); visibility: hidden; } }
+@keyframes intro-grid-move { to { background-position: 0 46px, 46px 0; } }
+@keyframes intro-scan-move { 0% { top: -30% } 100% { top: 100% } }
+@keyframes intro-hex-spin { 0% { transform: rotate(0) scale(1) } 50% { transform: rotate(180deg) scale(1.08) } 100% { transform: rotate(360deg) scale(1) } }
+@keyframes intro-core-pulse { 0%,100% { transform: scale(1); opacity: 1 } 50% { transform: scale(1.12); opacity: .78 } }
+@keyframes intro-title-in { from { opacity: 0; transform: translateY(14px) scale(.96); letter-spacing: .4em } to { opacity: 1; transform: none } }
+@keyframes intro-glitch-a { 0%,92%,100% { clip-path: inset(100% 0 0 0); transform: none } 94% { clip-path: inset(8% 0 72% 0); transform: translate3d(-3px,0,0) } 97% { clip-path: inset(58% 0 22% 0); transform: translate3d(3px,0,0) } }
+@keyframes intro-glitch-b { 0%,90%,100% { clip-path: inset(100% 0 0 0); transform: none } 93% { clip-path: inset(66% 0 12% 0); transform: translate3d(3px,0,0) } 96% { clip-path: inset(20% 0 64% 0); transform: translate3d(-3px,0,0) } }
+
+/* Sahifa almashinuvidagi gamer kirish effekti */
+.page-enter { animation: page-enter 420ms cubic-bezier(.16,1,.3,1) both; }
+@keyframes page-enter { from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.985); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-root, .intro-grid, .intro-scan, .intro-hex-ring, .intro-hex-core, .intro-title, .page-enter { animation: none !important; }
+}

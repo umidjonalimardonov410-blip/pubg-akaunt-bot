@@ -12,7 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
-import { sendTelegramNotification } from "./telegramBot";
+import { sendTelegramNotification, setChatLanguage } from "./telegramBot";
 
 function escapeTelegramHtml(value: string) {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
@@ -776,6 +776,12 @@ export const appRouter = router({
         if (input.phone !== undefined) patch.phone = input.phone.trim() || null;
         if (input.languageCode !== undefined) patch.languageCode = input.languageCode;
         if (Object.keys(patch).length > 0) await db.update(users).set(patch).where(eq(users.id, ctx.user.id));
+        if (input.languageCode) {
+          const current = await getUserById(ctx.user.id);
+          if (current?.openId.startsWith('telegram:')) {
+            setChatLanguage(current.openId.slice('telegram:'.length), input.languageCode);
+          }
+        }
         return await getUserById(ctx.user.id);
       }),
     referral: protectedProcedure.query(async ({ ctx }) => {

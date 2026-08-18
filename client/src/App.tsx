@@ -5,6 +5,9 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import GamerIntro from "./components/GamerIntro";
+import LanguageSync from "./components/LanguageSync";
+import { AutoTranslate } from "./lib/autoTranslate";
 
 
 function Router() {
@@ -50,6 +53,9 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
+          <GamerIntro />
+          <AutoTranslate />
+          <LanguageSync />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
