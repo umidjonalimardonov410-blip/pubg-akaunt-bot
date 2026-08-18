@@ -145,16 +145,9 @@ export function setChatLanguage(chatId: number | string, lang: BotLang) {
 
 function buildMainKeyboard(lang: BotLang = 'uz') {
   const texts = botText(lang);
+  // Bot chatida faqat bitta tugma qoldiriladi: Mini App'ni ochish.
   return {
-    keyboard: [
-      [webAppButton(texts.menuMarket, "/accounts"), webAppButton(texts.menuSell, "/sell")],
-      [webAppButton(texts.menuOrders, "/orders"), webAppButton(texts.menuProfile, "/profile")],
-      [webAppButton(texts.menuListings, "/profile"), { text: texts.menuWallet }],
-      [{ text: texts.menuReferral }, { text: texts.menuRules }],
-      [{ text: texts.menuSupport }, { text: texts.menuAdmin }],
-      [{ text: texts.menuLanguage }],
-      [{ text: texts.menuContact, request_contact: true }],
-    ],
+    keyboard: [[webAppButton(texts.openApp, "/")]],
     resize_keyboard: true,
     is_persistent: true,
     input_field_placeholder: texts.placeholder,

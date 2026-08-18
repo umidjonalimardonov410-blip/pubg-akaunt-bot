@@ -326,29 +326,31 @@ function TrustStrip() {
   );
 }
 
-function ListingCard({ item, onOpen }: { item: Listing; onOpen: (id: number) => void }) {
+function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen: (id: number) => void; showcase?: boolean }) {
   return (
-    <article className="pubg-card group flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] p-2 shadow-md transition duration-200 hover:border-amber-400/40 sm:p-3">
+    <article
+      onClick={() => onOpen(item.id)}
+      className={`pubg-card group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-3'}`}
+    >
       <div>
-        <div className="relative aspect-square overflow-hidden rounded-xl bg-[#16181b]">
-          <img src={item.image} alt={item.playerName} className="h-full w-full object-cover opacity-85 transition duration-300 group-hover:scale-105 group-hover:opacity-100" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className={`relative overflow-hidden rounded-xl bg-[#16181b] ${showcase ? 'aspect-[4/5]' : 'aspect-square'}`}>
+          <img src={item.image} alt={item.playerName} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
-          <div className="absolute left-1 top-1"><span className="rounded bg-black/70 px-1 py-[1px] text-[8px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span></div>
-          <div className="absolute right-1 top-1 z-10"><FavoriteButton accountId={item.id} compact /></div>
-          <div className="absolute bottom-2 left-2 max-w-[85%] truncate text-xs font-black text-white">{item.playerName}</div>
-        </div>
-        <div className="mt-2 flex items-center justify-between px-0.5 text-xs text-white/65">
-          <span>{item.region}</span>
-          <span className="font-black text-amber-100">K/D {item.kd}</span>
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-[2px] text-[9px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
+          <div className="absolute right-1.5 top-1.5 z-10" onClick={event => event.stopPropagation()}><FavoriteButton accountId={item.id} compact /></div>
+          <div className="absolute inset-x-2 bottom-1.5">
+            <p className="truncate text-xs font-black text-white drop-shadow">{item.playerName}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold text-white/70"><span>{item.region}</span><span className="text-amber-200">K/D {item.kd}</span></p>
+          </div>
         </div>
       </div>
-      <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-center justify-between gap-1">
+      <div className="mt-2 flex items-center justify-between gap-1 border-t border-white/[0.06] pt-2">
         <div className="min-w-0">
-          <span className="block text-[10px] font-bold uppercase tracking-wide text-white/45">Narx</span>
+          <span className="block text-[9px] font-bold uppercase tracking-wide text-white/40">Narx</span>
           <span className="block truncate font-display text-[15px] font-black leading-none text-amber-50">{uzNumber(item.price)} <span className="text-[9px]">so'm</span></span>
         </div>
-        <button onClick={() => onOpen(item.id)} className="pubg-press grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-400/25 text-amber-50 transition hover:bg-amber-400 hover:text-black" aria-label="Batafsil"><ArrowRight className="h-5 w-5" /></button>
+        <span className="pubg-press grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400/25 text-amber-50 transition group-hover:bg-amber-400 group-hover:text-black"><ArrowRight className="h-4 w-4" /></span>
       </div>
     </article>
   );
@@ -505,14 +507,37 @@ function Hero({ onExplore, onSell }: { onExplore: () => void; onSell: () => void
   );
 }
 
-function PromoBanner() {
-  return <div className="relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(110deg,rgba(245,197,66,.16),rgba(245,197,66,.04)_45%,rgba(255,255,255,.02))] p-5"><img src={CRATE_IMAGE} alt="Oltin quti" loading="lazy" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25" /><div className="absolute -right-10 -top-20 h-48 w-48 rounded-full bg-amber-400/20 blur-3xl" /><div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-amber-200"><Zap className="h-4 w-4" />Inferno Flash</div><h2 className="mt-2 font-display text-xl font-black text-white">Yangi e'lonlar uchun bozor ochiq</h2><p className="mt-1 max-w-xl text-sm text-white/45">Rasm, video va inventar ma'lumotlarini to'liq qo'shing — xaridorlar e'loningizni tezroq tushunadi.</p></div><button className="inline-flex items-center gap-2 self-start rounded-xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-xs font-bold text-amber-100 transition hover:bg-amber-400/20 md:self-auto">E'lon berish <ArrowRight className="h-4 w-4" /></button></div></div>;
-}
-
 function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const featuredQuery = trpc.accounts.search.useQuery({ limit: 8, offset: 0 }, { staleTime: 20_000, refetchOnWindowFocus: false });
   const featured = (featuredQuery.data ?? []).map(normalizeAccount);
-  return <main className="space-y-8"><Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} /><TrustStrip /><PromoBanner /><section><SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasini ko'rish" onAction={() => onNavigate('/accounts')} />{featuredQuery.isLoading ? <div className="grid grid-cols-4 gap-1.5 sm:gap-2">{[0,1,2,3].map(i => <div key={i} className="h-40 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />)}</div> : featured.length === 0 ? <div className="rounded-2xl border border-dashed border-amber-300/25 bg-[#0e1013] p-8 text-center"><Shield className="mx-auto h-8 w-8 text-amber-200" /><h3 className="mt-3 font-display text-lg font-black text-white">Bozor hozircha bo‘sh</h3><p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/40">Hech qanday namunaviy akkaunt ko‘rsatilmaydi — faqat haqiqiy sotuvchilar e’lonlari chiqadi.</p><PrimaryButton className="mt-4" onClick={() => onNavigate('/sell')}><Plus className="h-4 w-4" />Birinchi e’lonni joylash</PrimaryButton></div> : <div className="grid grid-cols-4 gap-1.5 sm:gap-2 xl:grid-cols-6">{featured.map(item => <ListingCard key={item.id} item={item} onOpen={id => onNavigate(`/account/${id}`)} />)}</div>}</section><section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-start gap-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400/10 text-amber-200"><Shield className="h-6 w-6" /></span><div><h3 className="font-display text-lg font-black text-white">Kafolatli savdo qanday ishlaydi?</h3><p className="mt-2 text-sm leading-6 text-white/45">Bitimning har bir bosqichi tushunarli ko'rsatiladi: to'lov muzlatiladi, akkaunt tekshiriladi va xaridor tasdiqlagandan keyin savdo yakunlanadi.</p></div></div><div className="mt-6 grid gap-3 sm:grid-cols-3">{[['01','To‘lov muzlatildi'],['02','Akkaunt tekshiruvi'],['03','Xaridor tasdig‘i']].map(([num,label],i) => <div key={num} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"><span className="text-xs font-black text-amber-300">{num}</span><span className="mt-2 block text-xs font-bold text-white/70">{label}</span><span className="mt-1 block text-[10px] text-white/35">Admin nazoratida</span></div>)}</div><PrimaryButton variant="soft" className="mt-5" onClick={() => onNavigate('/orders')}>Jarayonni ko'rish <ArrowRight className="h-4 w-4" /></PrimaryButton></div><div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-300/10 text-amber-200"><CircleHelp className="h-5 w-5" /></span><div><h3 className="font-display text-lg font-black text-white">Yordam kerakmi?</h3><p className="mt-1 text-sm text-white/45">Qoidalar va tez-tez so'raladigan savollar</p></div></div><div className="mt-5 space-y-2">{['Akkaunt qanday tekshiriladi?', 'Xarid paytida login/parol qayerda beriladi?', 'Muammo bo‘lsa kimga murojaat qilaman?'].map(q => <button key={q} onClick={() => onNavigate('/support')} className="flex w-full items-center justify-between rounded-xl border border-white/[0.07] px-3 py-3 text-left text-xs font-semibold text-white/65 transition hover:border-amber-400/30 hover:text-white"><span>{q}</span><ChevronRight className="h-4 w-4 text-white/30" /></button>)}</div></div></section></main>;
+  return (
+    <main className="space-y-5 pb-2">
+      <Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} />
+      <TrustStrip />
+      <section>
+        <SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasi" onAction={() => onNavigate('/accounts')} />
+        {featuredQuery.isLoading ? (
+          <div className="grid grid-cols-2 gap-2.5">{[0, 1, 2, 3].map(i => <div key={i} className="h-56 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />)}</div>
+        ) : featured.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-amber-300/25 bg-[#0e1013] p-8 text-center">
+            <Shield className="mx-auto h-8 w-8 text-amber-200" />
+            <h3 className="mt-3 font-display text-lg font-black text-white">Bozor hozircha bo‘sh</h3>
+            <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/40">Faqat haqiqiy sotuvchilar e’lonlari chiqadi.</p>
+            <PrimaryButton className="mt-4" onClick={() => onNavigate('/sell')}><Plus className="h-4 w-4" />Birinchi e’lonni joylash</PrimaryButton>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              {featured.map(item => <ListingCard key={item.id} item={item} onOpen={id => onNavigate(`/account/${id}`)} showcase />)}
+            </div>
+            <button onClick={() => onNavigate('/accounts')} className="pubg-press mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-300 text-sm font-black text-black active:scale-[.98]">
+              Bozorga kirish<ArrowRight className="h-4 w-4" />
+            </button>
+          </>
+        )}
+      </section>
+    </main>
+  );
 }
 
 function SectionHeading({ eyebrow, title, actionLabel, onAction }: { eyebrow: string; title: string; actionLabel?: string; onAction?: () => void }) {

@@ -764,7 +764,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-        await db.update(users).set({ name: input.name?.trim() || null, profileBio: input.profileBio?.trim() || null, ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}), ...(input.languageCode ? { languageCode: input.languageCode } : {}) }).where(eq(users.id, ctx.user.id));
+        const patch: Record<string, unknown> = {};
+        if (input.name !== undefined) patch.name = input.name.trim() || null;
+        if (input.profileBio !== undefined) patch.profileBio = input.profileBio.trim() || null;
+        if (input.phone !== undefined) patch.phone = input.phone.trim() || null;
+        if (input.languageCode !== undefined) patch.languageCode = input.languageCode;
+        if (Object.keys(patch).length > 0) await db.update(users).set(patch).where(eq(users.id, ctx.user.id));
         return await getUserById(ctx.user.id);
       }),
     referral: protectedProcedure.query(async ({ ctx }) => {
