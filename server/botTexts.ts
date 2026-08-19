@@ -45,6 +45,23 @@ type Texts = {
   mainMenu: string;
   adminTitle: string;
   adminBody: string;
+  chooseSection: string;
+  walletTitle: string;
+  walletIntro: string;
+  walletChooseAmount: string;
+  walletChooseMethod: string;
+  walletMethodUzcard: string;
+  walletMethodVisa: string;
+  walletMethodTon: string;
+  walletMethodStars: string;
+  walletSoon: string;
+  walletCardMessage: string;
+  walletAmountChosen: string;
+  walletReceiptReceived: string;
+  walletApproved: string;
+  walletRejected: string;
+  adminApprove: string;
+  adminReject: string;
 };
 
 const uz: Texts = {
@@ -88,6 +105,23 @@ const uz: Texts = {
   mainMenu: 'Asosiy menyu:',
   adminTitle: '👨‍💼 ADMIN BILAN ALOQA',
   adminBody: 'Savdo, to‘lov yoki nizo bo‘yicha savollar uchun to‘g‘ridan-to‘g‘ri adminimizga yozing: {admin}\n\n⚠️ Login va parolni hech kimga yubormang. Admin hech qachon parol so‘ramaydi.',
+  chooseSection: '👇 Quyidagi menyudan kerakli bo‘limni tanlang:',
+  walletTitle: '💳 BALANSNI TO‘LDIRISH',
+  walletIntro: '1️⃣ Summani tanlang\n2️⃣ To‘lov usulini tanlang\n3️⃣ Chek rasmini shu chatga yuboring\n\nAdmin tasdiqlagach balans avtomatik qo‘shiladi.',
+  walletChooseAmount: '💰 Summani tanlang:',
+  walletChooseMethod: '💳 To‘lov usulini tanlang:',
+  walletMethodUzcard: '🟢 UZCARD',
+  walletMethodVisa: '🔵 VISA',
+  walletMethodTon: '💎 TON — tez orada',
+  walletMethodStars: '⭐ Stars — tez orada',
+  walletSoon: '🚧 Tez orada ishga tushadi. Hozircha karta orqali to‘lang.',
+  walletCardMessage: '💳 <b>{method}</b>\n\nKarta: <code>{card}</code>\nEgasi: <b>{holder}</b>\nSumma: <b>{amount} so‘m</b>\n\n📸 To‘lovdan so‘ng chek rasmini shu chatga yuboring.',
+  walletAmountChosen: '✅ {amount} so‘m tanlandi.',
+  walletReceiptReceived: '✅ <b>Chek qabul qilindi</b>\n\n{amount} so‘m uchun so‘rov #{id} admin tekshiruviga yuborildi.',
+  walletApproved: '✅ <b>Balans to‘ldirildi</b>\n\n{amount} so‘m hisobingizga qo‘shildi. Endi bozordan akkaunt sotib olishingiz mumkin.',
+  walletRejected: '❌ <b>Chek rad etildi</b>\n\n{amount} so‘m uchun to‘lov tasdiqlanmadi. Admin bilan bog‘laning.',
+  adminApprove: '✅ Tasdiqlash',
+  adminReject: '❌ Rad etish',
 };
 
 const ru: Texts = {
@@ -130,6 +164,23 @@ const ru: Texts = {
   mainMenu: 'Главное меню:',
   adminTitle: '👨‍💼 СВЯЗЬ С АДМИНОМ',
   adminBody: 'По вопросам сделки, оплаты или спора пишите напрямую админу: {admin}\n\n⚠️ Никогда не отправляйте логин и пароль. Админ никогда их не просит.',
+  chooseSection: '👇 Выберите нужный раздел в меню ниже:',
+  walletTitle: '💳 ПОПОЛНЕНИЕ БАЛАНСА',
+  walletIntro: '1️⃣ Выберите сумму\n2️⃣ Выберите способ оплаты\n3️⃣ Отправьте фото чека в этот чат\n\nПосле подтверждения админом баланс пополнится автоматически.',
+  walletChooseAmount: '💰 Выберите сумму:',
+  walletChooseMethod: '💳 Выберите способ оплаты:',
+  walletMethodUzcard: '🟢 UZCARD',
+  walletMethodVisa: '🔵 VISA',
+  walletMethodTon: '💎 TON — скоро',
+  walletMethodStars: '⭐ Stars — скоро',
+  walletSoon: '🚧 Скоро будет доступно. Пока оплатите картой.',
+  walletCardMessage: '💳 <b>{method}</b>\n\nКарта: <code>{card}</code>\nВладелец: <b>{holder}</b>\nСумма: <b>{amount} сум</b>\n\n📸 После оплаты отправьте фото чека в этот чат.',
+  walletAmountChosen: '✅ Выбрано {amount} сум.',
+  walletReceiptReceived: '✅ <b>Чек принят</b>\n\nЗаявка #{id} на {amount} сум отправлена админу на проверку.',
+  walletApproved: '✅ <b>Баланс пополнен</b>\n\n{amount} сум зачислено на ваш счёт.',
+  walletRejected: '❌ <b>Чек отклонён</b>\n\nОплата на {amount} сум не подтверждена. Свяжитесь с админом.',
+  adminApprove: '✅ Подтвердить',
+  adminReject: '❌ Отклонить',
 };
 
 const en: Texts = {
@@ -172,6 +223,23 @@ const en: Texts = {
   mainMenu: 'Main menu:',
   adminTitle: '👨‍💼 CONTACT ADMIN',
   adminBody: 'For deal, payment or dispute questions message our admin directly: {admin}\n\n⚠️ Never share your login or password. The admin never asks for them.',
+  chooseSection: '👇 Pick a section from the menu below:',
+  walletTitle: '💳 TOP UP BALANCE',
+  walletIntro: '1️⃣ Choose an amount\n2️⃣ Choose a payment method\n3️⃣ Send the receipt photo here\n\nYour balance is credited once an admin approves it.',
+  walletChooseAmount: '💰 Choose an amount:',
+  walletChooseMethod: '💳 Choose a payment method:',
+  walletMethodUzcard: '🟢 UZCARD',
+  walletMethodVisa: '🔵 VISA',
+  walletMethodTon: '💎 TON — soon',
+  walletMethodStars: '⭐ Stars — soon',
+  walletSoon: '🚧 Coming soon. Please pay by card for now.',
+  walletCardMessage: '💳 <b>{method}</b>\n\nCard: <code>{card}</code>\nHolder: <b>{holder}</b>\nAmount: <b>{amount} so‘m</b>\n\n📸 Send the payment receipt photo to this chat.',
+  walletAmountChosen: '✅ {amount} so‘m selected.',
+  walletReceiptReceived: '✅ <b>Receipt received</b>\n\nRequest #{id} for {amount} so‘m was sent to admin review.',
+  walletApproved: '✅ <b>Balance topped up</b>\n\n{amount} so‘m has been added to your account.',
+  walletRejected: '❌ <b>Receipt rejected</b>\n\nThe {amount} so‘m payment was not confirmed. Contact the admin.',
+  adminApprove: '✅ Approve',
+  adminReject: '❌ Reject',
 };
 
 const dictionary: Record<BotLang, Texts> = { uz, ru, en };

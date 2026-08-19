@@ -23,6 +23,7 @@ export const users = mysqlTable("users", {
   twoFactorSecret: varchar("twoFactorSecret", { length: 64 }),
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
   profileBio: text("profileBio"),
+  avatarUrl: varchar("avatarUrl", { length: 500 }),
   referralCode: varchar("referralCode", { length: 32 }),
   alertPreferences: text("alertPreferences"),
   themePreference: mysqlEnum("themePreference", ["dark", "neon", "gamer"]).default("dark").notNull(),

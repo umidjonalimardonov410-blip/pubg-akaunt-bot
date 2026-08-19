@@ -6,9 +6,9 @@ import { createTelegramLoginToken } from './telegramLoginTokens';
 import { listFaq } from './faqData';
 const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 import { botText, matchMenuKey, normalizeBotLang, type BotLang } from './botTexts';
-import { depositReceipts, transactions, securityAudits } from '../drizzle/schema';
+import { depositReceipts, transactions, securityAudits, users, notifications } from '../drizzle/schema';
 import { storagePut } from './storage';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL } from '../shared/adminContact';
 
 export type TelegramCommand = {
@@ -62,26 +62,74 @@ export function getTelegramAdminIds() {
     .filter(Boolean);
 }
 
-const MANUAL_TOPUP_AMOUNTS = [10000, 20000, 50000] as const;
+const MANUAL_TOPUP_AMOUNTS = [10000, 20000, 50000, 100000, 200000, 500000] as const;
 const pendingWalletSelections = new Map<string, number>();
+
+type PaymentMethodId = 'uzcard' | 'visa';
+
+const PAYMENT_CARDS: Record<PaymentMethodId, { label: string; number: string; holder: string; logo: string }> = {
+  uzcard: {
+    label: 'UZCARD',
+    number: process.env.ADMIN_UZCARD_NUMBER || '5614 6805 7716 7758',
+    holder: process.env.ADMIN_CARD_HOLDER || 'ALIMARDONOV U.',
+    logo: process.env.UZCARD_LOGO_URL || 'https://uzcard.uz/assets/img/logo.png',
+  },
+  visa: {
+    label: 'VISA',
+    number: process.env.ADMIN_VISA_NUMBER || '4067 0700 0330 3687',
+    holder: process.env.ADMIN_CARD_HOLDER || 'ALIMARDONOV U.',
+    logo: process.env.VISA_LOGO_URL || 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/320px-Visa_Inc._logo.svg.png',
+  },
+};
 
 function formatUzAmount(amount: number) {
   return amount.toLocaleString('uz-UZ');
 }
 
-function walletMenuKeyboard() {
+function chunk<T>(items: T[], size: number) {
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += size) rows.push(items.slice(index, index + size));
+  return rows;
+}
+
+function walletMenuKeyboard(lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  const appUrl = getTelegramMiniAppUrl('/profile');
   return {
     inline_keyboard: [
-      MANUAL_TOPUP_AMOUNTS.map(amount => ({ text: `💳 ${formatUzAmount(amount)} so‘m`, callback_data: `wallet_amount:${amount}` })),
-      [{ text: '📱 Mini App profilini ochish', web_app: { url: getTelegramMiniAppUrl('/profile') || process.env.PUBLIC_APP_URL || '/' } }],
+      ...chunk(
+        MANUAL_TOPUP_AMOUNTS.map(amount => ({ text: `\u{1F4B0} ${formatUzAmount(amount)}`, callback_data: `wallet_amount:${amount}` })),
+        3,
+      ),
+      [
+        { text: texts.walletMethodTon, callback_data: 'wallet_soon:ton' },
+        { text: texts.walletMethodStars, callback_data: 'wallet_soon:stars' },
+      ],
+      ...(appUrl ? [[{ text: texts.openApp, web_app: { url: appUrl } }]] : []),
     ],
   };
 }
 
-function manualWalletText() {
-  const cardNumber = process.env.ADMIN_PAYOUT_CARD_NUMBER || 'Admin kartasi sozlanmagan';
-  const cardHolder = process.env.ADMIN_PAYOUT_CARD_HOLDER || 'Admin karta egasi sozlanmagan';
-  return `<b>Inferno Wallet — manual to‘ldirish</b>\n\n1) Summani tanlang: 10 000 / 20 000 / 50 000 so‘m.\n2) Quyidagi karta ma’lumotiga o‘tkazing:\n💳 Karta: <code>${cardNumber}</code>\n👤 Karta egasi: <b>${cardHolder}</b>\n3) To‘lov chekini shu chatga rasm qilib yuboring.\n\nChek admin tekshiruviga tushadi; tasdiqlangach balans avtomatik qo‘shiladi.`;
+function walletMethodKeyboard(amount: number, lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  return {
+    inline_keyboard: [
+      [
+        { text: texts.walletMethodUzcard, callback_data: `wallet_method:uzcard:${amount}` },
+        { text: texts.walletMethodVisa, callback_data: `wallet_method:visa:${amount}` },
+      ],
+      [
+        { text: texts.walletMethodTon, callback_data: 'wallet_soon:ton' },
+        { text: texts.walletMethodStars, callback_data: 'wallet_soon:stars' },
+      ],
+      [{ text: '\u2B05\uFE0F', callback_data: 'wallet_menu' }],
+    ],
+  };
+}
+
+function manualWalletText(lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  return `<b>${texts.walletTitle}</b>\n\n${texts.walletIntro}\n\n${texts.walletChooseAmount}`;
 }
 
 export function isTelegramAdmin(userId?: number | string) {
@@ -147,9 +195,17 @@ export function setChatLanguage(chatId: number | string, lang: BotLang) {
 
 function buildMainKeyboard(lang: BotLang = 'uz') {
   const texts = botText(lang);
-  // Bot chatida faqat bitta tugma qoldiriladi: Mini App'ni ochish.
+  const appButton = webAppButton(texts.openApp, '/');
+  // Pastdagi doimiy menyu: barcha bo‘limlar ixcham 2 ustunli tugmalarda.
   return {
-    keyboard: [[webAppButton(texts.openApp, "/")]],
+    keyboard: [
+      [appButton],
+      [{ text: texts.menuMarket }, { text: texts.menuSell }],
+      [{ text: texts.menuWallet }, { text: texts.menuListings }],
+      [{ text: texts.menuRules }, { text: texts.menuReferral }],
+      [{ text: texts.menuSupport }, { text: texts.menuLanguage }],
+      [{ text: texts.menuAdmin }],
+    ],
     resize_keyboard: true,
     is_persistent: true,
     input_field_placeholder: texts.placeholder,
@@ -423,14 +479,82 @@ async function answerTelegramCallback(callbackQueryId: string, text: string) {
   return await telegramApiRequest('answerCallbackQuery', { callback_query_id: callbackQueryId, text, show_alert: false });
 }
 
-async function sendWalletMenu(chatId: number | string) {
+async function sendWalletMenu(chatId: number | string, lang: BotLang = getChatLanguage(chatId)) {
   return await telegramApiRequest('sendMessage', {
     chat_id: chatId,
-    text: manualWalletText(),
+    text: manualWalletText(lang),
     parse_mode: 'HTML',
     disable_web_page_preview: true,
-    reply_markup: walletMenuKeyboard(),
+    reply_markup: walletMenuKeyboard(lang),
   });
+}
+
+async function sendPaymentCard(chatId: number | string, method: PaymentMethodId, amount: number, lang: BotLang) {
+  const texts = botText(lang);
+  const card = PAYMENT_CARDS[method];
+  const caption = texts.walletCardMessage
+    .replace('{method}', card.label)
+    .replace('{card}', card.number)
+    .replace('{holder}', card.holder)
+    .replace('{amount}', formatUzAmount(amount));
+  const photo = await telegramApiRequest('sendPhoto', { chat_id: chatId, photo: card.logo, caption, parse_mode: 'HTML' });
+  if (photo.ok) return photo;
+  // Logotip yuklanmasa ham to‘lov ma’lumoti albatta yetib borishi kerak.
+  return await telegramApiRequest('sendMessage', { chat_id: chatId, text: caption, parse_mode: 'HTML' });
+}
+
+/** Admin tugmasi bosilganda chekni tasdiqlaydi yoki rad etadi. */
+async function reviewDepositReceipt(receiptId: number, approved: boolean, adminTelegramId?: number | string) {
+  const db = await getDb();
+  if (!db) return { ok: false as const, reason: 'database_unavailable' as const };
+  const rows = await db.select().from(depositReceipts).where(eq(depositReceipts.id, receiptId)).limit(1);
+  const receipt = rows[0];
+  if (!receipt) return { ok: false as const, reason: 'not_found' as const };
+  if (receipt.status !== 'pending') return { ok: false as const, reason: 'already_reviewed' as const };
+
+  await db.transaction(async (tx: any) => {
+    await tx.update(depositReceipts).set({
+      status: approved ? 'approved' : 'rejected',
+      reviewedAt: new Date(),
+      reviewNote: `telegram:${adminTelegramId ?? 'admin'}`,
+    }).where(and(eq(depositReceipts.id, receiptId), eq(depositReceipts.status, 'pending')));
+
+    if (receipt.transactionId) {
+      await tx.update(transactions)
+        .set({ status: approved ? 'completed' : 'failed' })
+        .where(and(eq(transactions.id, receipt.transactionId), eq(transactions.status, 'pending')));
+    }
+    if (approved) {
+      await tx.update(users).set({ walletBalance: sql`walletBalance + ${receipt.amount}` }).where(eq(users.id, receipt.userId));
+    }
+    await tx.insert(notifications).values({
+      userId: receipt.userId,
+      type: 'admin_message',
+      title: approved ? 'Balans to‘ldirildi' : 'Chek rad etildi',
+      message: `${formatUzAmount(Number(receipt.amount))} so‘m — ${approved ? 'tasdiqlandi' : 'rad etildi'}`,
+    });
+    await tx.insert(securityAudits).values({
+      userId: receipt.userId,
+      eventType: approved ? 'deposit_receipt_approved_telegram' : 'deposit_receipt_rejected_telegram',
+      riskScore: 0,
+      details: JSON.stringify({ receiptId, reviewedBy: `telegram:${adminTelegramId ?? ''}` }),
+    });
+  });
+
+  const owner = await db.select({ openId: users.openId }).from(users).where(eq(users.id, receipt.userId)).limit(1);
+  const openId = owner[0]?.openId ?? '';
+  if (openId.startsWith('telegram:')) {
+    const userChatId = openId.slice('telegram:'.length);
+    const lang = getChatLanguage(userChatId);
+    const texts = botText(lang);
+    await telegramApiRequest('sendMessage', {
+      chat_id: userChatId,
+      text: (approved ? texts.walletApproved : texts.walletRejected).replace('{amount}', formatUzAmount(Number(receipt.amount))),
+      parse_mode: 'HTML',
+      reply_markup: buildMainKeyboard(lang),
+    });
+  }
+  return { ok: true as const, amount: Number(receipt.amount) };
 }
 
 async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['message']>) {
@@ -505,11 +629,18 @@ async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['m
       text: `📥 <b>Yangi balans cheki</b>\n\nFoydalanuvchi: #${user.id}\nSumma: <b>${formatUzAmount(amount)} so‘m</b>\nChek: ${uploaded.url}`,
       parse_mode: 'HTML',
       disable_web_page_preview: false,
-      reply_markup: buildInlineKeyboard('/admin'),
+      reply_markup: {
+        inline_keyboard: [[
+          { text: botText('uz').adminApprove, callback_data: `deposit_ok:${result.receiptId}` },
+          { text: botText('uz').adminReject, callback_data: `deposit_no:${result.receiptId}` },
+        ]],
+      },
     })));
     const sent = await telegramApiRequest('sendMessage', {
       chat_id: chatId,
-      text: `✅ <b>Chek qabul qilindi</b>\n\n${formatUzAmount(amount)} so‘m uchun so‘rovingiz #${result.receiptId} admin tekshiruviga yuborildi. Tasdiqlangach balansingizga qo‘shiladi.`,
+      text: botText(getChatLanguage(chatId)).walletReceiptReceived
+        .replace('{amount}', formatUzAmount(amount))
+        .replace('{id}', String(result.receiptId)),
       parse_mode: 'HTML',
       reply_markup: buildInlineKeyboard('/profile'),
     });
@@ -549,7 +680,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         try { await upsertUser({ openId: `telegram:${telegramId}`, languageCode: lang }); } catch (error) { console.warn('[Telegram Bot] language save failed', error); }
       }
       await answerTelegramCallback(callback.id, botText(lang).languageSaved);
-      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: botText(lang).languageSaved, reply_markup: buildMainKeyboard(lang) });
+      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: `${botText(lang).languageSaved}\n\n${botText(lang).chooseSection}`, reply_markup: buildMainKeyboard(lang) });
       return { handled: true as const, command: 'set_lang', status: sent.status, sent: sent.ok, lang };
     }
     if (data === 'show_rules') {
@@ -570,8 +701,8 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       return { handled: true as const, command: 'language', status: sent.status, sent: sent.ok };
     }
     if (data === 'wallet_menu') {
-      await answerTelegramCallback(callback.id, 'Wallet menyusi ochildi');
-      const sent = await sendWalletMenu(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(getChatLanguage(callbackChatId)).walletTitle);
+      const sent = await sendWalletMenu(callbackChatId, getChatLanguage(callbackChatId));
       return { handled: true as const, command: 'wallet_menu', status: sent.status, sent: sent.ok };
     }
     const marketPath = marketplaceFilterPath(data);
@@ -580,17 +711,52 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const sent = await sendMarketplaceMenu(callbackChatId, marketPath);
       return { handled: true as const, command: 'market_filter', status: sent.status, sent: sent.ok, path: marketPath };
     }
-    const amountMatch = /^wallet_amount:(10000|20000|50000)$/.exec(data);
+    const cbLang = getChatLanguage(callbackChatId);
+    const cbTexts = botText(cbLang);
+    const amountMatch = /^wallet_amount:(\d+)$/.exec(data);
     if (amountMatch) {
       const amount = Number(amountMatch[1]);
       pendingWalletSelections.set(String(callbackChatId), amount);
-      await answerTelegramCallback(callback.id, `${formatUzAmount(amount)} so‘m tanlandi`);
+      await answerTelegramCallback(callback.id, cbTexts.walletAmountChosen.replace('{amount}', formatUzAmount(amount)));
       const sent = await telegramApiRequest('sendMessage', {
         chat_id: callbackChatId,
-        text: `✅ <b>${formatUzAmount(amount)} so‘m tanlandi</b>\n\nKartaga o‘tkazmani amalga oshiring, so‘ng to‘lov chekini shu chatga rasm qilib yuboring. Rasm ostiga summa yozsangiz ham bo‘ladi.`,
+        text: `${cbTexts.walletAmountChosen.replace('{amount}', formatUzAmount(amount))}\n\n${cbTexts.walletChooseMethod}`,
         parse_mode: 'HTML',
+        reply_markup: walletMethodKeyboard(amount, cbLang),
       });
       return { handled: true as const, command: 'wallet_amount', status: sent.status, sent: sent.ok, amount };
+    }
+    const methodMatch = /^wallet_method:(uzcard|visa):(\d+)$/.exec(data);
+    if (methodMatch) {
+      const method = methodMatch[1] as PaymentMethodId;
+      const amount = Number(methodMatch[2]);
+      pendingWalletSelections.set(String(callbackChatId), amount);
+      await answerTelegramCallback(callback.id, PAYMENT_CARDS[method].label);
+      const sent = await sendPaymentCard(callbackChatId, method, amount, cbLang);
+      return { handled: true as const, command: 'wallet_method', status: sent.status, sent: sent.ok, method, amount };
+    }
+    if (/^wallet_soon:(ton|stars)$/.test(data)) {
+      await answerTelegramCallback(callback.id, cbTexts.walletSoon);
+      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: cbTexts.walletSoon });
+      return { handled: true as const, command: 'wallet_soon', status: sent.status, sent: sent.ok };
+    }
+    const depositMatch = /^deposit_(ok|no):(\d+)$/.exec(data);
+    if (depositMatch) {
+      if (!isTelegramAdmin(callback.from?.id)) {
+        await answerTelegramCallback(callback.id, '\u26D4');
+        return { handled: true as const, command: 'deposit_review', status: 'active' as const, sent: false };
+      }
+      const approved = depositMatch[1] === 'ok';
+      const receiptId = Number(depositMatch[2]);
+      const review = await reviewDepositReceipt(receiptId, approved, callback.from?.id);
+      await answerTelegramCallback(callback.id, review.ok ? (approved ? '\u2705' : '\u274C') : '\u26A0\uFE0F');
+      const sent = await telegramApiRequest('sendMessage', {
+        chat_id: callbackChatId,
+        text: review.ok
+          ? `${approved ? '\u2705' : '\u274C'} Chek #${receiptId} — ${approved ? 'tasdiqlandi' : 'rad etildi'}.`
+          : `\u26A0\uFE0F Chek #${receiptId} holati o‘zgartirilmadi (${review.reason}).`,
+      });
+      return { handled: true as const, command: 'deposit_review', status: sent.status, sent: sent.ok };
     }
     await answerTelegramCallback(callback.id, 'Bu tugma eskirgan. Wallet menyusini qayta oching.');
     return { handled: true as const, command: 'callback', status: 'active' as const, sent: true };
@@ -650,7 +816,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
 
   if (command === 'start' || command === '') {
     const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
-    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.mainMenu, reply_markup: buildMainKeyboard(lang) });
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang) });
     return { handled: true as const, command: 'start', status: sent.status, sent: sent.ok };
   }
   if (command === 'buy' || menuKey === 'menuMarket') {
@@ -658,7 +824,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     return { handled: true as const, command: 'buy', status: sent.status, sent: sent.ok };
   }
   if (command === 'wallet' || menuKey === 'menuWallet') {
-    const sent = await sendWalletMenu(chatId);
+    const sent = await sendWalletMenu(chatId, lang);
     return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };
   }
   if (command === 'rules' || menuKey === 'menuRules') {

@@ -9,4 +9,7 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   adminPayoutCardNumber: process.env.ADMIN_PAYOUT_CARD_NUMBER ?? "",
   adminPayoutCardHolder: process.env.ADMIN_PAYOUT_CARD_HOLDER ?? "",
+  adminUzcardNumber: process.env.ADMIN_UZCARD_NUMBER ?? "5614 6805 7716 7758",
+  adminVisaNumber: process.env.ADMIN_VISA_NUMBER ?? "4067 0700 0330 3687",
+  adminCardHolder: process.env.ADMIN_CARD_HOLDER ?? "ALIMARDONOV U.",
 };

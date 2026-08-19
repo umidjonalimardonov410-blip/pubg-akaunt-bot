@@ -283,6 +283,23 @@ export const appRouter = router({
         }
         return { success: true };
       }),
+
+    // Sotuvchi o‘z e’lonini o‘chira oladi (sotilganidan tashqari).
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const account = await getPubgAccountById(input.id);
+        if (!account) throw new TRPCError({ code: 'NOT_FOUND', message: 'Akkaunt topilmadi' });
+        if (account.sellerId !== ctx.user.id && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Faqat o‘z e’loningizni o‘chirishingiz mumkin' });
+        }
+        if (account.status === 'sold') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Sotilgan akkauntni o‘chirib bo‘lmaydi' });
+        const ownershipCondition = ctx.user.role === 'admin' ? eq(pubgAccounts.id, input.id) : and(eq(pubgAccounts.id, input.id), eq(pubgAccounts.sellerId, ctx.user.id));
+        await db.delete(pubgAccounts).where(ownershipCondition);
+        return { success: true };
+      }),
   }),
 
   // Secure media upload: the client sends a bounded base64 payload and the server writes it to S3.
@@ -628,9 +645,18 @@ export const appRouter = router({
       }),
 
     getTopupInstructions: protectedProcedure.query(() => ({
-      amounts: [10000, 20000, 50000] as const,
-      cardNumber: ENV.adminPayoutCardNumber,
-      cardHolder: ENV.adminPayoutCardHolder,
+      amounts: [10000, 20000, 50000, 100000, 200000, 500000] as const,
+      cardNumber: ENV.adminPayoutCardNumber || ENV.adminUzcardNumber,
+      cardHolder: ENV.adminPayoutCardHolder || ENV.adminCardHolder,
+      // Foydalanuvchi to‘lov usulini tanlaydi: har biri o‘z kartasi bilan.
+      cards: [
+        { id: 'uzcard' as const, label: 'UZCARD', number: ENV.adminUzcardNumber, holder: ENV.adminCardHolder },
+        { id: 'visa' as const, label: 'VISA', number: ENV.adminVisaNumber, holder: ENV.adminCardHolder },
+      ],
+      comingSoon: [
+        { id: 'ton' as const, label: 'TON' },
+        { id: 'stars' as const, label: 'Telegram Stars' },
+      ],
       instructions: 'Kartaga tanlangan summani o‘tkazing, keyin to‘lov chekini shu yerga yuboring. Admin tasdiqlagach balans avtomatik qo‘shiladi.',
     })),
 
@@ -822,7 +848,7 @@ export const appRouter = router({
       return { ...user, ...ratingStats };
     }),
     update: protectedProcedure
-      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), languageCode: z.enum(['uz','ru','en']).optional(), themePreference: z.enum(['dark','neon','gamer']).optional() }))
+      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), avatarUrl: z.string().url().max(500).nullable().optional(), languageCode: z.enum(['uz','ru','en']).optional(), themePreference: z.enum(['dark','neon','gamer']).optional() }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
