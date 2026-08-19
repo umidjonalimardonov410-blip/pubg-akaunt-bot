@@ -4,6 +4,11 @@ import { useI18n, type Lang } from "./i18n";
 import { getPhraseOverride, getPhraseOverridesVersion, subscribePhraseOverrides } from "./phraseStore";
 
 const ORIGINAL = new WeakMap<Node, string>();
+// O'zimiz yozgan qiymatlar: MutationObserver ularni "yangi original" deb
+// hisoblab qolmasligi uchun kuzatib boramiz (aks holda til bir marta
+// almashgach qotib qoladi).
+const SELF_TEXT = new WeakMap<Node, string>();
+const SELF_ATTR = new WeakMap<Element, Record<string, string>>();
 const ORIGINAL_ATTR = new WeakMap<Element, Record<string, string>>();
 const ATTRS = ["placeholder", "aria-label", "title", "alt", "value"] as const;
 const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE", "SVG", "PATH"]);
@@ -33,7 +38,10 @@ function applyToTextNode(node: Text, lang: Lang) {
   if (!original.trim()) return;
   if (!ORIGINAL.has(node)) ORIGINAL.set(node, original);
   const next = translatePhrase(original, lang) ?? original;
-  if (node.nodeValue !== next) node.nodeValue = next;
+  if (node.nodeValue !== next) {
+    SELF_TEXT.set(node, next);
+    node.nodeValue = next;
+  }
 }
 
 function applyToElement(element: Element, lang: Lang) {
@@ -49,7 +57,12 @@ function applyToElement(element: Element, lang: Lang) {
     }
     const original = store[attribute];
     const next = translatePhrase(original, lang) ?? original;
-    if (current !== next) element.setAttribute(attribute, next);
+    if (current !== next) {
+      const self = SELF_ATTR.get(element) ?? {};
+      self[attribute] = next;
+      SELF_ATTR.set(element, self);
+      element.setAttribute(attribute, next);
+    }
   }
 }
 
@@ -94,10 +107,15 @@ export function AutoTranslate() {
     const observer = new MutationObserver(mutations => {
       for (const mutation of mutations) {
         if (mutation.type === "characterData" && mutation.target.nodeType === Node.TEXT_NODE) {
+          const textNode = mutation.target as Text;
+          if (SELF_TEXT.get(textNode) === textNode.nodeValue) continue;
           ORIGINAL.delete(mutation.target);
           applyToTextNode(mutation.target as Text, lang);
         }
         if (mutation.type === "attributes" && mutation.target.nodeType === Node.ELEMENT_NODE) {
+          const element = mutation.target as Element;
+          const selfStore = SELF_ATTR.get(element);
+          if (mutation.attributeName && selfStore && selfStore[mutation.attributeName] === element.getAttribute(mutation.attributeName)) continue;
           const store = ORIGINAL_ATTR.get(mutation.target as Element);
           if (store && mutation.attributeName) delete store[mutation.attributeName];
           applyToElement(mutation.target as Element, lang);
