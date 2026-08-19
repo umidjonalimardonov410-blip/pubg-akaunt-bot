@@ -306,6 +306,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
             <button onClick={() => setLangOpen(value => !value)} className="grid h-10 min-w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] px-2 text-sm text-white/70 transition hover:border-amber-400/40" aria-label="Language">
               {LANGUAGES.find(item => item.code === lang)?.flag}
             </button>
+            {langOpen && <button type="button" aria-label="Yopish" onClick={() => setLangOpen(false)} className="fixed inset-0 z-40 cursor-default" />}
             {langOpen && (
               <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-2xl border border-amber-400/25 bg-[#0d0f12] shadow-2xl">
                 {LANGUAGES.map(item => (
@@ -330,7 +331,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{t(label)}</button>
             ))}
             <div className="mt-2 flex gap-2 border-t border-white/10 pt-3">{LANGUAGES.map(item => (
-              <button key={item.code} onClick={() => setLang(item.code)} className={`flex-1 rounded-lg border px-2 py-2 text-xs font-bold transition ${lang === item.code ? 'border-amber-400/60 bg-amber-400/15 text-amber-200' : 'border-white/10 bg-white/[0.03] text-white/55'}`}>{item.flag} {item.label}</button>
+              <button key={item.code} onClick={() => { setLang(item.code); setMenuOpen(false); }} className={`flex-1 rounded-lg border px-2 py-2 text-xs font-bold transition ${lang === item.code ? 'border-amber-400/60 bg-amber-400/15 text-amber-200' : 'border-white/10 bg-white/[0.03] text-white/55'}`}>{item.flag} {item.label}</button>
             ))}</div>
           </div>
         </div>
