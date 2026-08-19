@@ -268,10 +268,28 @@ async function sendRules(chatId: number | string, lang: BotLang) {
   });
 }
 
+let cachedBotUsername: string | null = null;
+/** Bot username: avval ENV, bo'lmasa Telegram getMe (natija keshlanadi). */
+async function resolveBotUsername(): Promise<string | null> {
+  const fromEnv = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, '');
+  if (fromEnv) return fromEnv;
+  if (cachedBotUsername) return cachedBotUsername;
+  try {
+    const response = await telegramApiRequest('getMe', {});
+    const username = (response as any)?.result?.username ?? (response as any)?.data?.result?.username;
+    if (typeof username === 'string' && username) {
+      cachedBotUsername = username;
+      return username;
+    }
+  } catch {}
+  return null;
+}
+
 async function sendReferral(chatId: number | string, lang: BotLang, telegramUserId?: number | string) {
   const texts = botText(lang);
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, '');
+  const botUsername = await resolveBotUsername();
   const code = telegramUserId ? `IS${telegramUserId}` : 'IS';
+  // Referral havolasi doim bot orqali ochilsin; Railway domeni faqat oxirgi zaxira.
   const link = botUsername ? `https://t.me/${botUsername}?start=ref_${code}` : `${getPublicBaseUrl() ?? ''}/referral?ref=${code}`;
   return await telegramApiRequest('sendMessage', {
     chat_id: chatId,

@@ -209,16 +209,15 @@ export const appRouter = router({
           thumbnailUrl: input.thumbnailUrl,
           galleryUrls: input.galleryUrls,
           videoUrl: input.videoUrl,
-          // Public marketplace listings go live immediately. Admin moderation remains available
-          // through delisting/verification controls, while sellers can start receiving buyers.
-          status: 'available',
+          // Har bir e'lon avval admin tasdig'idan o'tadi, keyin bozorda ko'rinadi.
+          status: 'pending_verification',
           isVerified: false,
         });
 
         const accountId = getInsertId(result);
         await notifyOwner({
           title: "Yangi PUBG akkaunt e'loni",
-          content: `${input.playerName} (${input.region}) e'loni Inferno Stealth ommaviy bozoriga joylandi. Narx: ${input.price} so'm.`,
+          content: `${input.playerName} (${input.region}) e'loni admin tasdig'ini kutmoqda. Narx: ${input.price} so'm.`,
         }).catch(() => undefined);
         try {
           const owner = await getUserByOpenId(ENV.ownerOpenId);
@@ -227,14 +226,25 @@ export const appRouter = router({
               userId: owner.id,
               type: 'new_listing',
               title: "Yangi PUBG akkaunt e'loni",
-              message: `${input.playerName} e'loni ommaviy bozorga joylandi. Xaridorlar hozir ko‘rishi mumkin.`,
+              message: `${input.playerName} e'loni tekshiruv navbatida. Tasdiqlagandan keyin bozorda ko‘rinadi.`,
               accountId,
             });
           }
         } catch (error) {
           console.warn('[Notifications] Listing owner alert was not persisted:', error);
         }
-        return { id: accountId };
+        try {
+          await db.insert(notifications).values({
+            userId: ctx.user.id,
+            type: 'admin_message',
+            title: 'E’lon tekshiruvga yuborildi',
+            message: `${input.playerName} e’loni admin tasdig‘ini kutmoqda. Qaror chiqishi bilan sizga xabar beramiz.`,
+            accountId,
+          });
+        } catch (error) {
+          console.warn('[Notifications] Seller pending alert was not persisted:', error);
+        }
+        return { id: accountId, status: 'pending_verification' as const };
       }),
 
     getSellerAccounts: protectedProcedure
@@ -848,7 +858,7 @@ export const appRouter = router({
       return { ...user, ...ratingStats };
     }),
     update: protectedProcedure
-      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), avatarUrl: z.string().url().max(500).nullable().optional(), languageCode: z.enum(['uz','ru','en']).optional(), themePreference: z.enum(['dark','neon','gamer']).optional() }))
+      .input(z.object({ name: z.string().min(2).max(80).optional(), profileBio: z.string().max(500).optional(), phone: z.string().max(32).optional(), avatarUrl: z.string().max(500).nullable().optional().refine(value => value == null || value === '' || /^(https?:\/\/|\/)/.test(value), 'Rasm manzili noto‘g‘ri'), languageCode: z.enum(['uz','ru','en']).optional(), themePreference: z.enum(['dark','neon','gamer']).optional() }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
@@ -856,6 +866,7 @@ export const appRouter = router({
         if (input.name !== undefined) patch.name = input.name.trim() || null;
         if (input.profileBio !== undefined) patch.profileBio = input.profileBio.trim() || null;
         if (input.phone !== undefined) patch.phone = input.phone.trim() || null;
+        if (input.avatarUrl !== undefined) patch.avatarUrl = input.avatarUrl ? input.avatarUrl.trim() : null;
         if (input.languageCode !== undefined) patch.languageCode = input.languageCode;
         if (input.themePreference !== undefined) patch.themePreference = input.themePreference;
         if (Object.keys(patch).length > 0) await db.update(users).set(patch).where(eq(users.id, ctx.user.id));
@@ -1283,15 +1294,21 @@ export const appRouter = router({
         await db.update(pubgAccounts).set({
           status: input.approved ? 'available' : 'delisted',
           isVerified: input.approved,
-          verificationNotes: input.notes,
+          verificationNotes: input.notes?.trim() || (input.approved ? 'Admin tasdiqladi' : 'Admin rad etdi (sabab ko‘rsatilmagan)'),
         }).where(and(eq(pubgAccounts.id, input.accountId), eq(pubgAccounts.status, 'pending_verification')));
         await db.insert(notifications).values({
           userId: account.sellerId,
           type: 'admin_message',
           title: input.approved ? 'E’lon tasdiqlandi' : 'E’lon rad etildi',
-          message: input.notes || (input.approved ? 'E’loningiz Inferno Stealth bozorida ko‘rinadi.' : 'E’loningiz tekshiruvdan o‘tmadi.'),
+          message: input.approved ? `E’loningiz tasdiqlandi va bozorda ko‘rinmoqda.${input.notes?.trim() ? ` Izoh: ${input.notes.trim()}` : ''}` : `E’loningiz rad etildi. Sabab: ${input.notes?.trim() || 'ko‘rsatilmagan'}`,
           accountId: input.accountId,
         });
+        await notifyTelegramUser(
+          account.sellerId,
+          input.approved
+            ? `✅ <b>E’lon tasdiqlandi</b>\n\n${account.playerName} e’loni bozorda ko‘rinmoqda.`
+            : `❌ <b>E’lon rad etildi</b>\n\n${account.playerName}\nSabab: ${input.notes?.trim() || 'ko‘rsatilmagan'}`,
+        ).catch(() => undefined);
         return { success: true };
       }),
 
