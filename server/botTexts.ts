@@ -62,6 +62,25 @@ type Texts = {
   walletRejected: string;
   adminApprove: string;
   adminReject: string;
+  marketTitle: string;
+  marketBody: string;
+  marketPriceLow: string;
+  marketPriceMid: string;
+  marketPriceHigh: string;
+  marketPro: string;
+  marketConqueror: string;
+  marketClassic: string;
+  marketReset: string;
+  marketOpenFull: string;
+  marketOpenSelected: string;
+  marketShowResults: string;
+  marketPrev: string;
+  marketNext: string;
+  marketChangeFilters: string;
+  marketResultsTitle: string;
+  marketEmpty: string;
+  marketPage: string;
+  marketCurrency: string;
 };
 
 const uz: Texts = {
@@ -122,6 +141,25 @@ const uz: Texts = {
   walletRejected: '❌ <b>Chek rad etildi</b>\n\n{amount} so‘m uchun to‘lov tasdiqlanmadi. Admin bilan bog‘laning.',
   adminApprove: '✅ Tasdiqlash',
   adminReject: '❌ Rad etish',
+  marketTitle: '<b>🛒 Inferno Market — tezkor qidiruv</b>',
+  marketBody: 'Narx yoki toifani tanlang. Tugma sizni shu filtr qo‘llangan Mini App bozoriga olib kiradi.',
+  marketPriceLow: '💰 0–500 ming',
+  marketPriceMid: '💰 500 ming–2 mln',
+  marketPriceHigh: '💰 2 mln+',
+  marketPro: '🏆 Pro / X-Suit',
+  marketConqueror: '👑 Conqueror',
+  marketClassic: '🎮 Classic',
+  marketReset: '🔄 Filtrlarni tozalash',
+  marketOpenFull: '📱 To‘liq bozor',
+  marketOpenSelected: '📱 Tanlangan bozorni ochish',
+  marketShowResults: '🔎 Natijalarni ko‘rish',
+  marketPrev: '⬅️ Oldingi',
+  marketNext: 'Keyingi ➡️',
+  marketChangeFilters: '⚙️ Filtrlarni o‘zgartirish',
+  marketResultsTitle: '🔎 Marketplace natijalari',
+  marketEmpty: 'Bu filtr bo‘yicha hozircha e’lon topilmadi.',
+  marketPage: 'Sahifa',
+  marketCurrency: 'so‘m',
 };
 
 const ru: Texts = {
@@ -181,6 +219,25 @@ const ru: Texts = {
   walletRejected: '❌ <b>Чек отклонён</b>\n\nОплата на {amount} сум не подтверждена. Свяжитесь с админом.',
   adminApprove: '✅ Подтвердить',
   adminReject: '❌ Отклонить',
+  marketTitle: '<b>🛒 Inferno Market — быстрый поиск</b>',
+  marketBody: 'Выберите цену или категорию. Кнопка откроет Mini App с этим фильтром.',
+  marketPriceLow: '💰 0–500 тыс',
+  marketPriceMid: '💰 500 тыс–2 млн',
+  marketPriceHigh: '💰 2 млн+',
+  marketPro: '🏆 Pro / X-Suit',
+  marketConqueror: '👑 Conqueror',
+  marketClassic: '🎮 Classic',
+  marketReset: '🔄 Сбросить фильтры',
+  marketOpenFull: '📱 Весь маркет',
+  marketOpenSelected: '📱 Открыть с фильтром',
+  marketShowResults: '🔎 Показать результаты',
+  marketPrev: '⬅️ Назад',
+  marketNext: 'Вперёд ➡️',
+  marketChangeFilters: '⚙️ Изменить фильтры',
+  marketResultsTitle: '🔎 Результаты маркета',
+  marketEmpty: 'По этому фильтру объявлений пока нет.',
+  marketPage: 'Страница',
+  marketCurrency: 'сум',
 };
 
 const en: Texts = {
@@ -240,6 +297,25 @@ const en: Texts = {
   walletRejected: '❌ <b>Receipt rejected</b>\n\nThe {amount} so‘m payment was not confirmed. Contact the admin.',
   adminApprove: '✅ Approve',
   adminReject: '❌ Reject',
+  marketTitle: '<b>🛒 Inferno Market — quick search</b>',
+  marketBody: 'Pick a price range or category. The button opens the Mini App market with that filter.',
+  marketPriceLow: '💰 0–500K',
+  marketPriceMid: '💰 500K–2M',
+  marketPriceHigh: '💰 2M+',
+  marketPro: '🏆 Pro / X-Suit',
+  marketConqueror: '👑 Conqueror',
+  marketClassic: '🎮 Classic',
+  marketReset: '🔄 Reset filters',
+  marketOpenFull: '📱 Full market',
+  marketOpenSelected: '📱 Open filtered market',
+  marketShowResults: '🔎 Show results',
+  marketPrev: '⬅️ Previous',
+  marketNext: 'Next ➡️',
+  marketChangeFilters: '⚙️ Change filters',
+  marketResultsTitle: '🔎 Marketplace results',
+  marketEmpty: 'No listings match this filter yet.',
+  marketPage: 'Page',
+  marketCurrency: 'UZS',
 };
 
 const dictionary: Record<BotLang, Texts> = { uz, ru, en };
