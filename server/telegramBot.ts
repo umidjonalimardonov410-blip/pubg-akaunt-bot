@@ -327,25 +327,26 @@ function buildInlineKeyboard(path?: string) {
   };
 }
 
-function marketplaceFilterKeyboard() {
+function marketplaceFilterKeyboard(lang: BotLang = 'uz') {
   const marketUrl = getTelegramMiniAppUrl('/accounts') || process.env.PUBLIC_APP_URL || '/accounts';
+  const t = botText(lang);
   return {
     inline_keyboard: [
       [
-        { text: '💰 0–500 ming', callback_data: 'market_filter:price:0:500000' },
-        { text: '💰 500 ming–2 mln', callback_data: 'market_filter:price:500000:2000000' },
+        { text: t.marketPriceLow, callback_data: 'market_filter:price:0:500000' },
+        { text: t.marketPriceMid, callback_data: 'market_filter:price:500000:2000000' },
       ],
       [
-        { text: '💰 2 mln+', callback_data: 'market_filter:price:2000000:' },
-        { text: '🏆 Pro / X-Suit', callback_data: 'market_filter:category:pro' },
+        { text: t.marketPriceHigh, callback_data: 'market_filter:price:2000000:' },
+        { text: t.marketPro, callback_data: 'market_filter:category:pro' },
       ],
       [
-        { text: '👑 Conqueror', callback_data: 'market_filter:category:conqueror' },
-        { text: '🎮 Classic', callback_data: 'market_filter:category:classic' },
+        { text: t.marketConqueror, callback_data: 'market_filter:category:conqueror' },
+        { text: t.marketClassic, callback_data: 'market_filter:category:classic' },
       ],
       [
-        { text: '🔄 Filtrlarni tozalash', callback_data: 'market_filter:reset' },
-        { text: '📱 To‘liq bozor', web_app: { url: marketUrl } },
+        { text: t.marketReset, callback_data: 'market_filter:reset' },
+        { text: t.marketOpenFull, web_app: { url: marketUrl } },
       ],
     ],
   };
@@ -402,55 +403,57 @@ function marketplaceFilterPath(data: string) {
   return null;
 }
 
-async function sendMarketplaceMenu(chatId: number | string, selectedPath = '/accounts') {
+async function sendMarketplaceMenu(chatId: number | string, selectedPath = '/accounts', lang: BotLang = getChatLanguage(chatId)) {
   const selectedUrl = getTelegramMiniAppUrl(selectedPath) || process.env.PUBLIC_APP_URL || '/accounts';
+  const t = botText(lang);
   return await telegramApiRequest('sendMessage', {
     chat_id: chatId,
-    text: '<b>🛒 Inferno Market — tezkor qidiruv</b>\n\nNarx yoki toifani tanlang. Tugma sizni shu filtr qo‘llangan Mini App bozoriga olib kiradi. Barcha foydalanuvchi e’lonlari shu yerda ko‘rinadi.',
+    text: `${t.marketTitle}\n\n${t.marketBody}`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
     reply_markup: {
-      ...marketplaceFilterKeyboard(),
       inline_keyboard: [
-        ...marketplaceFilterKeyboard().inline_keyboard.slice(0, 3),
+        ...marketplaceFilterKeyboard(lang).inline_keyboard.slice(0, 3),
         [
-          { text: '🔄 Filtrlarni tozalash', callback_data: 'market_filter:reset' },
-          { text: '📱 Tanlangan bozorni ochish', web_app: { url: selectedUrl } },
+          { text: t.marketReset, callback_data: 'market_filter:reset' },
+          { text: t.marketOpenSelected, web_app: { url: selectedUrl } },
         ],
-        [{ text: '🔎 Natijalarni ko‘rish', callback_data: marketplacePageCallback(0, selectedPath) }],
+        [{ text: t.marketShowResults, callback_data: marketplacePageCallback(0, selectedPath) }],
       ],
     },
   });
 }
 
-function marketplaceResultKeyboard(page: number, hasNext: boolean, selectedPath: string) {
+function marketplaceResultKeyboard(page: number, hasNext: boolean, selectedPath: string, lang: BotLang = 'uz') {
+  const t = botText(lang);
   const navigation = [] as Array<{ text: string; callback_data: string }>;
-  if (page > 0) navigation.push({ text: '⬅️ Oldingi', callback_data: marketplacePageCallback(page - 1, selectedPath) });
-  if (hasNext) navigation.push({ text: 'Keyingi ➡️', callback_data: marketplacePageCallback(page + 1, selectedPath) });
+  if (page > 0) navigation.push({ text: t.marketPrev, callback_data: marketplacePageCallback(page - 1, selectedPath) });
+  if (hasNext) navigation.push({ text: t.marketNext, callback_data: marketplacePageCallback(page + 1, selectedPath) });
   const marketUrl = getTelegramMiniAppUrl(selectedPath) || process.env.PUBLIC_APP_URL || '/accounts';
   return {
     inline_keyboard: [
       ...(navigation.length ? [navigation] : []),
-      [{ text: '⚙️ Filtrlarni o‘zgartirish', callback_data: `market_filter_menu:${encodeURIComponent(selectedPath)}` }],
-      [{ text: '📱 To‘liq bozorni ochish', web_app: { url: marketUrl } }],
+      [{ text: t.marketChangeFilters, callback_data: `market_filter_menu:${encodeURIComponent(selectedPath)}` }],
+      [{ text: t.marketOpenFull, web_app: { url: marketUrl } }],
     ],
   };
 }
 
-async function sendMarketplaceResults(chatId: number | string, page: number, selectedPath: string) {
+async function sendMarketplaceResults(chatId: number | string, page: number, selectedPath: string, lang: BotLang = getChatLanguage(chatId)) {
+  const t = botText(lang);
   const safePage = Math.max(0, Math.floor(page));
   const rows = await searchPubgAccounts({ ...getMarketplaceSearchFilters(selectedPath), limit: TELEGRAM_MARKET_PAGE_SIZE + 1, offset: safePage * TELEGRAM_MARKET_PAGE_SIZE });
   const hasNext = rows.length > TELEGRAM_MARKET_PAGE_SIZE;
   const visibleRows = rows.slice(0, TELEGRAM_MARKET_PAGE_SIZE);
   const resultText = visibleRows.length === 0
-    ? 'Bu filtr bo‘yicha hozircha e’lon topilmadi.'
-    : visibleRows.map((account, index) => `${safePage * TELEGRAM_MARKET_PAGE_SIZE + index + 1}. <b>${escapeTelegramHtml(account.playerName)}</b>\n   🎮 LVL ${account.level} · K/D ${escapeTelegramHtml(account.kdRatio)} · ${escapeTelegramHtml(formatUzAmount(Number(account.price)))} so‘m\n   🏆 ${account.hasXSuit ? 'Pro / X-Suit' : account.hasConquerorHistory ? 'Conqueror' : 'Classic'} · #${account.id}`).join('\n\n');
+    ? t.marketEmpty
+    : visibleRows.map((account, index) => `${safePage * TELEGRAM_MARKET_PAGE_SIZE + index + 1}. <b>${escapeTelegramHtml(account.playerName)}</b>\n   🎮 LVL ${account.level} · K/D ${escapeTelegramHtml(account.kdRatio)} · ${escapeTelegramHtml(formatUzAmount(Number(account.price)))} ${t.marketCurrency}\n   🏆 ${account.hasXSuit ? 'Pro / X-Suit' : account.hasConquerorHistory ? 'Conqueror' : 'Classic'} · #${account.id}`).join('\n\n');
   const sent = await telegramApiRequest('sendMessage', {
     chat_id: chatId,
-    text: `<b>🔎 Marketplace natijalari</b>\n\n${resultText}\n\nSahifa: <b>${safePage + 1}</b>`,
+    text: `<b>${t.marketResultsTitle}</b>\n\n${resultText}\n\n${t.marketPage}: <b>${safePage + 1}</b>`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
-    reply_markup: marketplaceResultKeyboard(safePage, hasNext, selectedPath),
+    reply_markup: marketplaceResultKeyboard(safePage, hasNext, selectedPath, lang),
   });
   return { sent, count: visibleRows.length, hasNext, page: safePage };
 }
