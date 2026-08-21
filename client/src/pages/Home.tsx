@@ -55,6 +55,17 @@ import ThemePicker from "@/components/ThemePicker";
 import { compressImage, validateMediaFile } from "@/lib/mediaCompression";
 import { ChatInboxPage, NotificationsPage } from "@/pages/InboxPages";
 import { RulesPage } from "@/pages/RulesPage";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LANGUAGES, useI18n } from "@/lib/i18n";
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL } from "@shared/adminContact";
 
@@ -169,6 +180,31 @@ export function getEscrowStatusLabel(status: string) {
 }
 
 const uzNumber = (value: number) => new Intl.NumberFormat("uz-UZ").format(value);
+
+/** Balans/statistika raqamlarini yumshoq animatsiya bilan sanab chiqadi (gamer HUD effekti). */
+function AnimatedNumber({ value, className }: { value: number; className?: string }) {
+  const [display, setDisplay] = React.useState(value);
+  const fromRef = React.useRef(value);
+  React.useEffect(() => {
+    const from = fromRef.current;
+    const to = value;
+    if (from === to) return;
+    const duration = 550;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+      else fromRef.current = to;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <span className={className}>{uzNumber(display)}</span>;
+}
+
 
 function pageFromPath(pathname: string): { key: PageKey; id?: number } {
   if (pathname.startsWith("/accounts")) return { key: "accounts" };
@@ -960,8 +996,14 @@ export function TelegramLoginGate({ title, description }: { title: string; descr
 }
 
 const PAYMENT_LOGOS: Record<string, string> = {
-  uzcard: 'https://uzcard.uz/assets/img/logo.png',
-  visa: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/320px-Visa_Inc._logo.svg.png',
+  uzcard: '/assets/pay-uzcard.jpg',
+  visa: '/assets/pay-visa.jpg',
+};
+
+/** "Tez orada" usullari uchun kichik suratlar. */
+const PAYMENT_SOON_IMAGES: Record<string, string> = {
+  TON: '/assets/pay-ton.jpg',
+  'Telegram Stars': '/assets/pay-stars.jpg',
 };
 
 /** Ixcham to'lov usuli tanlagichi: UZCARD / VISA kartalari va tez oradagi usullar. */
@@ -974,13 +1016,14 @@ function PaymentMethodPicker({ cards, fallbackCard, onCopy }: { cards: Array<{ i
       <div className="grid grid-cols-2 gap-2">
         {list.map(card => (
           <button key={card.id} type="button" onClick={() => setActive(card.id)} className={`flex items-center justify-center gap-2 rounded-xl border px-2 py-2 transition active:scale-[.97] ${active === card.id ? 'border-amber-300 bg-amber-400/15' : 'border-white/10 bg-white/[0.03]'}`}>
-            <img src={PAYMENT_LOGOS[card.id]} alt={card.label} loading="lazy" className="h-4 w-auto object-contain" onError={event => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            <img src={PAYMENT_LOGOS[card.id]} alt={card.label} loading="lazy" className="h-5 w-8 rounded object-cover" onError={event => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }} />
             <span className={`text-[11px] font-black ${active === card.id ? 'text-amber-50' : 'text-white/60'}`}>{card.label}</span>
           </button>
         ))}
       </div>
       {selected && (
         <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.07] p-2.5">
+          <img src={PAYMENT_LOGOS[selected.id]} alt={selected.label} loading="lazy" className="mb-2 h-20 w-full rounded-lg object-cover" onError={event => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }} />
           <div className="flex items-center gap-2">
             <p className="min-w-0 flex-1 break-all font-mono text-[13px] font-black leading-5 text-white">{selected.number || 'Karta sozlanmagan'}</p>
             <button type="button" onClick={() => selected.number && onCopy(selected.number, 'Karta raqami')} className="shrink-0 rounded-lg border border-amber-300/40 bg-amber-400/15 px-2 py-1 text-[10px] font-black text-amber-100">Nusxa</button>
@@ -991,6 +1034,7 @@ function PaymentMethodPicker({ cards, fallbackCard, onCopy }: { cards: Array<{ i
       <div className="grid grid-cols-2 gap-2">
         {[['TON', '💎'], ['Telegram Stars', '⭐']].map(([label, icon]) => (
           <div key={label} className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/12 bg-white/[0.02] px-2 py-2 text-[10px] font-bold text-white/35">
+            <img src={PAYMENT_SOON_IMAGES[label as string]} alt={label as string} loading="lazy" className="h-5 w-8 rounded object-cover" onError={event => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }} />
             <span>{icon}</span>{label}<span className="rounded bg-white/10 px-1 text-[8px] font-black uppercase text-white/50">Soon</span>
           </div>
         ))}
@@ -1012,10 +1056,9 @@ export function SellerListingsPanel() {
     onSuccess: () => { toast.success('E’lon o‘chirildi.'); listingsQuery.refetch(); },
     onError: error => toast.error(error.message || 'E’lonni o‘chirib bo‘lmadi.'),
   });
-  const removeListing = (account: any) => {
-    if (typeof window !== 'undefined' && !window.confirm(`“${account.playerName}” e’loni o‘chirilsinmi?`)) return;
-    deleteListing.mutate({ id: account.id });
-  };
+  const [pendingDelete, setPendingDelete] = React.useState<any | null>(null);
+  const removeListing = (account: any) => setPendingDelete(account);
+  const confirmDelete = () => { if (!pendingDelete) return; deleteListing.mutate({ id: pendingDelete.id }); setPendingDelete(null); };
   const beginEdit = (account: any) => { setEditingId(account.id); setFieldErrors({}); setDraft({ playerName: account.playerName ?? '', level: String(account.level ?? ''), region: account.region ?? '', price: String(Number(account.price ?? 0)), description: account.description ?? '', skins: (account.featuredSkins ?? []).join(', ') }); };
   const updateDraft = (field: keyof typeof draft, value: string) => { setDraft(previous => ({ ...previous, [field]: value })); setFieldErrors(previous => { const next = { ...previous }; delete next[field]; delete next.form; return next; }); };
   const saveEdit = () => {
@@ -1031,7 +1074,21 @@ export function SellerListingsPanel() {
     if (Object.keys(nextErrors).length > 0) return;
     updateListing.mutate({ id: editingId, playerName: draft.playerName.trim(), level, region: draft.region.trim(), price, description: draft.description.trim(), featuredSkins: draft.skins.split(',').map(item => item.trim()).filter(Boolean) });
   };
-  return <section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><SectionHeading eyebrow="Sotuvchi markazi" title="Mening e’lonlarim" /><p className="-mt-2 mb-4 text-xs leading-5 text-white/40">E’lon avval admin tekshiruvidan o‘tadi, tasdiqlangach bozorda ko‘rinadi. Rad etilsa sababi shu yerda ko‘rsatiladi.</p>{listingsQuery.isLoading ? <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-4 text-xs text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />E’lonlar yuklanmoqda...</div> : (listingsQuery.data ?? []).length === 0 ? <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-center"><p className="text-sm font-bold text-white">Hali e’lon yo‘q</p><p className="mt-1 text-xs text-white/40">Birinchi akkauntingizni bozorga qo‘ying.</p></div> : <div className="space-y-3">{(listingsQuery.data ?? []).map(account => editingId === account.id ? <div key={account.id} className="rounded-xl border border-amber-300/30 bg-amber-400/[0.06] p-4"><div className="grid gap-3 sm:grid-cols-2"><EditField label="O‘yinchi nomi" error={fieldErrors.playerName}><input className={`field-input ${fieldErrors.playerName ? 'border-amber-300/70' : ''}`} aria-label="O‘yinchi nomi" aria-invalid={Boolean(fieldErrors.playerName)} value={draft.playerName} onChange={event => updateDraft('playerName', event.target.value)} placeholder="O‘yinchi nomi" /></EditField><EditField label="Daraja" error={fieldErrors.level}><input className={`field-input ${fieldErrors.level ? 'border-amber-300/70' : ''}`} aria-label="Daraja" aria-invalid={Boolean(fieldErrors.level)} inputMode="numeric" value={draft.level} onChange={event => updateDraft('level', event.target.value)} placeholder="Daraja" /></EditField><EditField label="Mintaqa" error={fieldErrors.region}><input className={`field-input ${fieldErrors.region ? 'border-amber-300/70' : ''}`} aria-label="Mintaqa" aria-invalid={Boolean(fieldErrors.region)} value={draft.region} onChange={event => updateDraft('region', event.target.value)} placeholder="Mintaqa" /></EditField><EditField label="Narx" error={fieldErrors.price}><input className={`field-input ${fieldErrors.price ? 'border-amber-300/70' : ''}`} aria-label="Narx" aria-invalid={Boolean(fieldErrors.price)} inputMode="numeric" value={draft.price} onChange={event => updateDraft('price', event.target.value)} placeholder="Narx" /></EditField><EditField label="Asosiy skinlar" className="sm:col-span-2"><input className="field-input" aria-label="Asosiy skinlar" value={draft.skins} onChange={event => updateDraft('skins', event.target.value)} placeholder="M416 Glacier, X-Suit" /></EditField><EditField label="Tavsif" className="sm:col-span-2"><textarea className="field-input min-h-24" aria-label="Tavsif" value={draft.description} onChange={event => updateDraft('description', event.target.value)} placeholder="Tavsif" /></EditField></div>{fieldErrors.form && <p role="alert" className="mt-3 rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{fieldErrors.form}</p>}<div className="mt-3 flex flex-wrap items-center justify-end gap-2"><span className="mr-auto text-[11px] text-white/35">Saqlashdan oldin maydonlarni tekshiring.</span><PrimaryButton variant="ghost" disabled={updateListing.isPending} onClick={() => { setEditingId(null); setFieldErrors({}); }}>Bekor qilish</PrimaryButton><PrimaryButton disabled={updateListing.isPending} onClick={saveEdit}>{updateListing.isPending ? <><LoaderCircle className="h-4 w-4 animate-spin" />Saqlanmoqda...</> : <><Check className="h-4 w-4" />Saqlash</>}</PrimaryButton></div></div> : <article key={account.id} className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 sm:flex-row sm:items-center"><div className="flex min-w-0 flex-1 items-center gap-3"><div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-black/30">{account.thumbnailUrl ? <img src={account.thumbnailUrl} alt={account.playerName} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-amber-200"><ImagePlus className="h-5 w-5" /></div>}</div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-sm font-black text-white">{account.playerName}</h3><StatusPill tone={account.status === 'available' ? 'green' : account.status === 'sold' ? 'muted' : 'gold'}>{account.status === 'available' ? '✅ Bozorda' : account.status === 'sold' ? 'Sotilgan' : account.status === 'delisted' ? '❌ Rad etilgan' : '⏳ Admin tekshiruvida'}</StatusPill></div><p className="mt-1 text-xs text-white/40">LVL {account.level} · {account.region} · {uzNumber(Number(account.price))} so‘m</p>{(account as any).verificationNotes && account.status !== 'available' && <p className="mt-1 text-[11px] leading-4 text-amber-100/80">Sabab: {(account as any).verificationNotes}</p>}</div></div><div className="flex shrink-0 gap-2"><PrimaryButton variant="ghost" disabled={account.status === 'sold'} onClick={() => beginEdit(account)}><Edit3 className="h-4 w-4" />Tahrirlash</PrimaryButton><button type="button" disabled={account.status === 'sold' || deleteListing.isPending} onClick={() => removeListing(account)} aria-label="E’lonni o‘chirish" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-red-400/35 bg-red-500/10 px-3 text-[11px] font-black text-red-200 transition active:scale-95 disabled:opacity-40"><Trash2 className="h-4 w-4" />O‘chirish</button></div></article>)}</div>}</section>;
+  return <>
+    <section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6"><SectionHeading eyebrow="Sotuvchi markazi" title="Mening e’lonlarim" /><p className="-mt-2 mb-4 text-xs leading-5 text-white/40">E’lon avval admin tekshiruvidan o‘tadi, tasdiqlangach bozorda ko‘rinadi. Rad etilsa sababi shu yerda ko‘rsatiladi.</p>{listingsQuery.isLoading ? <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-4 text-xs text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />E’lonlar yuklanmoqda...</div> : (listingsQuery.data ?? []).length === 0 ? <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-center"><p className="text-sm font-bold text-white">Hali e’lon yo‘q</p><p className="mt-1 text-xs text-white/40">Birinchi akkauntingizni bozorga qo‘ying.</p></div> : <div className="space-y-3">{(listingsQuery.data ?? []).map((account, index) => editingId === account.id ? <div key={account.id} className="rounded-xl border border-amber-300/30 bg-amber-400/[0.06] p-4"><div className="grid gap-3 sm:grid-cols-2"><EditField label="O‘yinchi nomi" error={fieldErrors.playerName}><input className={`field-input ${fieldErrors.playerName ? 'border-amber-300/70' : ''}`} aria-label="O‘yinchi nomi" aria-invalid={Boolean(fieldErrors.playerName)} value={draft.playerName} onChange={event => updateDraft('playerName', event.target.value)} placeholder="O‘yinchi nomi" /></EditField><EditField label="Daraja" error={fieldErrors.level}><input className={`field-input ${fieldErrors.level ? 'border-amber-300/70' : ''}`} aria-label="Daraja" aria-invalid={Boolean(fieldErrors.level)} inputMode="numeric" value={draft.level} onChange={event => updateDraft('level', event.target.value)} placeholder="Daraja" /></EditField><EditField label="Mintaqa" error={fieldErrors.region}><input className={`field-input ${fieldErrors.region ? 'border-amber-300/70' : ''}`} aria-label="Mintaqa" aria-invalid={Boolean(fieldErrors.region)} value={draft.region} onChange={event => updateDraft('region', event.target.value)} placeholder="Mintaqa" /></EditField><EditField label="Narx" error={fieldErrors.price}><input className={`field-input ${fieldErrors.price ? 'border-amber-300/70' : ''}`} aria-label="Narx" aria-invalid={Boolean(fieldErrors.price)} inputMode="numeric" value={draft.price} onChange={event => updateDraft('price', event.target.value)} placeholder="Narx" /></EditField><EditField label="Asosiy skinlar" className="sm:col-span-2"><input className="field-input" aria-label="Asosiy skinlar" value={draft.skins} onChange={event => updateDraft('skins', event.target.value)} placeholder="M416 Glacier, X-Suit" /></EditField><EditField label="Tavsif" className="sm:col-span-2"><textarea className="field-input min-h-24" aria-label="Tavsif" value={draft.description} onChange={event => updateDraft('description', event.target.value)} placeholder="Tavsif" /></EditField></div>{fieldErrors.form && <p role="alert" className="mt-3 rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{fieldErrors.form}</p>}<div className="mt-3 flex flex-wrap items-center justify-end gap-2"><span className="mr-auto text-[11px] text-white/35">Saqlashdan oldin maydonlarni tekshiring.</span><PrimaryButton variant="ghost" disabled={updateListing.isPending} onClick={() => { setEditingId(null); setFieldErrors({}); }}>Bekor qilish</PrimaryButton><PrimaryButton disabled={updateListing.isPending} onClick={saveEdit}>{updateListing.isPending ? <><LoaderCircle className="h-4 w-4 animate-spin" />Saqlanmoqda...</> : <><Check className="h-4 w-4" />Saqlash</>}</PrimaryButton></div></div> : <motion.article key={account.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }} whileHover={{ scale: 1.01 }} className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition sm:flex-row sm:items-center"><div className="flex min-w-0 flex-1 items-center gap-3"><div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-black/30">{account.thumbnailUrl ? <img src={account.thumbnailUrl} alt={account.playerName} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-amber-200"><ImagePlus className="h-5 w-5" /></div>}</div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-sm font-black text-white">{account.playerName}</h3><StatusPill tone={account.status === 'available' ? 'green' : account.status === 'sold' ? 'muted' : 'gold'}>{account.status === 'available' ? '✅ Bozorda' : account.status === 'sold' ? 'Sotilgan' : account.status === 'delisted' ? '❌ Rad etilgan' : '⏳ Admin tekshiruvida'}</StatusPill></div><p className="mt-1 text-xs text-white/40">LVL {account.level} · {account.region} · {uzNumber(Number(account.price))} so‘m</p>{(account as any).verificationNotes && account.status !== 'available' && <p className="mt-1 text-[11px] leading-4 text-amber-100/80">Sabab: {(account as any).verificationNotes}</p>}</div></div><div className="flex shrink-0 gap-2"><PrimaryButton variant="ghost" disabled={account.status === 'sold'} onClick={() => beginEdit(account)}><Edit3 className="h-4 w-4" />Tahrirlash</PrimaryButton><button type="button" disabled={account.status === 'sold' || deleteListing.isPending} onClick={() => removeListing(account)} aria-label="E’lonni o‘chirish" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-red-400/35 bg-red-500/10 px-3 text-[11px] font-black text-red-200 transition active:scale-95 disabled:opacity-40"><Trash2 className="h-4 w-4" />O‘chirish</button></div></motion.article>)}</div>}</section>
+    <AlertDialog open={Boolean(pendingDelete)} onOpenChange={open => !open && setPendingDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>E’lonni o‘chirish</AlertDialogTitle>
+          <AlertDialogDescription>“{pendingDelete?.playerName}” e’loni butunlay o‘chiriladi. Bu amalni bekor qilib bo‘lmaydi.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Bekor qilish</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} className="bg-red-500 text-white hover:bg-red-600">O‘chirish</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>;
 }
 
 function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
@@ -1222,7 +1279,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-amber-300/35 bg-black/50 px-2.5 py-1">
               <WalletCards className="h-3 w-3 shrink-0 text-amber-200" />
-              <span className="truncate font-display text-[12px] font-black text-white">{uzNumber(balance)}</span>
+              <span className="truncate font-display text-[12px] font-black text-white"><AnimatedNumber value={balance} /></span>
               <span className="text-[9px] font-bold text-white/40">so‘m</span>
             </span>
             {[['E‘lon', String(listingsCount)], ['Savdo', String(salesCount)], ['Reyting', reviews.length ? averageRating.toFixed(1) : '—']].map(([label, value]) => (
@@ -1246,7 +1303,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <div className="min-w-0">
             <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-white/40">Hamyon balansi</span>
-            <div className="mt-0.5 truncate font-display text-lg font-black text-white">{uzNumber(balance)} <span className="font-sans text-[10px] font-bold text-white/40">so‘m</span></div>
+            <div className="mt-0.5 truncate font-display text-lg font-black text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[10px] font-bold text-white/40">so‘m</span></div>
           </div>
           <div className="flex shrink-0 gap-1.5">
             <button type="button" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="inline-flex min-h-9 items-center gap-1 rounded-xl bg-amber-400 px-2.5 text-[11px] font-black text-black active:scale-95"><CreditCard className="h-3.5 w-3.5" />To‘ldirish</button>

@@ -22,11 +22,11 @@ export type TelegramCommand = {
 
 export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
   { command: "start", description: "Inferno Stealth menyusini ochish", title: "Inferno Stealth'ga xush kelibsiz", text: "PUBG Mobile akkauntlarini shaffof ko‘ring, xavfsiz escrow orqali xarid qiling yoki o‘z e’loningizni joylang.", path: "/" },
-  { command: "buy", description: "Akkauntlarni ko‘rish", title: "Akkauntlar bozori", text: "Region, level, K/D, skinlar va narx bo‘yicha mos akkauntni tanlang. Foydalanuvchilar qo‘ygan e’lonlar ommaviy bozorda darhol ko‘rinadi.", path: "/accounts" },
-  { command: "sell", description: "Akkaunt sotish", title: "Akkaunt sotish", text: "PUBG ID, statistika, inventar va media ma’lumotlarini to‘liq kiriting. E’lon yuborilgach ommaviy bozorga joylanadi; profil orqali tahrirlashingiz mumkin.", path: "/sell" },
+  { command: "buy", description: "Akkauntlarni ko‘rish", title: "Akkauntlar bozori", text: "Narx, level va K/D bo‘yicha filtrlab akkaunt tanlang.\nBarcha savdo escrow orqali himoyalangan.", path: "/accounts" },
+  { command: "sell", description: "Akkaunt sotish", title: "Akkaunt sotish", text: "Mini App’da rasm/video qo‘shing va narx belgilang.\nTasdiqdan so‘ng e’lon bozorda ko‘rinadi.", path: "/sell" },
   { command: "mylistings", description: "E’lonlarimni boshqarish", title: "Mening e’lonlarim", text: "Qo‘ygan akkauntlaringiz, narxlar, bozor holati va tahrirlash tugmalari Telegram Mini App profilida mavjud.", path: "/profile" },
   { command: "orders", description: "Buyurtmalarni ko‘rish", title: "Buyurtmalarim", text: "Escrow bosqichlari, to‘lov holati, topshirish tasdig‘i va nizo jarayonini shu bo‘limda kuzating.", path: "/orders" },
-  { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "10 000 / 20 000 / 50 000 so‘mdan birini tanlang, kartaga o‘tkazing va chek rasmini yuboring. Admin tasdiqlagach balansingizga qo‘shiladi.", path: "/profile" },
+  { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "Summani tanlang, UZCARD yoki VISA’ga o‘tkazing.\nChek rasmini yuboring — admin tasdiqlagach balans qo‘shiladi.", path: "/profile" },
   { command: "support", description: "Yordam markazi", title: "Yordam markazi", text: "Muammo bo‘lsa, buyurtma raqami va dalillar bilan ticket yuboring. Login yoki parolni hech qachon chatga yozmang.", path: "/support" },
   { command: "contactadmin", description: "Admin bilan bog‘lanish", title: "Admin bilan aloqa", text: "Savdo, to‘lov yoki nizo bo‘yicha to‘g‘ridan-to‘g‘ri admin bilan bog‘laning.", path: "/support" },
   { command: "admin", description: "Admin nazorati", title: "Admin nazorati", text: "E’lonlar, escrow, nizolar va support navbatini tartibli ravishda boshqaring.", path: "/admin", adminOnly: true },
@@ -67,20 +67,29 @@ const pendingWalletSelections = new Map<string, number>();
 
 type PaymentMethodId = 'uzcard' | 'visa';
 
-const PAYMENT_CARDS: Record<PaymentMethodId, { label: string; number: string; holder: string; logo: string }> = {
+const PAYMENT_CARDS: Record<PaymentMethodId, { label: string; number: string; holder: string; asset: string; logoEnv?: string }> = {
   uzcard: {
     label: 'UZCARD',
     number: process.env.ADMIN_UZCARD_NUMBER || '5614 6805 7716 7758',
-    holder: process.env.ADMIN_CARD_HOLDER || 'ALIMARDONOV U.',
-    logo: process.env.UZCARD_LOGO_URL || 'https://uzcard.uz/assets/img/logo.png',
+    holder: process.env.ADMIN_CARD_HOLDER || 'ALIMARDONOV UMIDJON',
+    asset: '/assets/pay-uzcard.jpg',
+    logoEnv: process.env.UZCARD_LOGO_URL,
   },
   visa: {
     label: 'VISA',
     number: process.env.ADMIN_VISA_NUMBER || '4067 0700 0330 3687',
-    holder: process.env.ADMIN_CARD_HOLDER || 'ALIMARDONOV U.',
-    logo: process.env.VISA_LOGO_URL || 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/320px-Visa_Inc._logo.svg.png',
+    holder: process.env.ADMIN_CARD_HOLDER || 'ALIMARDONOV UMIDJON',
+    asset: '/assets/pay-visa.jpg',
+    logoEnv: process.env.VISA_LOGO_URL,
   },
 };
+
+/** Karta/usul rasmi: avval ENV, keyin sayt ichidagi statik rasm. */
+function paymentImageUrl(assetPath: string, override?: string) {
+  if (override) return override;
+  const base = getPublicBaseUrl();
+  return base ? `${base}${assetPath}` : null;
+}
 
 function formatUzAmount(amount: number) {
   return amount.toLocaleString('uz-UZ');
@@ -122,7 +131,7 @@ function walletMethodKeyboard(amount: number, lang: BotLang = 'uz') {
         { text: texts.walletMethodTon, callback_data: 'wallet_soon:ton' },
         { text: texts.walletMethodStars, callback_data: 'wallet_soon:stars' },
       ],
-      [{ text: '\u2B05\uFE0F', callback_data: 'wallet_menu' }],
+      [{ text: texts.walletBack, callback_data: 'wallet_menu' }],
     ],
   };
 }
@@ -193,6 +202,33 @@ export function setChatLanguage(chatId: number | string, lang: BotLang) {
   chatLanguages.set(String(chatId), lang);
 }
 
+/**
+ * Tilni aniqlaydi: 1) shu sessiyada tanlangan til, 2) bazadagi saqlangan til,
+ * 3) Telegram profil tili. Server qayta ishga tushsa ham tanlov yo'qolmaydi.
+ */
+export async function resolveChatLanguage(
+  chatId: number | string,
+  telegramUserId?: number | string,
+  fallback?: string,
+): Promise<BotLang> {
+  const cached = chatLanguages.get(String(chatId));
+  if (cached) return cached;
+  if (telegramUserId !== undefined) {
+    try {
+      const user = await getUserByOpenId(`telegram:${telegramUserId}`);
+      const stored = (user as { languageCode?: string | null } | null)?.languageCode;
+      if (stored) {
+        const lang = normalizeBotLang(stored);
+        chatLanguages.set(String(chatId), lang);
+        return lang;
+      }
+    } catch (error) {
+      console.warn('[Telegram Bot] language lookup failed', error);
+    }
+  }
+  return normalizeBotLang(fallback);
+}
+
 function buildMainKeyboard(lang: BotLang = 'uz') {
   const texts = botText(lang);
   const appButton = webAppButton(texts.openApp, '/');
@@ -235,18 +271,9 @@ async function sendWelcome(chatId: number | string, lang: BotLang, name: string)
       inline_keyboard: [
         ...rowsExtra,
         [
-          ...(getTelegramMiniAppUrl('/accounts') ? [{ text: texts.menuMarket, web_app: { url: getTelegramMiniAppUrl('/accounts') as string } }] : []),
-          ...(getTelegramMiniAppUrl('/sell') ? [{ text: texts.menuSell, web_app: { url: getTelegramMiniAppUrl('/sell') as string } }] : []),
-        ],
-        [
-          { text: texts.menuRules, callback_data: 'show_rules' },
-          { text: texts.menuReferral, callback_data: 'show_referral' },
-        ],
-        [
           { text: texts.menuWallet, callback_data: 'wallet_menu' },
           { text: texts.menuLanguage, callback_data: 'show_language' },
         ],
-        [adminContactButton(lang)],
       ],
     },
   });
@@ -518,7 +545,10 @@ async function sendPaymentCard(chatId: number | string, method: PaymentMethodId,
     .replace('{card}', card.number)
     .replace('{holder}', card.holder)
     .replace('{amount}', formatUzAmount(amount));
-  const photo = await telegramApiRequest('sendPhoto', { chat_id: chatId, photo: card.logo, caption, parse_mode: 'HTML' });
+  const image = paymentImageUrl(card.asset, card.logoEnv);
+  const photo = image
+    ? await telegramApiRequest('sendPhoto', { chat_id: chatId, photo: image, caption, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: texts.walletBack, callback_data: 'wallet_menu' }]] } })
+    : { ok: false as const, status: 'setup_required' as const };
   if (photo.ok) return photo;
   // Logotip yuklanmasa ham to‘lov ma’lumoti albatta yetib borishi kerak.
   return await telegramApiRequest('sendMessage', { chat_id: chatId, text: caption, parse_mode: 'HTML' });
@@ -587,6 +617,7 @@ async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['m
   const selectedFromCaption = Number((message.caption || '').replace(/[^0-9]/g, ''));
   const amount = pendingWalletSelections.get(String(chatId)) ?? (MANUAL_TOPUP_AMOUNTS.includes(selectedFromCaption as typeof MANUAL_TOPUP_AMOUNTS[number]) ? selectedFromCaption : undefined);
   if (!amount) {
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: botText(getChatLanguage(chatId)).receiptNoAmount });
     await sendWalletMenu(chatId);
     return { handled: true as const, command: 'wallet_receipt_missing_amount', status: 'active' as const, sent: true };
   }
@@ -597,14 +628,14 @@ async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['m
     return { handled: true as const, command: 'wallet_receipt', status: 'setup_required' as const, sent: false };
   }
   if (photo.file_size && photo.file_size > 8 * 1024 * 1024) {
-    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: '❌ Chek hajmi 8 MB dan oshmasin. Kichikroq rasm yuboring.' });
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: botText(getChatLanguage(chatId)).receiptTooLarge });
     return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok };
   }
 
   const fileResult = await telegramApiRequest<{ file_path?: string }>('getFile', { file_id: photo.file_id });
   const filePath = fileResult.ok ? fileResult.result?.file_path : undefined;
   if (!filePath) {
-    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: '❌ Chekni yuklab bo‘lmadi. Iltimos, qayta urinib ko‘ring.' });
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: botText(getChatLanguage(chatId)).receiptFailed });
     return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok };
   }
 
@@ -647,7 +678,10 @@ async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['m
     pendingWalletSelections.delete(String(chatId));
     await Promise.all(getTelegramAdminIds().map(adminId => telegramApiRequest('sendMessage', {
       chat_id: adminId,
-      text: `📥 <b>Yangi balans cheki</b>\n\nFoydalanuvchi: #${user.id}\nSumma: <b>${formatUzAmount(amount)} so‘m</b>\nChek: ${uploaded.url}`,
+      text: botText('uz').adminNewReceipt
+        .replace('{user}', String(user.id))
+        .replace('{amount}', formatUzAmount(amount))
+        .replace('{url}', uploaded.url),
       parse_mode: 'HTML',
       disable_web_page_preview: false,
       reply_markup: {
@@ -667,7 +701,7 @@ async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['m
     });
     return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok, receiptId: result.receiptId };
   } catch (error) {
-    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: error instanceof Error && error.message === 'receipt_too_large' ? '❌ Chek hajmi 8 MB dan oshmasin.' : '❌ Chekni qabul qilishda xatolik yuz berdi. Qayta urinib ko‘ring.' });
+    const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: error instanceof Error && error.message === 'receipt_too_large' ? botText(getChatLanguage(chatId)).receiptTooLarge : botText(getChatLanguage(chatId)).receiptFailed });
     return { handled: true as const, command: 'wallet_receipt', status: sent.status, sent: sent.ok };
   }
 }
@@ -678,9 +712,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     const callbackChatId = callback.message?.chat?.id;
     if (callbackChatId === undefined) return { handled: false as const, status: 'ignored' as const };
     const data = callback.data || '';
+    await resolveChatLanguage(callbackChatId, callback.from?.id);
     const marketPage = parseMarketplacePageData(data);
     if (marketPage) {
-      await answerTelegramCallback(callback.id, 'Marketplace sahifasi yuklanmoqda');
+      await answerTelegramCallback(callback.id, botText(getChatLanguage(callbackChatId)).cbLoading);
       const result = await sendMarketplaceResults(callbackChatId, marketPage.page, marketPage.path);
       return { handled: true as const, command: 'market_page', status: result.sent.status, sent: result.sent.ok, page: result.page, count: result.count, hasNext: result.hasNext };
     }
@@ -688,7 +723,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     if (filterMenuMatch) {
       let selectedPath = '/accounts';
       try { selectedPath = decodeURIComponent(filterMenuMatch[1]); } catch { selectedPath = '/accounts'; }
-      await answerTelegramCallback(callback.id, 'Filtrlar ochildi');
+      await answerTelegramCallback(callback.id, botText(getChatLanguage(callbackChatId)).cbFilters);
       const sent = await sendMarketplaceMenu(callbackChatId, selectedPath.startsWith('/accounts') ? selectedPath : '/accounts');
       return { handled: true as const, command: 'market_filter_menu', status: sent.status, sent: sent.ok };
     }
@@ -728,7 +763,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     }
     const marketPath = marketplaceFilterPath(data);
     if (marketPath) {
-      await answerTelegramCallback(callback.id, 'Bozor filtri tayyorlandi');
+      await answerTelegramCallback(callback.id, botText(getChatLanguage(callbackChatId)).cbFilters);
       const sent = await sendMarketplaceMenu(callbackChatId, marketPath);
       return { handled: true as const, command: 'market_filter', status: sent.status, sent: sent.ok, path: marketPath };
     }
@@ -756,9 +791,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const sent = await sendPaymentCard(callbackChatId, method, amount, cbLang);
       return { handled: true as const, command: 'wallet_method', status: sent.status, sent: sent.ok, method, amount };
     }
-    if (/^wallet_soon:(ton|stars)$/.test(data)) {
+    const soonMatch = /^wallet_soon:(ton|stars)$/.exec(data);
+    if (soonMatch) {
       await answerTelegramCallback(callback.id, cbTexts.walletSoon);
-      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: cbTexts.walletSoon });
+      const soonImage = paymentImageUrl(soonMatch[1] === 'ton' ? '/assets/pay-ton.jpg' : '/assets/pay-stars.jpg');
+      const sent = soonImage
+        ? await telegramApiRequest('sendPhoto', { chat_id: callbackChatId, photo: soonImage, caption: cbTexts.walletSoon, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: cbTexts.walletBack, callback_data: 'wallet_menu' }]] } })
+        : await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: cbTexts.walletSoon });
       return { handled: true as const, command: 'wallet_soon', status: sent.status, sent: sent.ok };
     }
     const depositMatch = /^deposit_(ok|no):(\d+)$/.exec(data);
@@ -774,12 +813,15 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const sent = await telegramApiRequest('sendMessage', {
         chat_id: callbackChatId,
         text: review.ok
-          ? `${approved ? '\u2705' : '\u274C'} Chek #${receiptId} — ${approved ? 'tasdiqlandi' : 'rad etildi'}.`
-          : `\u26A0\uFE0F Chek #${receiptId} holati o‘zgartirilmadi (${review.reason}).`,
+          ? cbTexts.adminReviewDone
+              .replace('{icon}', approved ? '\u2705' : '\u274C')
+              .replace('{id}', String(receiptId))
+              .replace('{state}', approved ? cbTexts.adminApprove.replace(/^\S+\s/, '') : cbTexts.adminReject.replace(/^\S+\s/, ''))
+          : cbTexts.adminReviewSkipped.replace('{id}', String(receiptId)).replace('{reason}', String(review.reason)),
       });
       return { handled: true as const, command: 'deposit_review', status: sent.status, sent: sent.ok };
     }
-    await answerTelegramCallback(callback.id, 'Bu tugma eskirgan. Wallet menyusini qayta oching.');
+    await answerTelegramCallback(callback.id, botText(getChatLanguage(callbackChatId)).callbackExpired);
     return { handled: true as const, command: 'callback', status: 'active' as const, sent: true };
   }
 
@@ -799,7 +841,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     if (!ownsContact) {
       const sent = await telegramApiRequest('sendMessage', {
         chat_id: chatId,
-        text: '<b>Bu boshqa foydalanuvchining raqami</b>\n\nKirish uchun pastdagi tugma orqali o‘zingizning telefon raqamingizni yuboring.',
+        text: botText(getChatLanguage(chatId, message.from?.language_code)).contactOtherUser,
         parse_mode: 'HTML',
         reply_markup: buildMainKeyboard(),
       });
@@ -818,20 +860,21 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     const loginUrl = loginToken ? getTelegramMiniAppUrl(`/profile?tglogin=${encodeURIComponent(loginToken)}`) : getTelegramMiniAppUrl('/profile');
     const sent = await telegramApiRequest('sendMessage', {
       chat_id: chatId,
-      text: `<b>✅ Telefon raqamingiz tasdiqlandi</b>\n\n📱 ${escapeTelegramHtml(contact.phone_number || '')}\n\nQuyidagi tugma orqali Mini App'ga to‘g‘ridan-to‘g‘ri kiring — profilingiz, ID va e’lonlaringiz avtomatik ochiladi.`,
+      text: `${botText(getChatLanguage(chatId)).contactVerified}\n\n📱 ${escapeTelegramHtml(contact.phone_number || '')}\n\n${botText(getChatLanguage(chatId)).contactVerifiedBody}`,
       parse_mode: 'HTML',
       reply_markup: loginUrl
-        ? { inline_keyboard: [[{ text: '🔓 Profilga kirish (Mini App)', web_app: { url: loginUrl } }]] }
+        ? { inline_keyboard: [[{ text: botText(getChatLanguage(chatId)).contactLogin, web_app: { url: loginUrl } }]] }
         : buildMainKeyboard(),
     });
     if (loginUrl) {
-      await telegramApiRequest('sendMessage', { chat_id: chatId, text: 'Asosiy menyu:', reply_markup: buildMainKeyboard() });
+      const contactLang = getChatLanguage(chatId, message.from?.language_code);
+      await telegramApiRequest('sendMessage', { chat_id: chatId, text: botText(contactLang).mainMenu, reply_markup: buildMainKeyboard(contactLang) });
     }
     return { handled: true as const, command: 'contact', status: sent.status, sent: sent.ok, login: Boolean(loginToken) };
   }
 
   const command = parseTelegramCommand(message.text);
-  const lang = getChatLanguage(chatId, message.from?.language_code);
+  const lang = await resolveChatLanguage(chatId, message.from?.id, message.from?.language_code);
   const texts = botText(lang);
   const menuKey = matchMenuKey(message.text ?? '');
 
@@ -868,7 +911,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       .join('\n\n');
     const sent = await telegramApiRequest('sendMessage', {
       chat_id: chatId,
-      text: `<b>❓ Tez-tez so‘raladigan savollar</b>\n\n${body}`,
+      text: `<b>${texts.faqTitle}</b>\n\n${body}`,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
       reply_markup: buildInlineKeyboard('/support'),
@@ -889,15 +932,36 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.languageTitle, reply_markup: languageKeyboard() });
     return { handled: true as const, command: 'language', status: sent.status, sent: sent.ok };
   }
+  if (command === 'sell' || menuKey === 'menuSell') {
+    const sellUrl = getTelegramMiniAppUrl('/sell');
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `<b>${texts.sellTitle}</b>\n\n${texts.sellBody}`,
+      parse_mode: 'HTML',
+      reply_markup: sellUrl ? { inline_keyboard: [[{ text: texts.openApp, web_app: { url: sellUrl } }]] } : buildMainKeyboard(lang),
+    });
+    return { handled: true as const, command: 'sell', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'orders' || menuKey === 'menuOrders') {
+    const ordersUrl = getTelegramMiniAppUrl('/orders');
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `<b>${texts.ordersTitle}</b>\n\n${texts.ordersBody}`,
+      parse_mode: 'HTML',
+      reply_markup: ordersUrl ? { inline_keyboard: [[{ text: texts.openApp, web_app: { url: ordersUrl } }]] } : buildMainKeyboard(lang),
+    });
+    return { handled: true as const, command: 'orders', status: sent.status, sent: sent.ok };
+  }
   if (command === 'mylistings' || menuKey === 'menuListings') {
     const sent = await telegramApiRequest('sendMessage', { chat_id: chatId, text: `<b>${texts.listingsTitle}</b>\n\n${texts.listingsBody}`, parse_mode: 'HTML', reply_markup: buildInlineKeyboard('/profile') });
     return { handled: true as const, command: 'mylistings', status: sent.status, sent: sent.ok };
   }
 
   const response = getTelegramCommandResponse(command, message.from?.id);
+  const unknown = !TELEGRAM_BOT_COMMANDS.some(item => item.command === command);
   const sent = await telegramApiRequest('sendMessage', {
     chat_id: chatId,
-    text: `<b>${response.title}</b>\n\n${response.text}`,
+    text: unknown ? `<b>${texts.helpTitle}</b>\n\n${texts.helpBody}` : `<b>${response.title}</b>\n\n${response.text}`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
     // The persistent menu keyboard must always be visible, so it is attached to
@@ -919,7 +983,7 @@ export async function registerTelegramBot() {
     await telegramApiRequest("deleteMyCommands", scope ? { scope } : {});
   }
   const commands = await telegramApiRequest("setMyCommands", {
-    commands: [{ command: "start", description: "Inferno Stealth menyusini ochish" }],
+    commands: [{ command: "start", description: botText('uz').startCommandHint }],
     scope: { type: "all_private_chats" },
   });
 

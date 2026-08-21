@@ -81,11 +81,33 @@ type Texts = {
   marketEmpty: string;
   marketPage: string;
   marketCurrency: string;
+  sellTitle: string;
+  sellBody: string;
+  ordersTitle: string;
+  ordersBody: string;
+  faqTitle: string;
+  helpTitle: string;
+  helpBody: string;
+  adminOnly: string;
+  receiptTooLarge: string;
+  receiptFailed: string;
+  receiptNoAmount: string;
+  contactOtherUser: string;
+  contactVerifiedBody: string;
+  adminNewReceipt: string;
+  adminReviewDone: string;
+  adminReviewSkipped: string;
+  callbackExpired: string;
+  cbLoading: string;
+  cbFilters: string;
+  walletBack: string;
+  walletOther: string;
+  startCommandHint: string;
 };
 
 const uz: Texts = {
   menuMarket: '🛒 Bozor',
-  menuSell: '➕ Akkaunt sotish',
+  menuSell: '➕ Sotish',
   menuOrders: '📦 Buyurtmalarim',
   menuProfile: '👤 Profilim',
   menuListings: '🧾 E’lonlarim',
@@ -160,14 +182,36 @@ const uz: Texts = {
   marketEmpty: 'Bu filtr bo‘yicha hozircha e’lon topilmadi.',
   marketPage: 'Sahifa',
   marketCurrency: 'so‘m',
+  sellTitle: '➕ AKKAUNT SOTISH',
+  sellBody: 'Mini App’ni oching, rasm/video qo‘shing va narx belgilang.\nAdmin tekshiruvidan so‘ng e’lon bozorda paydo bo‘ladi.',
+  ordersTitle: '📦 BUYURTMALARIM',
+  ordersBody: 'Escrow holati, to‘lov va topshirish tasdig‘i Mini App’da.',
+  faqTitle: '❓ KO‘P BERILADIGAN SAVOLLAR',
+  helpTitle: '🎮 INFERNO GOLD MARKET',
+  helpBody: 'Pastdagi menyudan kerakli bo‘limni tanlang 👇',
+  adminOnly: '⛔ Bu bo‘lim faqat adminlar uchun.',
+  receiptTooLarge: '❌ Chek hajmi 8 MB dan oshmasin. Kichikroq rasm yuboring.',
+  receiptFailed: '❌ Chekni qabul qilib bo‘lmadi. Qayta urinib ko‘ring.',
+  receiptNoAmount: '⚠️ Avval summani tanlang, so‘ng chek rasmini yuboring.',
+  contactOtherUser: '⚠️ Bu boshqa foydalanuvchining raqami. O‘z raqamingizni yuboring.',
+  contactVerifiedBody: 'Pastdagi tugma orqali Mini App’ni oching — profil va e’lonlaringiz avtomatik yuklanadi.',
+  adminNewReceipt: '📥 <b>Yangi balans cheki</b>\n\nFoydalanuvchi: #{user}\nSumma: <b>{amount} so‘m</b>\nChek: {url}',
+  adminReviewDone: '{icon} Chek #{id} — {state}.',
+  adminReviewSkipped: '⚠️ Chek #{id} holati o‘zgartirilmadi ({reason}).',
+  callbackExpired: 'Bu tugma eskirgan. Menyuni qayta oching.',
+  cbLoading: 'Yuklanmoqda…',
+  cbFilters: 'Filtrlar',
+  walletBack: '⬅️ Orqaga',
+  walletOther: '✍️ Boshqa summa',
+  startCommandHint: 'Inferno menyusini ochish',
 };
 
 const ru: Texts = {
   menuMarket: '🛒 Маркет',
-  menuSell: '➕ Продать аккаунт',
+  menuSell: '➕ Продать',
   menuOrders: '📦 Мои сделки',
   menuProfile: '👤 Профиль',
-  menuListings: '🧾 Мои объявления',
+  menuListings: '🧾 Объявления',
   menuWallet: '💳 Баланс',
   menuReferral: '👥 Рефералы',
   menuRules: '📜 Правила',
@@ -238,11 +282,33 @@ const ru: Texts = {
   marketEmpty: 'По этому фильтру объявлений пока нет.',
   marketPage: 'Страница',
   marketCurrency: 'сум',
+  sellTitle: '➕ ПРОДАТЬ АККАУНТ',
+  sellBody: 'Откройте Mini App, добавьте фото/видео и укажите цену.\nПосле проверки админом объявление появится на маркете.',
+  ordersTitle: '📦 МОИ СДЕЛКИ',
+  ordersBody: 'Статус escrow, оплата и подтверждение передачи — в Mini App.',
+  faqTitle: '❓ ЧАСТЫЕ ВОПРОСЫ',
+  helpTitle: '🎮 INFERNO GOLD MARKET',
+  helpBody: 'Выберите раздел в меню ниже 👇',
+  adminOnly: '⛔ Этот раздел только для админов.',
+  receiptTooLarge: '❌ Чек должен быть меньше 8 МБ. Отправьте фото поменьше.',
+  receiptFailed: '❌ Не удалось принять чек. Попробуйте ещё раз.',
+  receiptNoAmount: '⚠️ Сначала выберите сумму, затем отправьте фото чека.',
+  contactOtherUser: '⚠️ Это номер другого пользователя. Отправьте свой контакт.',
+  contactVerifiedBody: 'Откройте Mini App ниже — профиль и объявления загрузятся автоматически.',
+  adminNewReceipt: '📥 <b>Новый чек пополнения</b>\n\nПользователь: #{user}\nСумма: <b>{amount} сум</b>\nЧек: {url}',
+  adminReviewDone: '{icon} Чек #{id} — {state}.',
+  adminReviewSkipped: '⚠️ Чек #{id} не изменён ({reason}).',
+  callbackExpired: 'Кнопка устарела. Откройте меню заново.',
+  cbLoading: 'Загрузка…',
+  cbFilters: 'Фильтры',
+  walletBack: '⬅️ Назад',
+  walletOther: '✍️ Другая сумма',
+  startCommandHint: 'Открыть меню Inferno',
 };
 
 const en: Texts = {
   menuMarket: '🛒 Market',
-  menuSell: '➕ Sell account',
+  menuSell: '➕ Sell',
   menuOrders: '📦 My deals',
   menuProfile: '👤 Profile',
   menuListings: '🧾 My listings',
@@ -316,6 +382,28 @@ const en: Texts = {
   marketEmpty: 'No listings match this filter yet.',
   marketPage: 'Page',
   marketCurrency: 'UZS',
+  sellTitle: '➕ SELL AN ACCOUNT',
+  sellBody: 'Open the Mini App, add photos/video and set your price.\nAfter admin review the listing goes live on the market.',
+  ordersTitle: '📦 MY DEALS',
+  ordersBody: 'Escrow status, payment and delivery confirmation are in the Mini App.',
+  faqTitle: '❓ FAQ',
+  helpTitle: '🎮 INFERNO GOLD MARKET',
+  helpBody: 'Pick a section from the menu below 👇',
+  adminOnly: '⛔ This section is for admins only.',
+  receiptTooLarge: '❌ The receipt must be under 8 MB. Send a smaller photo.',
+  receiptFailed: '❌ Could not accept the receipt. Please try again.',
+  receiptNoAmount: '⚠️ First choose an amount, then send the receipt photo.',
+  contactOtherUser: '⚠️ This is another user’s number. Please share your own contact.',
+  contactVerifiedBody: 'Open the Mini App below — your profile and listings load automatically.',
+  adminNewReceipt: '📥 <b>New top-up receipt</b>\n\nUser: #{user}\nAmount: <b>{amount} so‘m</b>\nReceipt: {url}',
+  adminReviewDone: '{icon} Receipt #{id} — {state}.',
+  adminReviewSkipped: '⚠️ Receipt #{id} was not changed ({reason}).',
+  callbackExpired: 'This button expired. Open the menu again.',
+  cbLoading: 'Loading…',
+  cbFilters: 'Filters',
+  walletBack: '⬅️ Back',
+  walletOther: '✍️ Other amount',
+  startCommandHint: 'Open the Inferno menu',
 };
 
 const dictionary: Record<BotLang, Texts> = { uz, ru, en };
