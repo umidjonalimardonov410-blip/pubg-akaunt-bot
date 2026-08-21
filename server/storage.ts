@@ -3,6 +3,49 @@
 // Downloads return /manus-storage/{key} paths served via 307 redirect.
 
 import { ENV } from "./_core/env";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { createHmac } from "node:crypto";
+
+const LOCAL_STORAGE_ROOT = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
+
+export function hasForgeStorage(): boolean {
+  return Boolean(ENV.forgeApiUrl && ENV.forgeApiKey);
+}
+
+function signLocalUpload(key: string, expires: number): string {
+  return createHmac("sha256", ENV.cookieSecret)
+    .update(`${key}:${expires}`)
+    .digest("hex");
+}
+
+export function verifyLocalUploadToken(key: string, expires: number, token: string): boolean {
+  if (!ENV.cookieSecret || !Number.isFinite(expires) || expires < Date.now()) return false;
+  return token.length === 64 && token === signLocalUpload(key, expires);
+}
+
+export function getLocalStoragePath(relKey: string): string {
+  const key = normalizeKey(relKey);
+  const fullPath = path.resolve(LOCAL_STORAGE_ROOT, key);
+  const relative = path.relative(LOCAL_STORAGE_ROOT, fullPath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Invalid storage key");
+  }
+  return fullPath;
+}
+
+export async function localStoragePut(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+): Promise<void> {
+  const fullPath = getLocalStoragePath(relKey);
+  await mkdir(path.dirname(fullPath), { recursive: true });
+  await writeFile(fullPath, data);
+}
+
+export async function localStorageRead(relKey: string): Promise<Buffer> {
+  return readFile(getLocalStoragePath(relKey));
+}
 
 function getForgeConfig() {
   const forgeUrl = ENV.forgeApiUrl;
@@ -33,8 +76,14 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
   const key = appendHashSuffix(normalizeKey(relKey));
+
+  if (!hasForgeStorage()) {
+    await localStoragePut(key, data);
+    return { key, url: `/manus-storage/${key}` };
+  }
+
+  const { forgeUrl, forgeKey } = getForgeConfig();
 
   // 1. Get presigned PUT URL from Forge
   const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
@@ -76,8 +125,19 @@ export async function storagePresignPut(
   relKey: string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; uploadUrl: string; url: string }> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
   const key = appendHashSuffix(normalizeKey(relKey));
+
+  if (!hasForgeStorage()) {
+    const expires = Date.now() + 15 * 60 * 1000;
+    const token = signLocalUpload(key, expires);
+    return {
+      key,
+      uploadUrl: `/api/storage/upload/${key.split("/").map(encodeURIComponent).join("/")}?expires=${expires}&token=${token}`,
+      url: `/manus-storage/${key}`,
+    };
+  }
+
+  const { forgeUrl, forgeKey } = getForgeConfig();
 
   const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
   presignUrl.searchParams.set("path", key);
@@ -104,6 +164,7 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
+  if (!hasForgeStorage()) return `/manus-storage/${normalizeKey(relKey)}`;
   const { forgeUrl, forgeKey } = getForgeConfig();
   const key = normalizeKey(relKey);
 

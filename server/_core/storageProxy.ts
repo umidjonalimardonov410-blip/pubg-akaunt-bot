@@ -1,7 +1,75 @@
 import type { Express } from "express";
+import { createWriteStream } from "node:fs";
+import { mkdir, unlink } from "node:fs/promises";
+import path from "node:path";
 import { ENV } from "./env";
+import { getLocalStoragePath, hasForgeStorage, localStorageRead, verifyLocalUploadToken } from "../storage";
+
+const MAX_DIRECT_UPLOAD_BYTES = 200 * 1024 * 1024;
+
+function contentTypeForKey(key: string): string {
+  const extension = path.extname(key).toLowerCase();
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".mp4") return "video/mp4";
+  if (extension === ".webm") return "video/webm";
+  if (extension === ".mov") return "video/quicktime";
+  return "application/octet-stream";
+}
 
 export function registerStorageProxy(app: Express) {
+  app.put("/api/storage/upload/*", async (req, res) => {
+    if (hasForgeStorage()) {
+      res.status(404).send("Not found");
+      return;
+    }
+
+    const key = (req.params as Record<string, string>)[0];
+    if (!key) {
+      res.status(400).send("Missing storage key");
+      return;
+    }
+    const expires = Number(req.query.expires);
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!verifyLocalUploadToken(key, expires, token)) {
+      res.status(403).send("Invalid or expired upload URL");
+      return;
+    }
+
+    let destination = "";
+    try {
+      destination = getLocalStoragePath(key);
+      await mkdir(path.dirname(destination), { recursive: true });
+      const declaredSize = Number(req.headers["content-length"] ?? 0);
+      if (declaredSize > MAX_DIRECT_UPLOAD_BYTES) {
+        res.status(413).send("File is too large");
+        return;
+      }
+
+      let received = 0;
+      const writer = createWriteStream(destination, { flags: "wx" });
+      req.on("data", chunk => {
+        received += chunk.length;
+        if (received > MAX_DIRECT_UPLOAD_BYTES) req.destroy(new Error("File is too large"));
+      });
+      req.pipe(writer);
+      writer.on("finish", () => res.status(204).end());
+      writer.on("error", async error => {
+        await unlink(destination).catch(() => undefined);
+        if (!res.headersSent) res.status(500).send(error.message);
+      });
+      req.on("error", async error => {
+        writer.destroy();
+        await unlink(destination).catch(() => undefined);
+        if (!res.headersSent) res.status(error.message === "File is too large" ? 413 : 500).send(error.message);
+      });
+    } catch (error) {
+      if (destination) await unlink(destination).catch(() => undefined);
+      res.status(400).send(error instanceof Error ? error.message : "Upload failed");
+    }
+  });
+
   app.get("/manus-storage/*", async (req, res) => {
     const key = (req.params as Record<string, string>)[0];
     if (!key) {
@@ -9,8 +77,15 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-      res.status(500).send("Storage proxy not configured");
+    if (!hasForgeStorage()) {
+      try {
+        const file = await localStorageRead(key);
+        res.set("Content-Type", contentTypeForKey(key));
+        res.set("Cache-Control", "public, max-age=31536000, immutable");
+        res.send(file);
+      } catch {
+        res.status(404).send("File not found");
+      }
       return;
     }
 

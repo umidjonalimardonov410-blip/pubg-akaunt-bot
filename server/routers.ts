@@ -687,7 +687,14 @@ export const appRouter = router({
 
     submitReceipt: protectedProcedure
       .input(z.object({
-        amount: z.union([z.literal(10000), z.literal(20000), z.literal(50000)]),
+        amount: z.union([
+          z.literal(10000),
+          z.literal(20000),
+          z.literal(50000),
+          z.literal(100000),
+          z.literal(200000),
+          z.literal(500000),
+        ]),
         receiptKey: z.string().min(1).max(500),
         receiptUrl: z.string().min(1).max(700),
       }))
