@@ -48,7 +48,11 @@ export function registerStorageProxy(app: Express) {
       }
 
       let received = 0;
+      // "w" emas "wx": mavjud faylni qayta yozmaymiz, lekin xato bo'lsa ham
+      // boshqa birovning faylini o'chirib yubormaymiz (quyidagi created bayrog'i).
       const writer = createWriteStream(destination, { flags: "wx" });
+      let created = true;
+      writer.on("open", () => { created = true; });
       req.on("data", chunk => {
         received += chunk.length;
         if (received > MAX_DIRECT_UPLOAD_BYTES) req.destroy(new Error("File is too large"));
@@ -56,12 +60,17 @@ export function registerStorageProxy(app: Express) {
       req.pipe(writer);
       writer.on("finish", () => res.status(204).end());
       writer.on("error", async error => {
-        await unlink(destination).catch(() => undefined);
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+          created = false;
+          if (!res.headersSent) res.status(204).end();
+          return;
+        }
+        if (created) await unlink(destination).catch(() => undefined);
         if (!res.headersSent) res.status(500).send(error.message);
       });
       req.on("error", async error => {
         writer.destroy();
-        await unlink(destination).catch(() => undefined);
+        if (created) await unlink(destination).catch(() => undefined);
         if (!res.headersSent) res.status(error.message === "File is too large" ? 413 : 500).send(error.message);
       });
     } catch (error) {

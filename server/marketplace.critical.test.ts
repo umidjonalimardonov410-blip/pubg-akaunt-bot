@@ -119,10 +119,10 @@ describe("critical marketplace procedures", () => {
 
     const result = await caller.accounts.create(accountInput);
 
-    expect(result).toEqual({ id: 31 });
+    expect(result).toEqual({ id: 31, status: "pending_verification" });
     expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({
       sellerId: 2,
-      status: "available",
+      status: "pending_verification",
       featuredSkins: ["M416 Glacier"],
     }));
     expect(state.insertValues).toHaveBeenCalledWith(expect.objectContaining({

@@ -5,7 +5,7 @@
 import { ENV } from "./_core/env";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const LOCAL_STORAGE_ROOT = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
 
@@ -21,7 +21,10 @@ function signLocalUpload(key: string, expires: number): string {
 
 export function verifyLocalUploadToken(key: string, expires: number, token: string): boolean {
   if (!ENV.cookieSecret || !Number.isFinite(expires) || expires < Date.now()) return false;
-  return token.length === 64 && token === signLocalUpload(key, expires);
+  if (token.length !== 64) return false;
+  const expected = Buffer.from(signLocalUpload(key, expires));
+  const actual = Buffer.from(token);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
 export function getLocalStoragePath(relKey: string): string {
