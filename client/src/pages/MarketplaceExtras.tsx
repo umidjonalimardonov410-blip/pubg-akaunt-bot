@@ -262,8 +262,8 @@ export function AdminPanelPage() {
             <Card key={row.media.id} className="!p-0 overflow-hidden">
               <div className="aspect-video bg-black/50">
                 {row.media.kind === 'video'
-                  ? <video src={row.media.url} controls playsInline className="h-full w-full object-cover" />
-                  : <img src={row.media.url} alt="upload" loading="lazy" className="h-full w-full object-cover" />}
+                  ? <video src={row.media.url} controls playsInline className="h-full w-full img-live object-cover" />
+                  : <img src={row.media.url} alt="upload" loading="lazy" className="h-full w-full img-live object-cover" />}
               </div>
               <div className="space-y-2 p-3">
                 <p className="text-[11px] text-white/45">{row.userName || 'Foydalanuvchi'} • {formatBytes(row.media.sizeBytes)} • {row.media.contentType}</p>
