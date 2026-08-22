@@ -392,6 +392,15 @@ button, a, input, select, textarea {
   .pro-live__frame:nth-child(1) { opacity: 1; }
 }
 
+
+/* Gamer image motion */
+@keyframes imgLive { 0%,100% { transform: scale(1) translate3d(0,0,0); } 50% { transform: scale(1.06) translate3d(0,-1.5%,0); } }
+.img-live { animation: imgLive 14s ease-in-out infinite; will-change: transform; }
+.img-live:hover { animation-play-state: paused; transform: scale(1.08); transition: transform .4s ease; }
+img { transition: transform .45s ease, filter .45s ease; }
+.pro-clip img:hover, .img-zoom:hover { transform: scale(1.05); filter: saturate(1.15); }
+@media (prefers-reduced-motion: reduce) { .img-live { animation: none !important; } }
+
 /* Extra gamer motion */
 @keyframes pubgGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(245,197,66,.28); } 50% { box-shadow: 0 0 22px 4px rgba(245,197,66,.28); } }
 @keyframes pubgSlideUp { from { opacity: 0; transform: translateY(24px) scale(.985); } to { opacity: 1; transform: none; } }
