@@ -25,7 +25,7 @@ function RuleBlock({
     <section className={`overflow-hidden rounded-3xl border ${accent}`}>
       {image && (
         <div className="relative h-40 w-full overflow-hidden sm:h-48">
-          <img src={image} alt="" loading="lazy" width={1024} height={1024} className="h-full w-full object-cover opacity-70" />
+          <img src={image} alt="" loading="lazy" width={1024} height={1024} className="h-full w-full img-live object-cover opacity-70" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c0e] via-[#0b0c0e]/45 to-transparent" />
         </div>
       )}
@@ -57,7 +57,7 @@ export function RulesPage() {
   return (
     <main className="space-y-6">
       <section className="relative isolate overflow-hidden rounded-[28px] border border-amber-400/25 bg-[#0f1012]">
-        <img src={HERO} alt="" width={1280} height={720} className="absolute inset-0 -z-10 h-full w-full object-cover opacity-40" />
+        <img src={HERO} alt="" width={1280} height={720} className="absolute inset-0 -z-10 h-full w-full img-live object-cover opacity-40" />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,#0b0c0e_18%,rgba(11,12,14,.85)_48%,rgba(11,12,14,.25))]" />
         <div className="relative p-6 sm:p-10">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-200">
