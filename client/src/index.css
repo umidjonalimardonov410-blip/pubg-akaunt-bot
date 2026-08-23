@@ -590,3 +590,7 @@ img { transition: transform .45s ease, filter .45s ease; }
   .skeleton-bar::after, .heart-button.is-saved .heart-icon, .heart-button.is-saved .heart-burst,
   .step-card, .step-dot-done, .step-dot-current, [data-sonner-toast] { animation: none !important; }
 }
+
+/* Media viewer open/close micro-animation (pro-gamer polish) */
+.media-viewer { animation: pubgSlideUp .22s ease-out; }
+.media-viewer-fade { animation: intro-fade-in .18s ease-out; }
