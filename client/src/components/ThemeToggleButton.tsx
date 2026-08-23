@@ -27,6 +27,12 @@ export default function ThemeToggleButton() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.data]);
 
+  useEffect(() => {
+    const close = () => setOpen(false);
+    window.addEventListener("app:close-popovers", close);
+    return () => window.removeEventListener("app:close-popovers", close);
+  }, []);
+
   const pick = (next: AppTheme) => {
     setTheme(next);
     setOpen(false);
@@ -48,7 +54,7 @@ export default function ThemeToggleButton() {
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen(value => !value)}
+        onClick={() => setOpen(value => { if (!value) window.dispatchEvent(new CustomEvent("app:close-popovers")); return !value; })}
         aria-label="Tema"
         aria-expanded={open}
         className="grid h-10 min-w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] px-2 text-white/70 transition hover:border-amber-400/40"
