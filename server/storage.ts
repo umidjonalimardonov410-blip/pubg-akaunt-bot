@@ -46,6 +46,46 @@ export async function localStoragePut(
   await writeFile(fullPath, data);
 }
 
+/** Bazadagi zaxira xotira: kichik fayllar (<= 8 MB) uchun. */
+const DB_BLOB_LIMIT = 8 * 1024 * 1024;
+
+export async function dbStoragePut(key: string, data: Buffer, contentType: string): Promise<boolean> {
+  if (data.length > DB_BLOB_LIMIT) return false;
+  try {
+    const { getDb } = await import("./db");
+    const db = await getDb();
+    if (!db) return false;
+    const { mediaBlobs } = await import("../drizzle/schema");
+    await db.insert(mediaBlobs).values({
+      storageKey: normalizeKey(key),
+      contentType,
+      byteSize: data.length,
+      data,
+    });
+    return true;
+  } catch (error) {
+    console.error("[storage] db blob saqlanmadi:", error);
+    return false;
+  }
+}
+
+export async function dbStorageRead(key: string): Promise<{ data: Buffer; contentType: string } | null> {
+  try {
+    const { getDb } = await import("./db");
+    const db = await getDb();
+    if (!db) return null;
+    const { mediaBlobs } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const rows = await db.select().from(mediaBlobs).where(eq(mediaBlobs.storageKey, normalizeKey(key))).limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return { data: Buffer.from(row.data as Buffer), contentType: row.contentType };
+  } catch (error) {
+    console.error("[storage] db blob o'qilmadi:", error);
+    return null;
+  }
+}
+
 export async function localStorageRead(relKey: string): Promise<Buffer> {
   return readFile(getLocalStoragePath(relKey));
 }
@@ -82,7 +122,10 @@ export async function storagePut(
   const key = appendHashSuffix(normalizeKey(relKey));
 
   if (!hasForgeStorage()) {
-    await localStoragePut(key, data);
+    const buffer = typeof data === "string" ? Buffer.from(data) : Buffer.from(data as Uint8Array);
+    // Avval bazaga (deploydan keyin ham saqlanadi), bo'lmasa lokal diskka.
+    const saved = await dbStoragePut(key, buffer, contentType);
+    if (!saved) await localStoragePut(key, buffer);
     return { key, url: `/manus-storage/${key}` };
   }
 
