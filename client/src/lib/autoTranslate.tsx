@@ -89,6 +89,13 @@ function walk(root: Node, lang: Lang) {
   }
 }
 
+/** Butun sahifani darhol qayta tarjima qiladi (til almashganda chaqiriladi). */
+export function retranslateDocument(lang: Lang) {
+  if (typeof document === "undefined") return;
+  document.documentElement.setAttribute("lang", lang);
+  walk(document.body, lang);
+}
+
 /**
  * Butun interfeysni tanlangan tilga avtomatik o‘giradi:
  * DOM matn tugunlari va placeholder/aria-label/title atributlari kuzatiladi.

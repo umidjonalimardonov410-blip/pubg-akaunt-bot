@@ -12,7 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
-import { sendTelegramNotification, setChatLanguage } from "./telegramBot";
+import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
 import { buildDailySeries, buildStatusBreakdown, buildTopSellers } from "./analytics";
 
@@ -143,6 +143,30 @@ export const appRouter = router({
         } else {
           await db.insert(phraseOverrides).values(values);
         }
+        return { success: true } as const;
+      }),
+    /** Foydalanuvchi noto'g'ri tarjimani belgilab adminga yuboradi. */
+    report: publicProcedure
+      .input(z.object({
+        text: z.string().trim().min(1).max(300),
+        lang: z.enum(['uz', 'ru', 'en']),
+        page: z.string().trim().max(200).optional(),
+        comment: z.string().trim().max(500).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const reporter = ctx.user ? `#${ctx.user.id} ${ctx.user.name ?? ''}`.trim() : 'mehmon';
+        const lines = [
+          '\u{1F310} <b>Tarjima xatosi</b>',
+          `Til: <b>${escapeTelegramHtml(input.lang.toUpperCase())}</b>`,
+          input.page ? `Sahifa: <code>${escapeTelegramHtml(input.page)}</code>` : null,
+          `Matn: <code>${escapeTelegramHtml(input.text)}</code>`,
+          input.comment ? `Izoh: ${escapeTelegramHtml(input.comment)}` : null,
+          `Yuboruvchi: ${escapeTelegramHtml(reporter)}`,
+        ].filter(Boolean) as string[];
+        const message = lines.join('\n');
+        await Promise.all(getTelegramAdminIds().map(adminId =>
+          sendTelegramNotification(adminId, message, '/admin').catch(() => undefined),
+        ));
         return { success: true } as const;
       }),
     remove: protectedProcedure

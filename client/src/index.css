@@ -594,3 +594,7 @@ img { transition: transform .45s ease, filter .45s ease; }
 /* Media viewer open/close micro-animation (pro-gamer polish) */
 .media-viewer { animation: pubgSlideUp .22s ease-out; }
 .media-viewer-fade { animation: intro-fade-in .18s ease-out; }
+
+/* Tarjima xatosini belgilash rejimi. */
+body.i18n-picking * { cursor: crosshair !important; }
+body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-offset: 2px; }

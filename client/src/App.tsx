@@ -8,6 +8,8 @@ import GamerIntro from "./components/GamerIntro";
 import LanguageSync from "./components/LanguageSync";
 import PageSkeleton from "./components/PageSkeleton";
 import { AutoTranslate } from "./lib/autoTranslate";
+import TranslationFeedback from "./components/TranslationFeedback";
+import { useI18n } from "./lib/i18n";
 
 // Lazy-loading: og'ir sahifalar faqat kerak bo'lganda yuklanadi -> start tezroq.
 const Home = lazy(() => import("./pages/Home"));
@@ -46,6 +48,12 @@ function Router() {
 // - Temalar: dark (klassik), neon, gamer. Tanlov localStorage + profilga saqlanadi
 //   (ThemePicker komponenti profil sahifasida).
 
+/** Til almashganda barcha ekranlar darhol qayta chizilishi uchun remount. */
+function LangBoundary({ children }: { children: React.ReactNode }) {
+  const { lang } = useI18n();
+  return <div key={lang} className="contents">{children}</div>;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -55,9 +63,12 @@ function App() {
           <GamerIntro />
           <AutoTranslate />
           <LanguageSync />
-          <Suspense fallback={<PageSkeleton />}>
-            <Router />
-          </Suspense>
+          <TranslationFeedback />
+          <LangBoundary>
+            <Suspense fallback={<PageSkeleton />}>
+              <Router />
+            </Suspense>
+          </LangBoundary>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -1,15 +1,19 @@
 import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { applyDetectedLang, useI18n } from "@/lib/i18n";
 import { setPhraseOverrides } from "@/lib/phraseStore";
+import { retranslateDocument } from "@/lib/autoTranslate";
 
 /**
- * 1) Telegram/profil tilini avtomatik qo'llaydi (zaxira: brauzer tili -> uz).
- * 2) Web-app'da tanlangan til bot va profilga ham yoziladi.
- * 3) Admin tahrirlagan tarjimalarni real vaqtda (polling) yuklab turadi.
+ * 1) Telegram/profil tilini avtomatik qo'llaydi.
+ * 2) Tanlangan til bot va profilga yoziladi.
+ * 3) Admin tarjimalarini real vaqtda yuklab turadi.
+ * 4) Til almashganda kesh tozalanadi va barcha ekranlar darhol qayta chiziladi.
  */
 export default function LanguageSync() {
   const { lang } = useI18n();
+  const queryClient = useQueryClient();
   const me = trpc.auth.me.useQuery(undefined, { retry: false });
   const update = trpc.profile.update.useMutation();
   const overrides = trpc.phrases.list.useQuery(undefined, {
@@ -18,13 +22,12 @@ export default function LanguageSync() {
     staleTime: 10_000,
   });
   const last = useRef<string | null>(null);
+  const lastRefreshed = useRef<string | null>(null);
 
-  // Telegram WebApp tilini darhol qo'llash (foydalanuvchi qo'lda tanlamagan bo'lsa).
   useEffect(() => {
     applyDetectedLang(null);
   }, []);
 
-  // Profilga saqlangan tilni qo'llash (qurilmalar orasida bir xil bo'lishi uchun).
   useEffect(() => {
     applyDetectedLang((me.data as any)?.languageCode ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -33,6 +36,19 @@ export default function LanguageSync() {
   useEffect(() => {
     if (overrides.data) setPhraseOverrides(overrides.data as any);
   }, [overrides.data]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const first = lastRefreshed.current === null;
+    lastRefreshed.current = lang;
+    retranslateDocument(lang);
+    if (first) return;
+    void queryClient.invalidateQueries();
+    void queryClient.refetchQueries({ type: "active" });
+    window.dispatchEvent(new CustomEvent("inferno:lang-changed", { detail: { lang } }));
+    const frame = window.requestAnimationFrame(() => retranslateDocument(lang));
+    return () => window.cancelAnimationFrame(frame);
+  }, [lang, queryClient]);
 
   useEffect(() => {
     if (!me.data) return;
