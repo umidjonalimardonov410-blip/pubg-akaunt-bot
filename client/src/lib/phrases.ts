@@ -1,5 +1,7 @@
 // AUTO-GENERATED UI phrase dictionary (uz -> ru/en). Manba matn = o'zbekcha.
-export const PHRASES: Record<string, { ru: string; en: string }> = {
+export const PHRASES: Record<string, {
+  "Tema": { ru: "Тема", en: "Theme" },
+  "Tema saqlandi": { ru: "Тема сохранена", en: "Theme saved" }, ru: string; en: string }> = {
   "Admin Tasdiqlangan": { ru: "Подтверждено админом", en: "Admin Approved" },
   "Admin bilan bog‘lanish": { ru: "Связаться с админом", en: "Contact Admin" },
   "Admin ko‘rigiga yuborish": { ru: "Отправить на проверку админу", en: "Send for Admin Review" },
