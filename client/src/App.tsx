@@ -8,7 +8,6 @@ import GamerIntro from "./components/GamerIntro";
 import LanguageSync from "./components/LanguageSync";
 import PageSkeleton from "./components/PageSkeleton";
 import { AutoTranslate } from "./lib/autoTranslate";
-import TranslationFeedback from "./components/TranslationFeedback";
 import { useI18n } from "./lib/i18n";
 
 // Lazy-loading: og'ir sahifalar faqat kerak bo'lganda yuklanadi -> start tezroq.
@@ -63,7 +62,6 @@ function App() {
           <GamerIntro />
           <AutoTranslate />
           <LanguageSync />
-          <TranslationFeedback />
           <LangBoundary>
             <Suspense fallback={<PageSkeleton />}>
               <Router />
