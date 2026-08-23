@@ -1,4 +1,11 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json, uniqueIndex } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json, uniqueIndex, customType } from "drizzle-orm/mysql-core";
+
+/** MySQL LONGBLOB — drizzle mysql-core da tayyor tur yo'q, shuning uchun custom. */
+const customBlob = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "longblob";
+  },
+});
 
 /**
  * Core user table backing auth flow.
@@ -637,3 +644,17 @@ export const phraseOverrides = mysqlTable("phrase_overrides", {
 });
 
 export type PhraseOverride = typeof phraseOverrides.$inferSelect;
+
+/**
+ * Kichik media fayllar (avatar, to'lov cheki) uchun bazadagi zaxira xotira.
+ * S3/Forge sozlanmagan hostlarda (masalan Railway) fayllar shu yerda saqlanadi,
+ * shuning uchun qayta deploydan keyin ham rasm yo'qolmaydi.
+ */
+export const mediaBlobs = mysqlTable("media_blobs", {
+  id: int("id").autoincrement().primaryKey(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull().unique(),
+  contentType: varchar("contentType", { length: 120 }).notNull(),
+  byteSize: int("byteSize").default(0).notNull(),
+  data: customBlob("data").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
