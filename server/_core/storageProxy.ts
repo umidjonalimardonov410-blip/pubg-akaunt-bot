@@ -3,7 +3,7 @@ import { createWriteStream } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { ENV } from "./env";
-import { getLocalStoragePath, hasForgeStorage, localStorageRead, verifyLocalUploadToken } from "../storage";
+import { dbStorageRead, getLocalStoragePath, hasForgeStorage, localStorageRead, verifyLocalUploadToken } from "../storage";
 
 const MAX_DIRECT_UPLOAD_BYTES = 200 * 1024 * 1024;
 
@@ -87,6 +87,13 @@ export function registerStorageProxy(app: Express) {
     }
 
     if (!hasForgeStorage()) {
+      const fromDb = await dbStorageRead(key);
+      if (fromDb) {
+        res.set("Content-Type", fromDb.contentType || contentTypeForKey(key));
+        res.set("Cache-Control", "public, max-age=31536000, immutable");
+        res.send(fromDb.data);
+        return;
+      }
       try {
         const file = await localStorageRead(key);
         res.set("Content-Type", contentTypeForKey(key));
