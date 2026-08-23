@@ -89,7 +89,7 @@ export default function AdminPhrasesPanel() {
     setDrafts(current => ({ ...current, [key]: { ...draftFor(key), ...patch } }));
 
   return (
-    <section className="rounded-2xl border border-sky-400/20 bg-[#0e1013] p-6">
+    <section className="rounded-2xl border border-sky-400/20 bg-[#0e1013] p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300">Localization desk</span>
