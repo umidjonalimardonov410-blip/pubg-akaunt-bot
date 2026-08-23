@@ -42,7 +42,7 @@ export default function ThemePicker() {
   };
 
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5">
+    <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-200">
           <Palette className="h-5 w-5" />
