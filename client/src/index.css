@@ -598,3 +598,13 @@ img { transition: transform .45s ease, filter .45s ease; }
 /* Tarjima xatosini belgilash rejimi. */
 body.i18n-picking * { cursor: crosshair !important; }
 body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-offset: 2px; }
+
+
+/* Jonli PUBG orqa fon uchun sekin Ken Burns harakati */
+@keyframes pubgKenBurns {
+  0% { transform: scale(1.06) translate3d(0, 0, 0); }
+  50% { transform: scale(1.16) translate3d(-1.5%, -1.5%, 0); }
+  100% { transform: scale(1.06) translate3d(0, 0, 0); }
+}
+.pubg-kenburns { animation: pubgKenBurns 26s ease-in-out infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .pubg-kenburns { animation: none; } }

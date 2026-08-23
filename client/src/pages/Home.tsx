@@ -119,7 +119,7 @@ type Listing = {
 
 export function marketplaceLayoutClass(view: 'grid' | 'list', isSwitching: boolean) {
   const motion = isSwitching ? 'translate-y-1 opacity-0' : 'translate-y-0 opacity-100';
-  const layout = view === 'grid' ? 'grid gap-2 grid-cols-2 sm:grid-cols-3 sm:gap-2 lg:grid-cols-4 xl:grid-cols-5' : 'space-y-3';
+  const layout = view === 'grid' ? 'grid gap-1.5 grid-cols-4 sm:gap-2 sm:grid-cols-4 lg:grid-cols-6' : 'space-y-3';
   return `transform-gpu transition-[opacity,transform] duration-300 ease-out ${motion} ${layout}`;
 }
 
@@ -400,28 +400,28 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
   return (
     <article
       onClick={() => onOpen(item.id)}
-      className={`pubg-card group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-3'}`}
+      className={`pubg-card group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 active:scale-[.99] ${showcase ? 'p-1.5' : 'p-1.5 sm:p-2.5'}`}
     >
       <div>
         <div className={`relative overflow-hidden rounded-xl bg-[#16181b] ${showcase ? 'aspect-[4/5]' : 'aspect-square'}`}>
           <img src={item.image} alt={item.playerName} loading="lazy" className="h-full w-full img-live object-cover transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
-          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-[2px] text-[9px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
+          <span className="absolute left-1 top-1 rounded bg-black/70 px-1 py-[2px] text-[8px] sm:left-1.5 sm:top-1.5 sm:px-1.5 sm:text-[9px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
           {item.verifiedSeller && <span className="absolute left-1.5 top-7 inline-flex items-center gap-1 rounded bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-black leading-none text-black shadow"><BadgeCheck className="h-3 w-3" />ISHONCHLI</span>}
           <div className="absolute right-1.5 top-1.5 z-10" onClick={event => event.stopPropagation()}><FavoriteButton accountId={item.id} compact /></div>
           <div className="absolute inset-x-2 bottom-1.5">
-            <p className="truncate text-xs font-black text-white drop-shadow">{item.playerName}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold text-white/70"><span>{item.region}</span><span className="text-amber-200">K/D {item.kd}</span></p>
+            <p className="truncate text-[10px] font-black text-white drop-shadow sm:text-xs">{item.playerName}</p>
+            <p className="mt-0.5 flex items-center gap-1 truncate text-[8px] font-bold text-white/70 sm:text-[10px]"><span>{item.region}</span><span className="text-amber-200">K/D {item.kd}</span></p>
           </div>
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-1 border-t border-white/[0.06] pt-2">
+      <div className="mt-1.5 flex items-center justify-between gap-1 border-t border-white/[0.06] pt-1.5">
         <div className="min-w-0">
           <span className="block text-[9px] font-bold uppercase tracking-wide text-white/40">Narx</span>
-          <span className="block truncate font-display text-[15px] font-black leading-none text-amber-50">{uzNumber(item.price)} <span className="text-[9px]">so'm</span></span>
+          <span className="block truncate font-display text-[11px] font-black leading-none text-amber-50 sm:text-[15px]">{uzNumber(item.price)} <span className="text-[8px] sm:text-[9px]">so'm</span></span>
         </div>
-        <span className="pubg-press grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400/25 text-amber-50 transition group-hover:bg-amber-400 group-hover:text-black"><ArrowRight className="h-4 w-4" /></span>
+        <span className="pubg-press grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-amber-400/25 sm:h-9 sm:w-9 sm:rounded-xl text-amber-50 transition group-hover:bg-amber-400 group-hover:text-black"><ArrowRight className="h-4 w-4" /></span>
       </div>
     </article>
   );
@@ -571,6 +571,30 @@ function EditField({ label, error, className, children }: { label: string; error
 
 function Chip({ label, active, onToggle }: { label: string; active: boolean; onToggle: () => void }) {
   return <button type="button" onClick={onToggle} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${active ? 'border-amber-300/60 bg-amber-400/15 text-amber-100' : 'border-white/10 bg-white/[0.03] text-white/55 hover:text-white'}`}>{active && <Check className="mr-1 inline h-3 w-3" />}{label}</button>;
+}
+
+const BATTLE_BACKDROPS = ['/assets/pubg-bg-1.jpg', '/assets/pubg-bg-2.jpg', '/assets/pubg-bg-3.jpg'];
+
+/** Jonli PUBG orqa fon: 3 ta kinematik kadr Ken Burns effekti bilan almashib turadi. */
+function BattleBackdrop() {
+  const [index, setIndex] = React.useState(0);
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setIndex(value => (value + 1) % BATTLE_BACKDROPS.length), 9000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      {BATTLE_BACKDROPS.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          className={`pubg-kenburns absolute inset-0 h-full w-full object-cover transition-opacity duration-[1600ms] ${i === index ? 'opacity-[0.28]' : 'opacity-0'}`}
+        />
+      ))}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,197,66,.10),transparent_55%),linear-gradient(180deg,rgba(8,9,11,.72),rgba(8,9,11,.94))]" />
+    </div>
+  );
 }
 
 /** Animated battlefield layer: muzzle flashes, tracer rounds and rising embers. */
@@ -968,8 +992,7 @@ function OrdersPage({ onNavigate }: { onNavigate: (path: string) => void }) {
     const stage = order.escrowStage === 'buyer_confirmation' ? 3 : order.escrowStage === 'account_verification' ? 2 : 1;
     return { id: `#IS-${order.id}`, orderId: order.id, accountId: order.accountId, name: `PUBG akkaunt #${order.accountId}`, price: Number(order.price), status, stage, image: CARD_IMAGE, fulfillmentStatus: ((order as any).fulfillmentStatus ?? 'waiting') as 'waiting' | 'preparing' | 'delivered', fulfillmentNote: (order as any).fulfillmentNote ?? null, isSeller: (order as any).sellerId === undefined ? false : false };
   });
-  const demoOrders: any[] = [{ id: '#IS-2048', orderId: 2048, accountId: 1, name: 'Inferno Warrior', price: 1499000, status: 'In Escrow', stage: 2, image: CARD_IMAGE }, { id: '#IS-1984', orderId: 1984, accountId: 3, name: 'Crimson Ghost', price: 479000, status: 'Completed', stage: 3, image: HERO_IMAGE }];
-  const sourceOrders = isAuthenticated ? liveOrders : demoOrders;
+  const sourceOrders = isAuthenticated ? liveOrders : [];
   const orders = sourceOrders.filter(order => tab === 'completed' ? order.status === 'Completed' : order.status !== 'Completed');
   return <main className="space-y-4 pb-24 sm:space-y-6 lg:pb-6"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Kafolat markazi</span><h1 className="mt-2 font-display text-2xl sm:text-3xl font-black text-white">Buyurtmalar</h1><p className="mt-2 text-sm text-white/45">Savdolaringiz holati va kafolat bosqichlarini shu yerdan kuzating.</p></div><div className="flex gap-2 border-b border-white/[0.08]"><button onClick={() => setTab('active')} className={`border-b-2 px-3 py-3 text-sm font-bold ${tab === 'active' ? 'border-amber-300 text-amber-200' : 'border-transparent text-white/40'}`}>Faol buyurtmalar</button><button onClick={() => setTab('completed')} className={`border-b-2 px-3 py-3 text-sm font-bold ${tab === 'completed' ? 'border-amber-300 text-amber-200' : 'border-transparent text-white/40'}`}>Yakunlangan</button></div>{ordersQuery.isLoading && isAuthenticated ? <div className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5 sm:p-8 text-center text-sm text-white/45">Buyurtmalar yuklanmoqda...</div> : orders.length === 0 ? <EmptyState title="Buyurtmalar topilmadi" text="Savdo boshlaganingizdan so‘ng buyurtmalar shu yerda ko‘rinadi." /> : <div className="space-y-4">{orders.map(order => <article key={order.id} className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 md:p-5"><div className="flex flex-col gap-5 md:flex-row md:items-center"><img src={order.image} alt={order.name} className="h-24 w-full rounded-xl img-live object-cover md:w-36" /><div className="flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold text-white/35">{order.id}</span><StatusPill tone={order.status === 'Completed' ? 'green' : 'gold'}>{order.status}</StatusPill></div><h2 className="mt-2 font-display text-lg font-black text-white">{order.name}</h2><p className="mt-1 text-xs text-white/40">{uzNumber(order.price)} so'm • xarid buyurtmasi</p></div><div className="flex gap-2"><PrimaryButton variant="ghost" onClick={() => onNavigate(`/account/${order.accountId}`)}>Batafsil</PrimaryButton>{order.status !== 'Completed' && <PrimaryButton onClick={() => onNavigate(`/order/${order.orderId}`)}>Jarayon</PrimaryButton>}</div></div>{order.status !== 'Completed' && <div className="mt-5 grid gap-3 border-t border-white/[0.08] pt-5 md:grid-cols-3">{[['To‘lov muzlatildi', order.stage >= 1], ['Akkaunt tekshiruvi', order.stage >= 2], ['Xaridor tasdig‘i', order.stage >= 3]].map(([label, complete], index) => <div key={label as string} className="flex items-center gap-3"><span className={`step-dot grid h-8 w-8 place-items-center rounded-full border ${complete ? 'step-dot-done border-amber-300 bg-amber-400/15 text-amber-100' : 'border-white/10 text-white/30'}`}>{complete ? <Check className="h-4 w-4" /> : index + 1}</span><span className={`text-xs font-bold ${complete ? 'text-white/80' : 'text-white/30'}`}>{label as string}</span></div>)}</div>}{order.status !== 'Completed' && <FulfillmentTracker status={(order as any).fulfillmentStatus ?? 'waiting'} note={(order as any).fulfillmentNote} orderId={order.orderId} />}</article>)}</div>}<div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-5"><div className="flex items-start gap-3"><LockKeyhole className="mt-0.5 h-5 w-5 text-amber-200" /><p className="text-sm leading-6 text-white/55">Kafolatli savdoda pul xaridor tasdig‘igacha muzlatilgan holatda turadi. Login yoki parolni platformadan tashqari kanallarda yubormang.</p></div></div></main>;
 }
@@ -1270,7 +1293,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
               <label className="relative grid h-14 w-14 cursor-pointer place-items-center overflow-hidden rounded-full border border-amber-300/40 bg-black/60 text-amber-200 active:scale-95 sm:h-20 sm:w-20">
                 {avatarUrl
                   ? <img src={avatarUrl} alt={displayName} className="img-live h-full w-full object-cover" />
-                  : <UserRound className="h-7 w-7 sm:h-9 sm:w-9" />}
+                  : <img src="/assets/pubg-avatar.jpg" alt={displayName} className="img-live h-full w-full object-cover" />}
                 <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/65 py-0.5 text-[8px] font-black uppercase text-amber-100">
                   {avatarUploading ? '...' : <><Camera className="h-2.5 w-2.5" />Surat</>}
                 </span>
@@ -1289,6 +1312,13 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
                 <span className="text-white/25">•</span>
                 <span>{listingsCount} e‘lon</span>
               </p>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span className="shrink-0 rounded bg-amber-400/20 px-1.5 py-[1px] text-[8px] font-black text-amber-100">LVL {Math.max(1, Math.floor(salesCount / 5) + 1)}</span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                  <span className="block h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-amber-200 transition-all duration-700" style={{ width: `${Math.min(100, ((salesCount % 5) / 5) * 100 + 8)}%` }} />
+                </span>
+                <span className="shrink-0 text-[8px] font-bold text-white/40">{5 - (salesCount % 5)} savdo → keyingi daraja</span>
+              </div>
             </div>
           </div>
           <div className="mobile-scroll-row mt-2.5 gap-1.5">
@@ -1583,5 +1613,5 @@ export default function Home() {
     return () => webApp.BackButton?.offClick?.(goBack);
   }, [location, page.key, setLocation]);
   const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminAnalyticsPanel /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : <ReferralPage />;
-  return <div className="min-h-screen bg-[#08090b] text-white"><AppHeader onNavigate={navigate} />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div>;
+  return <div className="relative min-h-screen bg-[#08090b] text-white"><BattleBackdrop /><div className="relative z-10"><AppHeader onNavigate={navigate} />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div></div>;
 }
