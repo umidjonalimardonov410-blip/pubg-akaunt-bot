@@ -67,7 +67,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LANGUAGES, useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n";
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL } from "@shared/adminContact";
 
 const HERO_IMAGE = "/assets/pubg-hero.jpg";
@@ -270,8 +270,14 @@ function StatusPill({ children, tone = "red" }: { children: React.ReactNode; ton
 function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
+  /** Bitta vaqtda faqat bitta ochiluvchi menyu turishi uchun. */
+  const closeOtherPopovers = () => window.dispatchEvent(new CustomEvent('app:close-popovers'));
+  useEffect(() => {
+    const close = () => { setNotificationsOpen(false); setMenuOpen(false); };
+    window.addEventListener('app:close-popovers', close);
+    return () => window.removeEventListener('app:close-popovers', close);
+  }, []);
   const { isAuthenticated } = useAuth();
   const unreadQuery = trpc.notifications.getUnread.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -309,7 +315,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
             <MessageCircle className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setNotificationsOpen(value => !value)}
+            onClick={() => setNotificationsOpen(value => { if (!value) closeOtherPopovers(); return !value; })}
             className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/65 transition hover:border-amber-400/40 hover:text-white"
             aria-label="Bildirishnomalar"
             aria-expanded={notificationsOpen}
@@ -340,26 +346,11 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
             </div>
           )}
           <ThemeToggleButton />
-          <div className="relative">
-            <button onClick={() => setLangOpen(value => !value)} className="grid h-10 min-w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] px-2 text-sm text-white/70 transition hover:border-amber-400/40" aria-label="Language">
-              {LANGUAGES.find(item => item.code === lang)?.flag}
-            </button>
-            {langOpen && <button type="button" aria-label="Yopish" onClick={() => setLangOpen(false)} className="fixed inset-0 z-40 cursor-default" />}
-            {langOpen && (
-              <div className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-2xl border border-amber-400/25 bg-[#0d0f12] shadow-2xl">
-                {LANGUAGES.map(item => (
-                  <button key={item.code} onClick={() => { setLang(item.code); setLangOpen(false); }} className={`flex w-full items-center gap-2 px-4 py-3 text-left text-xs font-bold transition hover:bg-amber-400/[0.08] ${lang === item.code ? 'text-amber-200' : 'text-white/65'}`}>
-                    <span>{item.flag}</span>{item.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <button onClick={() => onNavigate('/profile')} className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left sm:flex">
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-400/15 text-amber-200"><UserRound className="h-4 w-4" /></span>
             <span><span className="block text-[10px] font-bold uppercase tracking-wider text-white/45">Kabinet</span><span className="block text-xs font-bold text-white">Mening profilim</span></span>
           </button>
-          <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70 lg:hidden" aria-label="Menyu"><Menu className="h-5 w-5" /></button>
+          <button onClick={() => { if (!menuOpen) closeOtherPopovers(); setMenuOpen(!menuOpen); }} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70 lg:hidden" aria-label="Menyu"><Menu className="h-5 w-5" /></button>
         </div>
       </div>
       {menuOpen && (
@@ -368,9 +359,6 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
             {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.transactions', '/transactions'], ['nav.referral', '/referral'], ['nav.rules', '/rules'], ['nav.profile', '/profile'], ['nav.support', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{t(label)}</button>
             ))}
-            <div className="mt-2 flex gap-2 border-t border-white/10 pt-3">{LANGUAGES.map(item => (
-              <button key={item.code} onClick={() => { setLang(item.code); setMenuOpen(false); }} className={`flex-1 rounded-lg border px-2 py-2 text-xs font-bold transition ${lang === item.code ? 'border-amber-400/60 bg-amber-400/15 text-amber-200' : 'border-white/10 bg-white/[0.03] text-white/55'}`}>{item.flag} {item.label}</button>
-            ))}</div>
           </div>
         </div>
       )}
@@ -1137,6 +1125,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [destination, setDestination] = React.useState('');
   const profileQuery = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000, refetchOnWindowFocus: false });
   const [editingProfile, setEditingProfile] = React.useState(false);
+  const [identityOpen, setIdentityOpen] = React.useState(false);
   const [profileDraft, setProfileDraft] = React.useState({ name: '', phone: '' });
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: () => { toast.success('Profil yangilandi'); setEditingProfile(false); profileQuery.refetch(); },
@@ -1321,26 +1310,35 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
               </div>
             </div>
           </div>
-          <div className="mobile-scroll-row mt-2.5 gap-1.5">
-            <button onClick={() => onNavigate('/sell')} className="pubg-press inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-amber-400 px-3 text-[11px] font-black text-black active:scale-95"><Plus className="h-3.5 w-3.5" />Akkaunt sotish</button>
-            <button onClick={() => onNavigate('/orders')} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-black/40 px-3 text-[11px] font-bold text-white/80 active:scale-95"><ShoppingBag className="h-3.5 w-3.5 text-amber-200" />Buyurtmalar</button>
-            <button onClick={() => onNavigate('/transactions')} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-black/40 px-3 text-[11px] font-bold text-white/80 active:scale-95"><Clock3 className="h-3.5 w-3.5 text-amber-200" />Tranzaksiya</button>
-            <button onClick={() => onNavigate('/reviews')} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-black/40 px-3 text-[11px] font-bold text-white/80 active:scale-95"><Star className="h-3.5 w-3.5 text-amber-200" />Sharhlar</button>
-            <AdminContactButton label="Admin" />
+          <div className="mt-2.5 space-y-1.5">
+            <button onClick={() => onNavigate('/sell')} className="pubg-press flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[linear-gradient(120deg,#f5c542,#ffe08a)] text-[12px] font-black uppercase tracking-wide text-black active:scale-95"><Plus className="h-4 w-4" />Akkaunt sotish</button>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                [ShoppingBag, 'Buyurtma', () => onNavigate('/orders')],
+                [Clock3, 'Tranzaksiya', () => onNavigate('/transactions')],
+                [Star, 'Sharhlar', () => onNavigate('/reviews')],
+                [MessageCircle, 'Admin', openAdminChat],
+              ] as const).map(([Icon, label, action]) => (
+                <button key={label} onClick={action} className="pubg-press flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-white/12 bg-black/45 px-1 text-[9px] font-black uppercase tracking-wide text-white/75 active:scale-95">
+                  <Icon className="h-4 w-4 text-amber-200" />
+                  <span className="w-full truncate text-center">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ===== Wallet ===== */}
-      <section className="pro-clip overflow-hidden rounded-2xl border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,197,66,.12),rgba(14,16,19,.98))] p-3">
+      <section className="pro-clip overflow-hidden rounded-2xl border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,197,66,.10),rgba(14,16,19,.98))] p-2.5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <div className="min-w-0">
-            <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-white/40">Hamyon balansi</span>
-            <div className="mt-0.5 truncate font-display text-lg font-black text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[10px] font-bold text-white/40">so‘m</span></div>
+            <span className="block text-[8px] font-black uppercase tracking-[0.18em] text-white/35">Hamyon</span>
+            <div className="truncate font-display text-base font-black leading-tight text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[9px] font-bold text-white/40">so‘m</span></div>
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <button type="button" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="inline-flex min-h-9 items-center gap-1 rounded-xl bg-amber-400 px-2.5 text-[11px] font-black text-black active:scale-95"><CreditCard className="h-3.5 w-3.5" />To‘ldirish</button>
-            <button type="button" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="inline-flex min-h-9 items-center rounded-xl border border-white/12 bg-black/40 px-2.5 text-[11px] font-bold text-white/75 active:scale-95">Yechish</button>
+            <button type="button" aria-label="To‘ldirish" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-9 items-center gap-1 rounded-lg bg-amber-400 px-2.5 text-[10px] font-black text-black active:scale-95"><CreditCard className="h-3.5 w-3.5" />To‘ldirish</button>
+            <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-9 items-center rounded-lg border border-white/12 bg-black/40 px-2.5 text-[10px] font-bold text-white/75 active:scale-95">Yechish</button>
           </div>
         </div>
         {walletAction === 'manual_topup' && <div className="mt-4 rounded-2xl border border-amber-300/20 bg-black/30 p-3.5">
@@ -1371,9 +1369,9 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <input className="field-input mt-2" value={destination} onChange={event => setDestination(event.target.value)} placeholder="Karta raqami yoki hamyon manzili" />
           <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>So‘rov yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
         </div>}
-        <div className="mt-4 border-t border-white/[0.08] pt-3">
+        <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/35">Chek holati</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-white/35">Chek holati</span>
             <button type="button" onClick={() => receiptsQuery.refetch()} className="text-[10px] font-bold text-amber-200">Yangilash</button>
           </div>
           {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
@@ -1383,32 +1381,43 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         </div>
       </section>
 
-      {/* ===== Identity card ===== */}
-      <section className="pro-glass pro-clip rounded-2xl p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Shaxsiy ma’lumotlar</p>
-          {!editingProfile && <button onClick={openProfileEditor} aria-label="Profilni tahrirlash" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-amber-300/35 bg-amber-400/10 px-3.5 text-[12px] font-black text-amber-100 active:scale-95"><Edit3 className="h-3.5 w-3.5" />Tahrirlash</button>}
-        </div>
-        {!editingProfile ? <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => telegramId !== '—' && copyText(telegramId, 'Telegram ID')} className="rounded-xl border border-white/10 bg-black/25 p-3 text-left active:scale-[.98]">
-            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white/35"><Copy className="h-3 w-3" />Telegram ID</span>
-            <span className="mt-1 block truncate font-mono text-sm font-black text-amber-200">{telegramId}</span>
-          </button>
-          <button type="button" onClick={() => profilePhone && copyText(profilePhone, 'Telefon raqam')} className="rounded-xl border border-white/10 bg-black/25 p-3 text-left active:scale-[.98]">
-            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white/35"><Phone className="h-3 w-3" />Telefon</span>
-            <span className="mt-1 block truncate font-mono text-sm font-black text-white">{profilePhone || 'Kiritilmagan'}</span>
-          </button>
-          <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-3">
-            <span className="block text-[9px] font-black uppercase tracking-wider text-white/35">To‘liq ism</span>
-            <span className="mt-1 block text-sm font-black text-white">{displayName}</span>
+      {/* ===== Identity card (yig‘iladigan) ===== */}
+      <section className="pro-glass pro-clip rounded-2xl">
+        <button type="button" onClick={() => setIdentityOpen(value => !value)} aria-expanded={identityOpen} className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 text-left active:scale-[.99]">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-amber-400/12 text-amber-200"><UserRound className="h-3.5 w-3.5" /></span>
+            <span className="min-w-0">
+              <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-white/50">Shaxsiy ma’lumotlar</span>
+              <span className="block truncate text-[10px] text-white/35">{displayName} · ID {telegramId}</span>
+            </span>
+          </span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-amber-200 transition-transform ${identityOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {identityOpen && <div className="border-t border-white/[0.07] p-3.5 pt-3">
+          <div className="flex items-center justify-end">
+            {!editingProfile && <button onClick={openProfileEditor} aria-label="Profilni tahrirlash" className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-amber-300/35 bg-amber-400/10 px-3 text-[11px] font-black text-amber-100 active:scale-95"><Edit3 className="h-3.5 w-3.5" />Tahrirlash</button>}
           </div>
-        </div> : <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <EditField label="To‘liq ism"><input className="field-input" value={profileDraft.name} onChange={event => setProfileDraft(previous => ({ ...previous, name: event.target.value }))} placeholder="Ism Familiya" /></EditField>
-          <EditField label="Telefon raqam"><input className="field-input" value={profileDraft.phone} onChange={event => setProfileDraft(previous => ({ ...previous, phone: event.target.value }))} placeholder="+998 90 123 45 67" /></EditField>
-          <div className="flex gap-2 sm:col-span-2">
-            <PrimaryButton disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ name: profileDraft.name.trim() || undefined, phone: profileDraft.phone.trim() })}>{updateProfile.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Saqlash</PrimaryButton>
-            <PrimaryButton variant="ghost" onClick={() => setEditingProfile(false)}>Bekor qilish</PrimaryButton>
-          </div>
+          {!editingProfile ? <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => telegramId !== '—' && copyText(telegramId, 'Telegram ID')} className="rounded-xl border border-white/10 bg-black/25 p-2.5 text-left active:scale-[.98]">
+              <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white/35"><Copy className="h-3 w-3" />Telegram ID</span>
+              <span className="mt-1 block truncate font-mono text-[13px] font-black text-amber-200">{telegramId}</span>
+            </button>
+            <button type="button" onClick={() => profilePhone && copyText(profilePhone, 'Telefon raqam')} className="rounded-xl border border-white/10 bg-black/25 p-2.5 text-left active:scale-[.98]">
+              <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white/35"><Phone className="h-3 w-3" />Telefon</span>
+              <span className="mt-1 block truncate font-mono text-[13px] font-black text-white">{profilePhone || 'Kiritilmagan'}</span>
+            </button>
+            <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-2.5">
+              <span className="block text-[9px] font-black uppercase tracking-wider text-white/35">To‘liq ism</span>
+              <span className="mt-1 block truncate text-[13px] font-black text-white">{displayName}</span>
+            </div>
+          </div> : <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
+            <EditField label="To‘liq ism"><input className="field-input" value={profileDraft.name} onChange={event => setProfileDraft(previous => ({ ...previous, name: event.target.value }))} placeholder="Ism Familiya" /></EditField>
+            <EditField label="Telefon raqam"><input className="field-input" value={profileDraft.phone} onChange={event => setProfileDraft(previous => ({ ...previous, phone: event.target.value }))} placeholder="+998 90 123 45 67" /></EditField>
+            <div className="flex gap-2 sm:col-span-2">
+              <PrimaryButton disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ name: profileDraft.name.trim() || undefined, phone: profileDraft.phone.trim() })}>{updateProfile.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Saqlash</PrimaryButton>
+              <PrimaryButton variant="ghost" onClick={() => setEditingProfile(false)}>Bekor qilish</PrimaryButton>
+            </div>
+          </div>}
         </div>}
       </section>
 
