@@ -18,7 +18,7 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 md:p-5">
+    <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 md:p-5">
       <div className="mb-4">
         <h3 className="font-display text-sm font-black text-white">{title}</h3>
         {subtitle && <p className="mt-1 text-[11px] text-white/35">{subtitle}</p>}
@@ -30,7 +30,7 @@ function Panel({ title, subtitle, children }: { title: string; subtitle?: string
 
 function Metric({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4">
+    <div className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4">
       <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400/10 text-amber-200">{icon}</span>
       <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-white/35">{label}</p>
       <p className="mt-1 font-display text-xl font-black text-white">{value}</p>
@@ -47,7 +47,7 @@ export function AdminAnalyticsPanel() {
   const query = trpc.admin.getAnalytics.useQuery({ days }, { staleTime: 30_000, refetchOnWindowFocus: false });
 
   if (query.isLoading) {
-    return <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#0e1013] p-6 text-sm font-bold text-white"><LoaderCircle className="h-5 w-5 animate-spin text-amber-200" />Analitika yuklanmoqda...</div>;
+    return <div className="flex items-center gap-3 card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-6 text-sm font-bold text-white"><LoaderCircle className="h-5 w-5 animate-spin text-amber-200" />Analitika yuklanmoqda...</div>;
   }
   if (query.error || !query.data) {
     return <div className="rounded-2xl border border-red-400/25 bg-red-500/[0.06] p-6 text-sm text-red-200">Analitikani yuklab bo‘lmadi: {query.error?.message ?? 'noma’lum xatolik'}</div>;
@@ -62,7 +62,7 @@ export function AdminAnalyticsPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Analitika</span>
-          <h2 className="mt-1 font-display text-2xl font-black text-white">Bozor ko‘rsatkichlari</h2>
+          <h2 className="mt-1 font-display text-xl sm:text-2xl font-black text-white">Bozor ko‘rsatkichlari</h2>
         </div>
         <div className="flex gap-2">
           {[7, 14, 30].map(option => (
