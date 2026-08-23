@@ -55,7 +55,7 @@ export function RulesPage() {
   const { t } = useI18n();
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-4 pb-24 sm:space-y-6 lg:pb-6">
       <section className="relative isolate overflow-hidden rounded-[28px] border border-amber-400/25 bg-[#0f1012]">
         <img src={HERO} alt="" width={1280} height={720} className="absolute inset-0 -z-10 h-full w-full img-live object-cover opacity-40" />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,#0b0c0e_18%,rgba(11,12,14,.85)_48%,rgba(11,12,14,.25))]" />
@@ -64,7 +64,7 @@ export function RulesPage() {
             <ShieldCheck className="h-3 w-3" />
             INFERNO GOLD MARKET
           </span>
-          <h1 className="mt-4 max-w-lg font-display text-3xl font-black leading-tight text-white sm:text-5xl">
+          <h1 className="mt-4 max-w-lg font-display text-2xl sm:text-3xl font-black leading-tight text-white sm:text-5xl">
             {t("rules.title")}
           </h1>
           <p className="mt-3 max-w-md text-sm leading-6 text-white/60">{t("rules.subtitle")}</p>
