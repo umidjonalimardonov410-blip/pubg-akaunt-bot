@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, expect, it } from "vitest";
 import { PHRASES } from "./phrases";
 import { translatePhrase } from "./autoTranslate";
