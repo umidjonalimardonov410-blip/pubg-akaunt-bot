@@ -16,7 +16,7 @@ export const FULFILLMENT_STEPS = [
 export type FulfillmentStatus = (typeof FULFILLMENT_STEPS)[number]['key'];
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 md:p-5 ${className}`}>{children}</div>;
+  return <div className={`card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 md:p-5 ${className}`}>{children}</div>;
 }
 
 function GoldButton({ children, onClick, disabled = false, ghost = false, type = 'button', className = '' }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; ghost?: boolean; type?: 'button' | 'submit'; className?: string }) {
@@ -106,10 +106,10 @@ export function SupportFaqPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6">
+    <main className="mx-auto max-w-4xl space-y-4 pb-24 sm:space-y-6 lg:pb-6">
       <div>
         <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Yordam markazi</span>
-        <h1 className="mt-2 font-display text-3xl font-black text-white">Support & FAQ</h1>
+        <h1 className="mt-2 font-display text-2xl sm:text-3xl font-black text-white">Support & FAQ</h1>
         <p className="mt-2 text-sm text-white/45">Tez-tez so‘raladigan savollar va shaxsiy murojaatlaringiz shu yerda.</p>
       </div>
 
@@ -243,7 +243,7 @@ export function AdminPanelPage() {
     <main className="mx-auto max-w-5xl space-y-6">
       <div>
         <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Boshqaruv</span>
-        <h1 className="mt-2 font-display text-3xl font-black text-white">Admin panel</h1>
+        <h1 className="mt-2 font-display text-2xl sm:text-3xl font-black text-white">Admin panel</h1>
         <p className="mt-2 text-sm text-white/45">Uploadlarni tasdiqlang, kategoriya va FAQ’ni boshqaring, murojaatlarga javob bering.</p>
       </div>
 
