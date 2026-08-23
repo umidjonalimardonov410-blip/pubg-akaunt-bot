@@ -1,6 +1,6 @@
-import { eq, and, or, like, gte, lte, desc, inArray } from "drizzle-orm";
+import { eq, and, or, like, gte, lte, desc, asc, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages } from "../drizzle/schema";
+import { InsertUser, users, pubgAccounts, orders, reviews, transactions, notifications, disputes, favorites, chatThreads, chatMessages, savedFilters } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -159,7 +159,14 @@ export async function searchPubgAccounts(filters: {
   if (filters.hasConquerorHistory) conditions.push(eq(pubgAccounts.hasConquerorHistory, true));
   if (filters.isOldAccount) conditions.push(lte(pubgAccounts.accountCreatedYear, 2022));
 
-  const rows = await db.select().from(pubgAccounts).where(and(...conditions)).orderBy(desc(pubgAccounts.createdAt));
+  const sort = filters.sort ?? 'newest';
+  const orderClause =
+    sort === 'price_asc' ? asc(pubgAccounts.price) :
+    sort === 'price_desc' ? desc(pubgAccounts.price) :
+    sort === 'popular' ? desc(pubgAccounts.viewCount) :
+    sort === 'level_desc' ? desc(pubgAccounts.level) :
+    desc(pubgAccounts.createdAt);
+  const rows = await db.select().from(pubgAccounts).where(and(...conditions)).orderBy(orderClause);
   const verifiedSellerIds = filters.verifiedSeller
     ? (await db.select({ id: users.id }).from(users).where(eq(users.isVerifiedSeller, true))).map(row => row.id)
     : undefined;
@@ -426,4 +433,30 @@ export async function getUserChatThreads(userId: number) {
   return await db.select().from(chatThreads)
     .where(or(eq(chatThreads.buyerId, userId), eq(chatThreads.sellerId, userId)))
     .orderBy(desc(chatThreads.updatedAt));
+}
+
+// ============= Price Alerts =============
+
+
+
+
+// ============= Saved Filters =============
+export async function saveUserFilter(userId: number, name: string, filters: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(savedFilters).values({ userId, name, filters });
+  return true;
+}
+
+export async function getUserSavedFilters(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(savedFilters).where(eq(savedFilters.userId, userId)).orderBy(desc(savedFilters.createdAt));
+}
+
+export async function deleteSavedFilter(userId: number, filterId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.delete(savedFilters).where(and(eq(savedFilters.id, filterId), eq(savedFilters.userId, userId)));
+  return true;
 }

@@ -658,3 +658,23 @@ export const mediaBlobs = mysqlTable("media_blobs", {
   data: customBlob("data").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/**
+ * Price drop alert subscriptions — buyer sets a target price for an account.
+ * When the seller lowers the price at or below target, a notification fires.
+ */
+
+
+/**
+ * Saved search filter presets — users can save and re-apply complex filter sets.
+ */
+export const savedFilters = mysqlTable("saved_filters", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  filters: text("filters").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SavedFilter = typeof savedFilters.$inferSelect;
+export type InsertSavedFilter = typeof savedFilters.$inferInsert;

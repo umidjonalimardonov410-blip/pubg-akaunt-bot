@@ -43,7 +43,7 @@ import {
   UserRound,
   WalletCards,
   X,
-  Zap, Trash2, Camera } from "lucide-react";
+  Zap, Trash2, Camera, Bookmark, FolderOpen } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { accountShareUrl, authenticateTelegramWebApp, getTelegramPhoneLoginUrl, autoClaimTelegramReferral, getTelegramMiniAppLaunchUrl, getTelegramReferralCode, getTelegramWebApp, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
 import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
@@ -484,6 +484,60 @@ export function buildAccountFilters(draft: SearchDraft, advanced: string[]): Acc
     minWinRate: draft.minWinRate ? Number(draft.minWinRate) : undefined,
     sortBy: draft.sortBy === 'newest' ? undefined : draft.sortBy,
   };
+}
+
+
+/** Saqlangan filtrlar paneli — foydalanuvchi tez-tez ishlatadigan filtrlarni saqlaydi va qayta yuklaydi. */
+function SavedFiltersBar({ draft, advanced, onLoad }: { draft: SearchDraft; advanced: string[]; onLoad: (filters: AccountFilters) => void }) {
+  const utils = trpc.useUtils();
+  const saved = trpc.savedFilters.list.useQuery(undefined, { staleTime: 60_000 });
+  const saveMutation = trpc.savedFilters.save.useMutation({
+    onSuccess: () => { toast.success('Filtr saqlandi'); utils.savedFilters.list.invalidate(); },
+    onError: (error: any) => toast.error(error.message),
+  });
+  const removeMutation = trpc.savedFilters.remove.useMutation({
+    onSuccess: () => { utils.savedFilters.list.invalidate(); },
+    onError: (error: any) => toast.error(error.message),
+  });
+
+  const handleSave = () => {
+    const filters = buildAccountFilters(draft, advanced);
+    const hasFilters = Object.values(filters).some(value => value !== undefined);
+    if (!hasFilters) { toast.info('Avval kamida bitta filtr tanlang'); return; }
+    saveMutation.mutate({ name: `Filtr ${new Date().toLocaleDateString('uz-UZ')}`, filters: JSON.stringify(filters) });
+  };
+
+  const handleLoad = (filterJson: string) => {
+    try { onLoad(JSON.parse(filterJson)); toast.success('Filtr yuklandi'); }
+    catch { toast.error('Filtr ma\u2019lumotlari buzilgan'); }
+  };
+
+  const items = saved.data ?? [];
+  if (items.length === 0 && !saveMutation.isPending) {
+    return (
+      <button type="button" onClick={handleSave} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-white/55 transition hover:text-white">
+        <Bookmark className="h-3.5 w-3.5" />Filtri saqlash
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button type="button" onClick={handleSave} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/30 bg-amber-400/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100 transition hover:bg-amber-400/20">
+        <Bookmark className="h-3.5 w-3.5" />{saveMutation.isPending ? 'Saqlanmoqda...' : 'Filtri saqlash'}
+      </button>
+      {items.map(item => (
+        <div key={item.id} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-white/65">
+          <button type="button" onClick={() => handleLoad(item.filters)} className="inline-flex items-center gap-1.5 transition hover:text-amber-200">
+            <FolderOpen className="h-3.5 w-3.5" />{item.name}
+          </button>
+          <button type="button" onClick={() => removeMutation.mutate({ filterId: item.id })} aria-label="Filtrni o\u2018chirish" className="text-white/30 transition hover:text-red-400">
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function SearchPanel({ onFilters }: { onFilters: (filters: AccountFilters) => void }) {

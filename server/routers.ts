@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads } from "./db";
+import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads, saveUserFilter, getUserSavedFilters, deleteSavedFilter } from "./db";
 import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits, phraseOverrides } from "../drizzle/schema";
 import { eq, and, gte, desc, sql, or, isNull } from "drizzle-orm";
 import { storagePut, storagePresignPut } from "./storage";
@@ -995,6 +995,26 @@ export const appRouter = router({
           await tx.insert(transactions).values({ userId: referrer.id, type: 'referral_reward', amount: reward.toString(), description: `Referral bonusi: ${ctx.user.name || 'yangi foydalanuvchi'}`, status: 'completed' });
         });
         return { success: true, reward };
+      }),
+  }),
+
+
+  // Saved search filters for quick re-use on the marketplace.
+  savedFilters: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getUserSavedFilters(ctx.user.id);
+    }),
+    save: protectedProcedure
+      .input(z.object({ name: z.string().trim().min(1).max(128), filters: z.string().min(2).max(2000) }))
+      .mutation(async ({ ctx, input }) => {
+        await saveUserFilter(ctx.user.id, input.name, input.filters);
+        return { success: true };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ filterId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteSavedFilter(ctx.user.id, input.filterId);
+        return { success: true };
       }),
   }),
 
