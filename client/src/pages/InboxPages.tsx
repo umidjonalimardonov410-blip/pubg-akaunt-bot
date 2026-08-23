@@ -12,9 +12,9 @@ const dateLabel = (value: unknown) => {
 
 function LoginWall({ icon, title, text, onNavigate }: { icon: React.ReactNode; title: string; text: string; onNavigate: (path: string) => void }) {
   return (
-    <main className="pubg-rise mx-auto max-w-2xl rounded-3xl border border-amber-400/20 bg-[#0e1013] p-8 text-center">
+    <main className="pubg-rise mx-auto max-w-2xl rounded-3xl border border-amber-400/20 bg-[#0e1013] p-4 sm:p-5 sm:p-8 text-center">
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-400/10 text-amber-200">{icon}</span>
-      <h1 className="mt-4 font-display text-2xl font-black text-white">{title}</h1>
+      <h1 className="mt-4 font-display text-xl sm:text-2xl font-black text-white">{title}</h1>
       <p className="mt-2 text-sm leading-6 text-white/45">{text}</p>
       <button onClick={() => onNavigate('/profile')} className="pubg-press mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 text-xs font-black text-black">
         Profilga kirish <ArrowRight className="h-4 w-4" />
@@ -196,7 +196,7 @@ export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) =
         )}
       </section>
 
-      <section className="rounded-3xl border border-amber-400/20 bg-[#0e1013] p-5">
+      <section className="rounded-3xl border border-amber-400/20 bg-[#0e1013] p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-200"><BellRing className="h-5 w-5" /></span>
           <div>
@@ -225,7 +225,7 @@ export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) =
       </section>
 
       {(watchlistQuery.data?.length ?? 0) > 0 && (
-        <section className="rounded-3xl border border-emerald-400/20 bg-[#0e1013] p-5">
+        <section className="rounded-3xl border border-emerald-400/20 bg-[#0e1013] p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300"><TrendingDown className="h-5 w-5" /></span>
             <div>
@@ -249,7 +249,7 @@ export function NotificationsPage({ onNavigate }: { onNavigate: (path: string) =
       )}
 
       {(auctionsQuery.data?.length ?? 0) > 0 && (
-        <section className="rounded-3xl border border-red-400/20 bg-[#0e1013] p-5">
+        <section className="rounded-3xl border border-red-400/20 bg-[#0e1013] p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-red-400/10 text-red-300"><Gavel className="h-5 w-5" /></span>
             <div>
