@@ -85,7 +85,7 @@ export function SellerTrustCard({ sellerId }: { sellerId?: number }) {
   const query = trpc.expansion.trust.profile.useQuery({ userId: sellerId ?? 0 }, { enabled: Boolean(sellerId), staleTime: 30_000 });
   if (!sellerId) return null;
   if (query.isLoading) {
-    return <section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5 text-sm text-white/45"><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin text-amber-200" />Sotuvchi ma’lumoti yuklanmoqda...</section>;
+    return <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5 text-sm text-white/45"><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin text-amber-200" />Sotuvchi ma’lumoti yuklanmoqda...</section>;
   }
   const data: any = query.data;
   if (!data) return null;
@@ -94,7 +94,7 @@ export function SellerTrustCard({ sellerId }: { sellerId?: number }) {
   const tier = resolveTrustTier(totalSales, rating);
 
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-[#0e1013] p-5">
+    <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400/10 text-amber-200"><ShieldCheck className="h-5 w-5" /></span>
@@ -156,7 +156,7 @@ export function SellerLeaderboard({ limit = 5 }: { limit?: number }) {
   const rows = query.data ?? [];
   if (!rows.length) return null;
   return (
-    <section className="rounded-2xl border border-amber-400/20 bg-[#0e1013] p-5">
+    <section className="rounded-2xl border border-amber-400/20 bg-[#0e1013] p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-200"><Crown className="h-5 w-5" /></span>
         <div>
