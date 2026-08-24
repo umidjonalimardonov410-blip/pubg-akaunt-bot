@@ -9,7 +9,7 @@ import { botText, matchMenuKey, normalizeBotLang, type BotLang } from './botText
 import { depositReceipts, transactions, securityAudits, users, notifications } from '../drizzle/schema';
 import { storagePut } from './storage';
 import { and, eq, sql } from 'drizzle-orm';
-import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL } from '../shared/adminContact';
+import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL, ADMIN_PANEL_TELEGRAM_ID, ADMIN_PANEL_TELEGRAM_LABEL, ADMIN_PANEL_TELEGRAM_URL } from '../shared/adminContact';
 
 export type TelegramCommand = {
   command: string;
@@ -56,7 +56,7 @@ export function parseTelegramCommand(text?: string) {
 }
 
 /** Doimiy egasi/admin Telegram ID — env bo'lmasa ham admin ishlashi uchun. */
-export const DEFAULT_ADMIN_TELEGRAM_IDS = ["8787603995"] as const;
+export const DEFAULT_ADMIN_TELEGRAM_IDS = [ADMIN_PANEL_TELEGRAM_ID] as const;
 
 export function getTelegramAdminIds() {
   const fromEnv = (process.env.TELEGRAM_ADMIN_IDS ?? "")
@@ -210,6 +210,34 @@ function adminContactButton(lang: BotLang = 'uz') {
   return { text: botText(lang).menuAdmin, url: ADMIN_TELEGRAM_URL };
 }
 
+function adminPanelKeyboard(lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  const rows: Array<Array<Record<string, unknown>>> = [];
+  const control = getTelegramMiniAppUrl('/admin');
+  const listings = getTelegramMiniAppUrl('/admin?tab=listings');
+  const receipts = getTelegramMiniAppUrl('/admin?tab=receipts');
+  if (control) rows.push([{ text: texts.panelBotControl, web_app: { url: control } }]);
+  if (listings && receipts) {
+    rows.push([
+      { text: texts.panelListings, web_app: { url: listings } },
+      { text: texts.panelReceipts, web_app: { url: receipts } },
+    ]);
+  }
+  rows.push([{ text: texts.panelAdminChat, url: ADMIN_PANEL_TELEGRAM_URL }]);
+  return { inline_keyboard: rows };
+}
+
+async function sendAdminPanel(chatId: number | string, lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.panelTitle}</b>\n\n${texts.panelBody.replace('{panelAdmin}', ADMIN_PANEL_TELEGRAM_LABEL)}`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: adminPanelKeyboard(lang),
+  });
+}
+
 const chatLanguages = new Map<string, BotLang>();
 
 export function getChatLanguage(chatId: number | string, fallback?: string) {
@@ -247,7 +275,7 @@ export async function resolveChatLanguage(
   return normalizeBotLang(fallback);
 }
 
-function buildMainKeyboard(lang: BotLang = 'uz') {
+function buildMainKeyboard(lang: BotLang = 'uz', isAdmin = false) {
   const texts = botText(lang);
   const appButton = webAppButton(texts.openApp, '/');
   // Pastdagi doimiy menyu: barcha bo‘limlar ixcham 2 ustunli tugmalarda.
@@ -259,6 +287,7 @@ function buildMainKeyboard(lang: BotLang = 'uz') {
       [{ text: texts.menuRules }, { text: texts.menuReferral }],
       [{ text: texts.menuSupport }, { text: texts.menuLanguage }],
       [{ text: texts.menuAdmin }],
+      ...(isAdmin ? [[{ text: texts.menuPanel }]] : []),
     ],
     resize_keyboard: true,
     is_persistent: true,
@@ -895,10 +924,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const lang = await resolveChatLanguage(chatId, message.from?.id, message.from?.language_code);
   const texts = botText(lang);
   const menuKey = matchMenuKey(message.text ?? '');
+  const rawText = (message.text ?? '').trim();
+  const isAdminUser = isTelegramAdmin(message.from?.id);
 
   if (command === 'start' || command === '') {
     const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
-    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang) });
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang, isAdminUser) });
     return { handled: true as const, command: 'start', status: sent.status, sent: sent.ok };
   }
   if (command === 'buy' || menuKey === 'menuMarket') {
@@ -935,6 +966,18 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       reply_markup: buildInlineKeyboard('/support'),
     });
     return { handled: true as const, command: 'faq', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'admin' || command === 'panel' || rawText === botText('uz').menuPanel || rawText === botText('ru').menuPanel || rawText === botText('en').menuPanel) {
+    if (!isAdminUser) {
+      const sent = await telegramApiRequest('sendMessage', {
+        chat_id: chatId,
+        text: 'Bu bo‘lim faqat admin uchun.',
+        reply_markup: { inline_keyboard: [[adminContactButton(lang)]] },
+      });
+      return { handled: true as const, command: 'admin', status: sent.status, sent: sent.ok };
+    }
+    const sent = await sendAdminPanel(chatId, lang);
+    return { handled: true as const, command: 'admin', status: sent.status, sent: sent.ok };
   }
   if (command === 'contactadmin' || menuKey === 'menuAdmin') {
     const sent = await telegramApiRequest('sendMessage', {
@@ -984,7 +1027,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     disable_web_page_preview: true,
     // The persistent menu keyboard must always be visible, so it is attached to
     // every reply instead of only /start.
-    reply_markup: buildMainKeyboard(lang),
+    reply_markup: buildMainKeyboard(lang, isAdminUser),
   });
 
   return { handled: true as const, command, status: sent.status, sent: sent.ok };
