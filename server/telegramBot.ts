@@ -55,11 +55,29 @@ export function parseTelegramCommand(text?: string) {
   return firstToken.toLowerCase().replace(/^\//, "").replace(/@[^\s]+$/, "");
 }
 
+/** Doimiy egasi/admin Telegram ID — env bo'lmasa ham admin ishlashi uchun. */
+export const DEFAULT_ADMIN_TELEGRAM_IDS = ["8787603995"] as const;
+
 export function getTelegramAdminIds() {
-  return (process.env.TELEGRAM_ADMIN_IDS ?? "")
+  const fromEnv = (process.env.TELEGRAM_ADMIN_IDS ?? "")
     .split(",")
     .map(value => value.trim())
     .filter(Boolean);
+  return Array.from(new Set([...DEFAULT_ADMIN_TELEGRAM_IDS, ...fromEnv]));
+}
+
+/** Adminlarga Telegram orqali xabar yuboradi (e'lon, support, buyurtma va h.k.). */
+export async function notifyTelegramAdmins(text: string, extra: Record<string, unknown> = {}) {
+  const ids = getTelegramAdminIds();
+  if (!ids.length) return { sent: 0 };
+  const results = await Promise.allSettled(ids.map(chatId => telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    ...extra,
+  })));
+  return { sent: results.filter(r => r.status === 'fulfilled').length };
 }
 
 const MANUAL_TOPUP_AMOUNTS = [10000, 20000, 50000, 100000, 200000, 500000] as const;

@@ -993,15 +993,28 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
             xhr.ontimeout = () => reject(new Error('Yuklash juda uzoq davom etdi'));
             xhr.send(file);
           });
+          let directUploadOk = true;
           try {
             await putFile();
           } catch (uploadError) {
             // Bir marta qayta urinamiz (mobil tarmoq uzilishlari uchun).
             setVideoPercent(0);
-            await putFile();
+            try {
+              await putFile();
+            } catch (retryError) {
+              directUploadOk = false;
+              if (file.size > SELLER_DIRECT_UPLOAD_MAX_BYTES) throw retryError;
+            }
           }
-          setVideoPercent(100);
-          uploaded.push({ url: presigned.url, type: file.type });
+          if (directUploadOk) {
+            setVideoPercent(100);
+            uploaded.push({ url: presigned.url, type: file.type });
+          } else {
+            // Zaxira yo'l: fayl server orqali (base64) yuklanadi.
+            const fallback = await uploadMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4' | 'video/webm', dataBase64: await fileToBase64(file) });
+            setVideoPercent(100);
+            uploaded.push({ url: fallback.url, type: file.type });
+          }
         } else {
           const result = await uploadMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4' | 'video/webm', dataBase64: await fileToBase64(file) });
           uploaded.push({ url: result.url, type: file.type });

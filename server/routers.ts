@@ -12,7 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
-import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds } from "./telegramBot";
+import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
 import { buildDailySeries, buildStatusBreakdown, buildTopSellers } from "./analytics";
 
@@ -295,6 +295,9 @@ export const appRouter = router({
         });
 
         const accountId = getInsertId(result);
+        await notifyTelegramAdmins(
+          `\u{1F195} <b>Yangi e'lon</b>\n\u{1F464} ${input.playerName} (${input.region})\n\u{1F4B0} ${input.price} so'm\nTasdiqlash uchun admin panelga kiring.`,
+        ).catch(() => undefined);
         await notifyOwner({
           title: "Yangi PUBG akkaunt e'loni",
           content: `${input.playerName} (${input.region}) e'loni admin tasdig'ini kutmoqda. Narx: ${input.price} so'm.`,

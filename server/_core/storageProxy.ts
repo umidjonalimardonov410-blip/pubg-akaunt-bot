@@ -1,9 +1,7 @@
 import type { Express } from "express";
-import { createWriteStream } from "node:fs";
-import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { ENV } from "./env";
-import { dbStorageRead, getLocalStoragePath, hasForgeStorage, localStorageRead, storagePutRaw, verifyLocalUploadToken } from "../storage";
+import { dbStorageRead, hasForgeStorage, localStorageRead, storagePutRaw, verifyLocalUploadToken } from "../storage";
 
 const MAX_DIRECT_UPLOAD_BYTES = 200 * 1024 * 1024;
 
@@ -73,39 +71,33 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    let destination = "";
-    try {
-      destination = getLocalStoragePath(key);
-      await mkdir(path.dirname(destination), { recursive: true });
-
-      let received = 0;
-      const writer = createWriteStream(destination, { flags: "wx" });
-      let created = true;
-      writer.on("open", () => { created = true; });
-      req.on("data", chunk => {
-        received += chunk.length;
-        if (received > MAX_DIRECT_UPLOAD_BYTES) req.destroy(new Error("File is too large"));
-      });
-      req.pipe(writer);
-      writer.on("finish", () => res.status(204).end());
-      writer.on("error", async error => {
-        if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-          created = false;
-          if (!res.headersSent) res.status(204).end();
-          return;
-        }
-        if (created) await unlink(destination).catch(() => undefined);
-        if (!res.headersSent) res.status(500).send(error.message);
-      });
-      req.on("error", async error => {
-        writer.destroy();
-        if (created) await unlink(destination).catch(() => undefined);
-        if (!res.headersSent) res.status(error.message === "File is too large" ? 413 : 500).send(error.message);
-      });
-    } catch (error) {
-      if (destination) await unlink(destination).catch(() => undefined);
-      res.status(400).send(error instanceof Error ? error.message : "Upload failed");
-    }
+    // Forge yo'q bo'lsa ham faylni bazaga (yoki lokal diskka) saqlaymiz:
+    // Railway diski vaqtinchalik bo'lgani uchun avval baza urinib ko'riladi.
+    const chunks: Buffer[] = [];
+    let received = 0;
+    let failed = false;
+    req.on("data", chunk => {
+      received += chunk.length;
+      if (received > MAX_DIRECT_UPLOAD_BYTES) {
+        failed = true;
+        req.destroy(new Error("File is too large"));
+        return;
+      }
+      chunks.push(chunk as Buffer);
+    });
+    req.on("error", error => {
+      if (!res.headersSent) res.status(error.message === "File is too large" ? 413 : 500).send(error.message);
+    });
+    req.on("end", async () => {
+      if (failed) return;
+      try {
+        await storagePutRaw(key, Buffer.concat(chunks), contentType);
+        if (!res.headersSent) res.status(204).end();
+      } catch (error) {
+        console.error("[StorageProxy] local upload failed:", error);
+        if (!res.headersSent) res.status(500).send(error instanceof Error ? error.message : "Upload failed");
+      }
+    });
   });
 
   app.get("/manus-storage/*", async (req, res) => {

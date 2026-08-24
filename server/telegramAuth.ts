@@ -4,6 +4,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { getUserByOpenId, upsertUser } from "./db";
+import { isTelegramAdmin } from "./telegramBot";
 import { verifyTelegramLoginToken } from "./telegramLoginTokens";
 
 type TelegramUser = {
@@ -59,7 +60,7 @@ export function registerTelegramAuthRoute(app: Express) {
     const openId = `telegram:${user.id}`;
     const name = telegramDisplayName(user);
     try {
-      await upsertUser({ openId, name, loginMethod: "telegram", lastSignedIn: new Date() });
+      await upsertUser({ openId, name, loginMethod: "telegram", lastSignedIn: new Date(), ...(isTelegramAdmin(user.id) ? { role: "admin" as const } : {}) });
       const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
       res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       const savedUser = await getUserByOpenId(openId);
@@ -86,7 +87,7 @@ export function registerTelegramTokenAuthRoute(app: Express) {
     const openId = `telegram:${payload.telegramId}`;
     const name = payload.name || `Telegram ${payload.telegramId}`;
     try {
-      await upsertUser({ openId, name, loginMethod: "telegram_phone", lastSignedIn: new Date() });
+      await upsertUser({ openId, name, loginMethod: "telegram_phone", lastSignedIn: new Date(), ...(isTelegramAdmin(payload.telegramId) ? { role: "admin" as const } : {}) });
       const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
       res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       const savedUser = await getUserByOpenId(openId);

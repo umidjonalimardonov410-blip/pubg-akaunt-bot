@@ -5,6 +5,7 @@ import { DEFAULT_FAQ, listFaq } from "./faqData";
 export { DEFAULT_FAQ, listFaq };
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, getInsertId, getOrderById, getUserById } from "./db";
+import { notifyTelegramAdmins } from "./telegramBot";
 import {
   categories,
   faqItems,
@@ -78,6 +79,9 @@ export const supportRouter = router({
       });
       const ticketId = getInsertId(result);
       await db.insert(supportTicketMessages).values({ ticketId, authorId: ctx.user.id, authorRole: "user", body: input.message });
+      await notifyTelegramAdmins(
+        `\u{1F4E9} <b>Yangi support murojaati</b>\n#${ticketId} \u2022 ${input.category}\n<b>${input.subject}</b>\n${input.message.slice(0, 500)}`,
+      ).catch(() => undefined);
       return { ticketId };
     }),
 

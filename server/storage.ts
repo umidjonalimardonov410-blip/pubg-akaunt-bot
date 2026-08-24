@@ -13,14 +13,19 @@ export function hasForgeStorage(): boolean {
   return Boolean(ENV.forgeApiUrl && ENV.forgeApiKey);
 }
 
+/** JWT_SECRET Railwayda bo'lmasa ham yuklash ishlashi uchun zaxira kalit. */
+function uploadSigningSecret(): string {
+  return ENV.cookieSecret || process.env.SESSION_SECRET || "inferno-local-upload-secret";
+}
+
 function signLocalUpload(key: string, expires: number): string {
-  return createHmac("sha256", ENV.cookieSecret)
+  return createHmac("sha256", uploadSigningSecret())
     .update(`${key}:${expires}`)
     .digest("hex");
 }
 
 export function verifyLocalUploadToken(key: string, expires: number, token: string): boolean {
-  if (!ENV.cookieSecret || !Number.isFinite(expires) || expires < Date.now()) return false;
+  if (!Number.isFinite(expires) || expires < Date.now()) return false;
   if (token.length !== 64) return false;
   const expected = Buffer.from(signLocalUpload(key, expires));
   const actual = Buffer.from(token);
@@ -47,7 +52,7 @@ export async function localStoragePut(
 }
 
 /** Bazadagi zaxira xotira: kichik fayllar (<= 8 MB) uchun. */
-const DB_BLOB_LIMIT = 8 * 1024 * 1024;
+const DB_BLOB_LIMIT = 24 * 1024 * 1024;
 
 export async function dbStoragePut(key: string, data: Buffer, contentType: string): Promise<boolean> {
   if (data.length > DB_BLOB_LIMIT) return false;
