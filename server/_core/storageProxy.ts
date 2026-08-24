@@ -3,7 +3,7 @@ import { createWriteStream } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { ENV } from "./env";
-import { dbStorageRead, getLocalStoragePath, hasForgeStorage, localStorageRead, verifyLocalUploadToken } from "../storage";
+import { dbStorageRead, getLocalStoragePath, hasForgeStorage, localStorageRead, storagePutRaw, verifyLocalUploadToken } from "../storage";
 
 const MAX_DIRECT_UPLOAD_BYTES = 200 * 1024 * 1024;
 
@@ -20,11 +20,6 @@ function contentTypeForKey(key: string): string {
 
 export function registerStorageProxy(app: Express) {
   app.put("/api/storage/upload/*", async (req, res) => {
-    if (hasForgeStorage()) {
-      res.status(404).send("Not found");
-      return;
-    }
-
     const key = (req.params as Record<string, string>)[0];
     if (!key) {
       res.status(400).send("Missing storage key");
@@ -37,19 +32,53 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
+    const declaredSize = Number(req.headers["content-length"] ?? 0);
+    if (declaredSize > MAX_DIRECT_UPLOAD_BYTES) {
+      res.status(413).send("File is too large");
+      return;
+    }
+
+    const contentType =
+      (typeof req.query.ct === "string" && req.query.ct) ||
+      (typeof req.headers["content-type"] === "string" ? req.headers["content-type"] : "") ||
+      contentTypeForKey(key);
+
+    // Faylni oqim bilan qabul qilamiz, so'ng saqlash joyiga (S3 yoki lokal) yozamiz.
+    if (hasForgeStorage()) {
+      const chunks: Buffer[] = [];
+      let received = 0;
+      let failed = false;
+      req.on("data", chunk => {
+        received += chunk.length;
+        if (received > MAX_DIRECT_UPLOAD_BYTES) {
+          failed = true;
+          req.destroy(new Error("File is too large"));
+          return;
+        }
+        chunks.push(chunk as Buffer);
+      });
+      req.on("error", error => {
+        if (!res.headersSent) res.status(error.message === "File is too large" ? 413 : 500).send(error.message);
+      });
+      req.on("end", async () => {
+        if (failed) return;
+        try {
+          await storagePutRaw(key, Buffer.concat(chunks), contentType);
+          if (!res.headersSent) res.status(204).end();
+        } catch (error) {
+          console.error("[StorageProxy] upload failed:", error);
+          if (!res.headersSent) res.status(502).send(error instanceof Error ? error.message : "Upload failed");
+        }
+      });
+      return;
+    }
+
     let destination = "";
     try {
       destination = getLocalStoragePath(key);
       await mkdir(path.dirname(destination), { recursive: true });
-      const declaredSize = Number(req.headers["content-length"] ?? 0);
-      if (declaredSize > MAX_DIRECT_UPLOAD_BYTES) {
-        res.status(413).send("File is too large");
-        return;
-      }
 
       let received = 0;
-      // "w" emas "wx": mavjud faylni qayta yozmaymiz, lekin xato bo'lsa ham
-      // boshqa birovning faylini o'chirib yubormaymiz (quyidagi created bayrog'i).
       const writer = createWriteStream(destination, { flags: "wx" });
       let created = true;
       writer.on("open", () => { created = true; });

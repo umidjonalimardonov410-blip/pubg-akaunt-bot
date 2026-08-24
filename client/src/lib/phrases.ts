@@ -771,4 +771,8 @@ export const PHRASES: Record<string, {
   "Rahmat! Tarjima xatosi adminga yuborildi": { ru: "Спасибо! Ошибка перевода отправлена админу", en: "Thanks! The translation issue was sent to the admin" },
   "Yuborib bo‘lmadi, keyinroq urinib ko‘ring": { ru: "Не удалось отправить, попробуйте позже", en: "Could not send, please try again later" },
   "Tashqi Telegram bot push xabarlari uchun token sozlanishi kerak; hozircha tizim in-app bildirishnomalarni xavfsiz saqlaydi.": { ru: "Для push-уведомлений внешнего Telegram-бота нужен токен; пока система безопасно хранит уведомления внутри приложения.", en: "An external Telegram bot token is required for push notifications; for now the system stores in-app notifications securely." },
+  "Filtr saqlandi": { ru: "Фильтр сохранён", en: "Filter saved" },
+  "Avval kamida bitta filtr tanlang": { ru: "Сначала выберите хотя бы один фильтр", en: "Select at least one filter first" },
+  "Filtr yuklandi": { ru: "Фильтр загружен", en: "Filter loaded" },
+  "Filtri saqlash": { ru: "Сохранить фильтр", en: "Save filter" },
 };

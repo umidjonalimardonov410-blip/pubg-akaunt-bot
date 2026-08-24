@@ -982,15 +982,24 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           // Katta fayllar (200 MB gacha video) to‘g‘ridan-to‘g‘ri S3 ga yuboriladi.
           const presigned = await presignMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'video/mp4' | 'video/webm' | 'video/quicktime' | 'image/jpeg' | 'image/png' | 'image/webp', size: file.size });
           setVideoPercent(0);
-          await new Promise<void>((resolve, reject) => {
+          const putFile = () => new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', presigned.uploadUrl);
             xhr.setRequestHeader('Content-Type', file.type);
+            xhr.timeout = 10 * 60 * 1000;
             xhr.upload.onprogress = event => { if (event.lengthComputable) setVideoPercent(Math.round((event.loaded / event.total) * 100)); };
-            xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Video yuklanmadi (${xhr.status})`)));
-            xhr.onerror = () => reject(new Error('Video yuklashda tarmoq xatosi'));
+            xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Fayl yuklanmadi (${xhr.status})`)));
+            xhr.onerror = () => reject(new Error('Yuklashda tarmoq xatosi'));
+            xhr.ontimeout = () => reject(new Error('Yuklash juda uzoq davom etdi'));
             xhr.send(file);
           });
+          try {
+            await putFile();
+          } catch (uploadError) {
+            // Bir marta qayta urinamiz (mobil tarmoq uzilishlari uchun).
+            setVideoPercent(0);
+            await putFile();
+          }
           setVideoPercent(100);
           uploaded.push({ url: presigned.url, type: file.type });
         } else {

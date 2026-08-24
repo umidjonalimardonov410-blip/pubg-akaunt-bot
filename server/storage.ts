@@ -114,16 +114,15 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
-export async function storagePut(
+export async function storagePutRaw(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const key = appendHashSuffix(normalizeKey(relKey));
+  const key = normalizeKey(relKey);
 
   if (!hasForgeStorage()) {
     const buffer = typeof data === "string" ? Buffer.from(data) : Buffer.from(data as Uint8Array);
-    // Avval bazaga (deploydan keyin ham saqlanadi), bo'lmasa lokal diskka.
     const saved = await dbStoragePut(key, buffer, contentType);
     if (!saved) await localStoragePut(key, buffer);
     return { key, url: `/manus-storage/${key}` };
@@ -131,9 +130,9 @@ export async function storagePut(
 
   const { forgeUrl, forgeKey } = getForgeConfig();
 
-  // 1. Get presigned PUT URL from Forge
   const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
   presignUrl.searchParams.set("path", key);
+  presignUrl.searchParams.set("content_type", contentType);
 
   const presignResp = await fetch(presignUrl, {
     headers: { Authorization: `Bearer ${forgeKey}` },
@@ -147,7 +146,6 @@ export async function storagePut(
   const { url: s3Url } = (await presignResp.json()) as { url: string };
   if (!s3Url) throw new Error("Forge returned empty presign URL");
 
-  // 2. PUT file directly to S3
   const blob =
     typeof data === "string"
       ? new Blob([data], { type: contentType })
@@ -166,42 +164,29 @@ export async function storagePut(
   return { key, url: `/manus-storage/${key}` };
 }
 
+export async function storagePut(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; url: string }> {
+  return storagePutRaw(appendHashSuffix(normalizeKey(relKey)), data, contentType);
+}
+
 /** Presigned PUT URL so the browser can upload large files (e.g. 200 MB video) directly to S3. */
 export async function storagePresignPut(
   relKey: string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; uploadUrl: string; url: string }> {
   const key = appendHashSuffix(normalizeKey(relKey));
-
-  if (!hasForgeStorage()) {
-    const expires = Date.now() + 15 * 60 * 1000;
-    const token = signLocalUpload(key, expires);
-    return {
-      key,
-      uploadUrl: `/api/storage/upload/${key.split("/").map(encodeURIComponent).join("/")}?expires=${expires}&token=${token}`,
-      url: `/manus-storage/${key}`,
-    };
-  }
-
-  const { forgeUrl, forgeKey } = getForgeConfig();
-
-  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
-  presignUrl.searchParams.set("path", key);
-  presignUrl.searchParams.set("content_type", contentType);
-
-  const presignResp = await fetch(presignUrl, {
-    headers: { Authorization: `Bearer ${forgeKey}` },
-  });
-
-  if (!presignResp.ok) {
-    const msg = await presignResp.text().catch(() => presignResp.statusText);
-    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
-  }
-
-  const { url: uploadUrl } = (await presignResp.json()) as { url: string };
-  if (!uploadUrl) throw new Error("Forge returned empty presign URL");
-
-  return { key, uploadUrl, url: `/manus-storage/${key}` };
+  // Brauzer to'g'ridan-to'g'ri S3 ga yubormaydi (CORS xatolari sababli):
+  // fayl o'z serverimizga oqim bilan yuboriladi, server esa S3/DB ga saqlaydi.
+  const expires = Date.now() + 60 * 60 * 1000;
+  const token = signLocalUpload(key, expires);
+  return {
+    key,
+    uploadUrl: `/api/storage/upload/${key.split("/").map(encodeURIComponent).join("/")}?expires=${expires}&token=${token}&ct=${encodeURIComponent(contentType)}`,
+    url: `/manus-storage/${key}`,
+  };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
