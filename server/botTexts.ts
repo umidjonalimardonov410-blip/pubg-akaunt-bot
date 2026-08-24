@@ -24,6 +24,13 @@ type Texts = {
   menuRules: string;
   menuSupport: string;
   menuAdmin: string;
+  menuPanel: string;
+  panelTitle: string;
+  panelBody: string;
+  panelBotControl: string;
+  panelListings: string;
+  panelReceipts: string;
+  panelAdminChat: string;
   menuLanguage: string;
   menuContact: string;
   placeholder: string;
@@ -116,6 +123,13 @@ const uz: Texts = {
   menuRules: '📜 Qoidalar',
   menuSupport: '🆘 Yordam',
   menuAdmin: '👨‍💼 Admin',
+  menuPanel: '🛡 Admin panel',
+  panelTitle: '🛡 ADMIN PANEL',
+  panelBody: 'Bot boshqaruvi, akkaunt tasdiqlash va chek nazorati shu yerda. Panel egasi: {panelAdmin}',
+  panelBotControl: '⚙️ Bot boshqaruvi',
+  panelListings: '✅ Akkaunt tasdiqlash',
+  panelReceipts: '🧾 Cheklar',
+  panelAdminChat: '👑 Panel admin',
   menuLanguage: '🌐 Til',
   menuContact: '📱 Raqam orqali kirish',
   placeholder: 'Kerakli bo‘limni tanlang',
@@ -217,6 +231,13 @@ const ru: Texts = {
   menuRules: '📜 Правила',
   menuSupport: '🆘 Поддержка',
   menuAdmin: '👨‍💼 Админ',
+  menuPanel: '🛡 Админ панель',
+  panelTitle: '🛡 АДМИН ПАНЕЛЬ',
+  panelBody: 'Управление ботом, подтверждение аккаунтов и проверка чеков здесь. Владелец панели: {panelAdmin}',
+  panelBotControl: '⚙️ Управление ботом',
+  panelListings: '✅ Подтверждение аккаунтов',
+  panelReceipts: '🧾 Чеки',
+  panelAdminChat: '👑 Админ панели',
   menuLanguage: '🌐 Язык',
   menuContact: '📱 Вход по номеру',
   placeholder: 'Выберите раздел',
@@ -317,6 +338,13 @@ const en: Texts = {
   menuRules: '📜 Rules',
   menuSupport: '🆘 Support',
   menuAdmin: '👨‍💼 Admin',
+  menuPanel: '🛡 Admin panel',
+  panelTitle: '🛡 ADMIN PANEL',
+  panelBody: 'Bot control, account approval and receipt review live here. Panel owner: {panelAdmin}',
+  panelBotControl: '⚙️ Bot control',
+  panelListings: '✅ Approve accounts',
+  panelReceipts: '🧾 Receipts',
+  panelAdminChat: '👑 Panel admin',
   menuLanguage: '🌐 Language',
   menuContact: '📱 Login by phone',
   placeholder: 'Choose a section',
