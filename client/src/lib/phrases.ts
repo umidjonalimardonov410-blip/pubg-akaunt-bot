@@ -775,4 +775,9 @@ export const PHRASES: Record<string, {
   "Avval kamida bitta filtr tanlang": { ru: "Сначала выберите хотя бы один фильтр", en: "Select at least one filter first" },
   "Filtr yuklandi": { ru: "Фильтр загружен", en: "Filter loaded" },
   "Filtri saqlash": { ru: "Сохранить фильтр", en: "Save filter" },
+  "MATCH TOPILMOQDA": { ru: "ПОИСК МАТЧА", en: "FINDING MATCH" },
+  "O‘tkazib yuborish": { ru: "Пропустить", en: "Skip" },
+  "Sotilgan akkaunt": { ru: "Продано аккаунтов", en: "Accounts sold" },
+  "Xavfsiz bitim": { ru: "Безопасных сделок", en: "Safe deals" },
+  "O‘rtacha yetkazish": { ru: "Средняя выдача", en: "Avg delivery" },
 };

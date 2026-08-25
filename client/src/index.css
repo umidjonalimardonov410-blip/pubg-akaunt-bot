@@ -451,6 +451,7 @@ img { transition: transform .45s ease, filter .45s ease; }
   box-shadow: 0 0 34px rgba(245,197,66,.45);
   animation: intro-hex-spin 2.2s cubic-bezier(.7,0,.3,1) infinite;
 }
+.intro-hex-ring-2 { inset: 12px; border-color: rgba(255,138,31,.55); animation-direction: reverse; animation-duration: 3.1s; box-shadow: 0 0 20px rgba(255,138,31,.35); }
 .intro-hex-core {
   font-family: inherit; font-weight: 900; font-size: 1.75rem; letter-spacing: .08em;
   color: #f5c542; text-shadow: 0 0 18px rgba(245,197,66,.7);
@@ -472,8 +473,66 @@ img { transition: transform .45s ease, filter .45s ease; }
 .intro-bar > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f5c542, #ff8a1f); box-shadow: 0 0 16px rgba(245,197,66,.7); transition: width 140ms ease-out; }
 .intro-status { font-size: .625rem; letter-spacing: .22em; text-transform: uppercase; color: rgba(245,197,66,.75); }
 
+/* HUD segmentli indikator */
+.intro-hud { margin-top: .9rem; display: flex; gap: 3px; width: min(268px, 74vw); }
+.intro-hud > span {
+  flex: 1; height: 9px; border-radius: 2px;
+  background: rgba(255,255,255,.07);
+  box-shadow: inset 0 0 0 1px rgba(245,197,66,.18);
+  transition: background 180ms ease-out, box-shadow 180ms ease-out;
+}
+.intro-hud > span.on {
+  background: linear-gradient(180deg, #ffd977, #ff8a1f);
+  box-shadow: 0 0 12px rgba(245,197,66,.75), inset 0 0 0 1px rgba(255,225,150,.6);
+}
+
+/* Ishonch statistikasi */
+.intro-stats { margin-top: 1.1rem; display: flex; gap: 1.1rem; justify-content: center; flex-wrap: wrap; animation: intro-title-in 900ms 260ms cubic-bezier(.16,1,.3,1) both; }
+.intro-stat { display: flex; flex-direction: column; gap: 2px; min-width: 74px; }
+.intro-stat strong { font-size: 1rem; font-weight: 900; color: #f5c542; text-shadow: 0 0 14px rgba(245,197,66,.45); font-variant-numeric: tabular-nums; }
+.intro-stat span { font-size: .5625rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.42); }
+
+/* Horizon + vignette */
+.intro-horizon {
+  position: absolute; left: 0; right: 0; top: 46%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245,197,66,.55), transparent);
+  box-shadow: 0 0 40px 8px rgba(245,197,66,.18);
+}
+.intro-vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(80% 60% at 50% 45%, transparent 40%, rgba(0,0,0,.75) 100%); }
+
+/* Parashyutchi siluet */
+.intro-drop { position: absolute; top: -14%; left: 18%; width: 46px; opacity: .55; animation: intro-drop-fall 7s linear infinite; will-change: transform; }
+.intro-drop-svg { width: 100%; height: auto; fill: rgba(255,255,255,.16); }
+.intro-drop-svg .intro-drop-line { fill: none; stroke: rgba(255,255,255,.18); stroke-width: 1.5; }
+
+/* Uchqunlar (embers) */
+.intro-embers { position: absolute; inset: 0; pointer-events: none; }
+.intro-embers > span {
+  position: absolute; bottom: -6px; border-radius: 999px;
+  background: radial-gradient(circle, #ffd977, #ff8a1f 60%, transparent 70%);
+  box-shadow: 0 0 10px rgba(255,150,40,.85);
+  animation-name: intro-ember-rise; animation-timing-function: linear; animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* Karta ochilish (flip) chiqishi */
+.intro-card { perspective: 1200px; transform-style: preserve-3d; }
+.intro-card.intro-card-flip { animation: intro-card-flip 900ms cubic-bezier(.7,0,.25,1) forwards; }
+
+/* Skip / sound tugmalari */
+.intro-skip, .intro-sound {
+  position: absolute; bottom: 22px; z-index: 2;
+  border: 1px solid rgba(245,197,66,.28); background: rgba(0,0,0,.35);
+  color: rgba(255,255,255,.7); border-radius: 999px; backdrop-filter: blur(6px);
+  transition: transform 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
+}
+.intro-skip { right: 20px; padding: 6px 14px; font-size: .625rem; letter-spacing: .18em; text-transform: uppercase; }
+.intro-sound { left: 20px; width: 34px; height: 34px; display: grid; place-items: center; font-size: .8rem; }
+.intro-skip:active, .intro-sound:active { transform: scale(.93); }
+.intro-skip:hover, .intro-sound:hover { color: #f5c542; border-color: rgba(245,197,66,.7); }
+
 @keyframes intro-fade-in { from { opacity: 0 } to { opacity: 1 } }
-@keyframes intro-fade-out { to { opacity: 0; transform: scale(1.06); filter: blur(6px); visibility: hidden; } }
+@keyframes intro-fade-out { to { opacity: 0; filter: blur(8px); visibility: hidden; } }
 @keyframes intro-grid-move { to { background-position: 0 46px, 46px 0; } }
 @keyframes intro-scan-move { 0% { top: -30% } 100% { top: 100% } }
 @keyframes intro-hex-spin { 0% { transform: rotate(0) scale(1) } 50% { transform: rotate(180deg) scale(1.08) } 100% { transform: rotate(360deg) scale(1) } }
@@ -481,13 +540,31 @@ img { transition: transform .45s ease, filter .45s ease; }
 @keyframes intro-title-in { from { opacity: 0; transform: translateY(14px) scale(.96); letter-spacing: .4em } to { opacity: 1; transform: none } }
 @keyframes intro-glitch-a { 0%,92%,100% { clip-path: inset(100% 0 0 0); transform: none } 94% { clip-path: inset(8% 0 72% 0); transform: translate3d(-3px,0,0) } 97% { clip-path: inset(58% 0 22% 0); transform: translate3d(3px,0,0) } }
 @keyframes intro-glitch-b { 0%,90%,100% { clip-path: inset(100% 0 0 0); transform: none } 93% { clip-path: inset(66% 0 12% 0); transform: translate3d(3px,0,0) } 96% { clip-path: inset(20% 0 64% 0); transform: translate3d(-3px,0,0) } }
+@keyframes intro-ember-rise {
+  0% { transform: translate3d(0, 0, 0) scale(.6); opacity: 0 }
+  15% { opacity: 1 }
+  100% { transform: translate3d(var(--drift, 0px), -105vh, 0) scale(1.1); opacity: 0 }
+}
+@keyframes intro-drop-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(-6deg); opacity: 0 }
+  12% { opacity: .55 }
+  88% { opacity: .35 }
+  100% { transform: translate3d(64px, 130vh, 0) rotate(7deg); opacity: 0 }
+}
+@keyframes intro-card-flip {
+  0% { transform: rotateY(0) scale(1); opacity: 1 }
+  55% { transform: rotateY(-78deg) scale(.94); opacity: .85 }
+  100% { transform: rotateY(-180deg) scale(.82); opacity: 0 }
+}
 
 /* Sahifa almashinuvidagi gamer kirish effekti */
 .page-enter { animation: page-enter 420ms cubic-bezier(.16,1,.3,1) both; }
 @keyframes page-enter { from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.985); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .intro-root, .intro-grid, .intro-scan, .intro-hex-ring, .intro-hex-core, .intro-title, .page-enter { animation: none !important; }
+  .intro-root, .intro-grid, .intro-scan, .intro-hex-ring, .intro-hex-core, .intro-title, .page-enter,
+  .intro-embers > span, .intro-drop, .intro-card, .intro-stats { animation: none !important; }
+  .intro-embers, .intro-drop { display: none; }
 }
 
 /* ============================================================
