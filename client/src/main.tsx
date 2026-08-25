@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
+import { initPremiumUx } from "./lib/premium";
 import { authenticateTelegramWebApp, exchangeTelegramLoginToken, getTelegramWebApp, readTelegramLoginToken } from "./lib/telegram";
 import "./index.css";
 
@@ -91,6 +92,8 @@ async function bootstrapTelegramAuth() {
   if (!webApp?.initData || !webApp.initDataUnsafe?.user?.id) return;
   await authenticateTelegramWebApp(webApp);
 }
+
+initPremiumUx();
 
 void bootstrapTelegramAuth().finally(() => {
   createRoot(document.getElementById("root")!).render(

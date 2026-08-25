@@ -1355,7 +1355,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="mobile-scroll-row -mx-3 mb-3 items-center gap-0 px-3 sm:mx-0 sm:px-0">
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-300/35 bg-black/60 px-2.5 py-1.5">
               <WalletCards className="h-3.5 w-3.5 shrink-0 text-amber-200" />
-              <span className="font-display text-[13px] font-black text-white"><AnimatedNumber value={balance} /></span>
+              <span className="px-gold-text font-display text-[13px] font-black"><AnimatedNumber value={balance} /></span>
               <span className="text-[9px] font-bold text-white/40">so‘m</span>
             </span>
             <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
@@ -1373,7 +1373,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="flex items-end gap-3">
             <div className="relative shrink-0 pb-3">
               <span className="pro-ring" />
-              <span className="relative grid h-[68px] w-[68px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/70 bg-black/60 text-amber-200 shadow-[0_0_22px_rgba(245,197,66,.28)] sm:h-24 sm:w-24">
+              <span className="px-frame relative grid h-[68px] w-[68px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/70 bg-black/60 text-amber-200 shadow-[0_0_22px_rgba(245,197,66,.28)] sm:h-24 sm:w-24">
                 {avatarUrl
                   ? <img src={avatarUrl} alt={displayName} className="img-live h-full w-full object-cover" />
                   : <img src="/assets/pubg-avatar.jpg" alt={displayName} className="img-live h-full w-full object-cover" />}

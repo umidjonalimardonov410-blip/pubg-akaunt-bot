@@ -1,10 +1,59 @@
-import { AlertTriangle, BadgeCheck, Banknote, ShieldCheck, ShoppingBag, Store } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Banknote, Handshake, KeyRound, Lock, ShieldCheck, ShoppingBag, Store, Wallet } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n";
 
 const HERO = "/assets/rules-hero.jpg";
 const SQUAD = "/assets/rules-2.jpg";
 const TROPHY = "/assets/rules-3.jpg";
+
+/** Kafolatli savdo bosqichlari — ishonch tizimining asosi. */
+function EscrowFlow() {
+  const { t } = useI18n();
+  const steps = [
+    { icon: ShoppingBag, title: t("Buyurtma"), text: t("Xaridor akkauntni tanlaydi va to‘lovni bot kafolat hisobiga o‘tkazadi.") },
+    { icon: Lock, title: t("Kafolat"), text: t("Pul sotuvchiga emas, kafolat hisobida bloklanadi.") },
+    { icon: KeyRound, title: t("Topshirish"), text: t("Sotuvchi akkaunt ma’lumotlarini yuboradi, xaridor 24 soat ichida tekshiradi.") },
+    { icon: Handshake, title: t("Yakun"), text: t("Xaridor tasdiqlagach pul sotuvchiga o‘tadi. Nizo bo‘lsa admin hal qiladi.") },
+  ];
+  return (
+    <section className="px-frame px-scan relative overflow-hidden rounded-[28px] border border-amber-400/20 bg-[#0f1012] p-5 sm:p-7">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-300/30 bg-amber-400/10 text-amber-200 px-pulse">
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-display text-lg font-black tracking-tight text-white">{t("Xavfsiz savdo qanday ishlaydi")}</h2>
+          <p className="text-[12px] font-bold text-white/45">{t("Kafolat hisobi orqali har ikki tomon himoyalangan.")}</p>
+        </div>
+      </div>
+      <ol className="mt-5 grid gap-3 sm:grid-cols-2">
+        {steps.map((step, index) => (
+          <li key={step.title} className="px-glass relative overflow-hidden rounded-2xl p-4" data-reveal>
+            <span className="absolute right-3 top-2 font-display text-3xl font-black text-amber-300/10">{index + 1}</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl border border-amber-300/25 bg-amber-400/10 text-amber-200">
+              <step.icon className="h-4 w-4" />
+            </span>
+            <h3 className="mt-3 font-display text-[13px] font-black uppercase tracking-wider text-white">{step.title}</h3>
+            <p className="mt-1 text-[12px] leading-5 text-white/60">{step.text}</p>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {[
+          { icon: Wallet, label: t("Kafolatli to‘lov") },
+          { icon: BadgeCheck, label: t("Tekshirilgan sotuvchilar") },
+          { icon: ShieldCheck, label: t("24/7 nizo yechimi") },
+        ].map(item => (
+          <span key={item.label} className="px-shine flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-2 text-[11px] font-black uppercase tracking-wider text-amber-100">
+            <item.icon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+            {item.label}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 
 function RuleBlock({
   icon: Icon,
@@ -56,7 +105,7 @@ export function RulesPage() {
 
   return (
     <main className="space-y-4 pb-24 sm:space-y-6 lg:pb-6">
-      <section className="relative isolate overflow-hidden rounded-[28px] border border-amber-400/25 bg-[#0f1012]">
+      <section className="px-frame relative isolate overflow-hidden rounded-[28px] border border-amber-400/25 bg-[#0f1012]">
         <img src={HERO} alt="" width={1280} height={720} className="absolute inset-0 -z-10 h-full w-full img-live object-cover opacity-40" />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,#0b0c0e_18%,rgba(11,12,14,.85)_48%,rgba(11,12,14,.25))]" />
         <div className="relative p-6 sm:p-10">
@@ -70,6 +119,8 @@ export function RulesPage() {
           <p className="mt-3 max-w-md text-sm leading-6 text-white/60">{t("rules.subtitle")}</p>
         </div>
       </section>
+
+      <EscrowFlow />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <RuleBlock icon={ShieldCheck} title={t("rules.section.general")} items={[t("rules.g1"), t("rules.g2"), t("rules.g3"), t("rules.g4")]} image={SQUAD} />
