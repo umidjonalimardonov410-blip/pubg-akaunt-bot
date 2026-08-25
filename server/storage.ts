@@ -52,7 +52,7 @@ export async function localStoragePut(
 }
 
 /** Bazadagi zaxira xotira: kichik fayllar (<= 8 MB) uchun. */
-const DB_BLOB_LIMIT = 24 * 1024 * 1024;
+const DB_BLOB_LIMIT = 45 * 1024 * 1024;
 
 export async function dbStoragePut(key: string, data: Buffer, contentType: string): Promise<boolean> {
   if (data.length > DB_BLOB_LIMIT) return false;
