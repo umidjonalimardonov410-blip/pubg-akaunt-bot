@@ -327,6 +327,11 @@ export const appRouter = router({
         } catch (error) {
           console.warn('[Notifications] Seller pending alert was not persisted:', error);
         }
+        await notifyTelegramUser(
+          ctx.user.id,
+          `\u{1F4E4} <b>E'lon tekshiruvga yuborildi</b>\n\n${escapeTelegramHtml(input.playerName)} e'loni admin tasdig'ini kutmoqda. Qaror chiqishi bilan shu botga xabar keladi.`,
+          '/seller',
+        );
         return { id: accountId, status: 'pending_verification' as const };
       }),
 
@@ -495,6 +500,14 @@ export const appRouter = router({
         } catch (error) {
           console.warn('[Notifications] Escrow owner alert was not persisted:', error);
         }
+        await notifyTelegramAdmins(
+          `\u{1F6E1} <b>Yangi kafolatli savdo</b>\n\n#${orderResult} buyurtmada to'lov muzlatildi.\n\u{1F464} ${escapeTelegramHtml(account.playerName)}`,
+        ).catch(() => undefined);
+        await notifyTelegramUser(
+          account.sellerId,
+          `\u{1F6E1} <b>Akkauntingizga buyurtma tushdi</b>\n\n#${orderResult} buyurtmada to'lov muzlatildi. Keyingi bosqichlar shu botda ko'rinadi.`,
+          '/orders',
+        );
 
         return { orderId: orderResult };
       }),
@@ -582,6 +595,11 @@ export const appRouter = router({
           } catch (error) {
             console.warn('[Notifications] Escrow stage owner alert was not persisted:', error);
           }
+          await notifyTelegramAdmins(
+            `\u{1F504} <b>Savdo bosqichi yangilandi</b>\n\n#${input.orderId} buyurtma ${escapeTelegramHtml(stageLabel)} bosqichiga o'tdi.`,
+          ).catch(() => undefined);
+          await notifyTelegramUser(order.buyerId, `\u{1F504} <b>Savdo bosqichi yangilandi</b>\n\n#${input.orderId} buyurtma ${escapeTelegramHtml(stageLabel)} bosqichiga o'tdi.`, '/orders');
+          await notifyTelegramUser(order.sellerId, `\u{1F504} <b>Savdo bosqichi yangilandi</b>\n\n#${input.orderId} buyurtma ${escapeTelegramHtml(stageLabel)} bosqichiga o'tdi.`, '/orders');
         }
         return { success: true };
       }),
@@ -1115,6 +1133,9 @@ export const appRouter = router({
           title: 'Yangi savdo nizosi',
           content: `#${input.orderId} buyurtma bo‘yicha nizo ochildi: ${input.reason}`,
         }).catch(() => undefined);
+        await notifyTelegramAdmins(
+          `\u{26A0} <b>Yangi nizo</b>\n\n#${input.orderId} buyurtma: ${escapeTelegramHtml(input.reason)}`,
+        ).catch(() => undefined);
         return { disputeId: getInsertId(result) };
       }),
   }),
