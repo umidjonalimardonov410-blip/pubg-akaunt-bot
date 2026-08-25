@@ -1373,18 +1373,15 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="flex items-end gap-3">
             <div className="relative shrink-0 pb-3">
               <span className="pro-ring" />
-              <label className="relative grid h-[68px] w-[68px] cursor-pointer place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/70 bg-black/60 text-amber-200 shadow-[0_0_22px_rgba(245,197,66,.28)] active:scale-95 sm:h-24 sm:w-24">
+              <span className="relative grid h-[68px] w-[68px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/70 bg-black/60 text-amber-200 shadow-[0_0_22px_rgba(245,197,66,.28)] sm:h-24 sm:w-24">
                 {avatarUrl
                   ? <img src={avatarUrl} alt={displayName} className="img-live h-full w-full object-cover" />
                   : <img src="/assets/pubg-avatar.jpg" alt={displayName} className="img-live h-full w-full object-cover" />}
-                <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/65 py-0.5 text-[8px] font-black uppercase text-amber-100">
-                  {avatarUploading ? '...' : <><Camera className="h-2.5 w-2.5" />Surat</>}
-                </span>
+              </span>
+              <label className="absolute inset-x-0 bottom-0 mx-auto flex w-max cursor-pointer items-center gap-1 rounded-md border border-amber-300/40 bg-black/85 px-2 py-[2px] text-[8px] font-black uppercase tracking-wider text-amber-100 active:scale-95">
+                <Camera className="h-2.5 w-2.5" />{avatarUploading ? '...' : 'Surat'}
                 <input type="file" accept="image/*" className="sr-only" onChange={event => { const file = event.target.files?.[0]; if (file) pickAvatar(file); event.target.value = ''; }} />
               </label>
-              <span className="absolute inset-x-0 bottom-0 mx-auto flex w-max items-center gap-1 rounded-md border border-amber-300/40 bg-black/85 px-2 py-[2px] text-[8px] font-black uppercase tracking-wider text-amber-100">
-                <Shield className="h-2.5 w-2.5" />{badge === 'Elite sotuvchi' ? 'Elite' : badge === 'Tasdiqlangan sotuvchi' ? 'Tasdiq' : 'Suray'}
-              </span>
             </div>
             <div className="min-w-0 flex-1">
               <span className="pubg-live inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-black/45 px-2 py-[3px] text-[9px] font-black uppercase tracking-[0.18em] text-amber-100">
