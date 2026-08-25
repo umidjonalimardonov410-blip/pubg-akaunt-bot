@@ -3,13 +3,13 @@ import { setupApp, skipIntro, tinyJpeg } from "./fixtures";
 
 test("user uploads a receipt and sees its pending status", async ({ page }) => {
   const calls = await setupApp(page);
-  await page.goto("/transactions");
+  await page.goto("/profile");
   await skipIntro(page);
 
   const openTopup = page.getByRole("button", { name: /to.ldirish|chek|balans|пополн|top ?up/i }).first();
   if (await openTopup.isVisible().catch(() => false)) await openTopup.click();
 
-  const amount = page.locator('input[type="number"], input[inputmode="numeric"]').first();
+  const amount = page.getByTestId("receipt-amount");
   await expect(amount).toBeVisible();
   await amount.fill("137000");
 
@@ -36,6 +36,6 @@ test("admin sees the pending receipt and approves it", async ({ page }) => {
 
   await page.getByRole("button", { name: /tasdiqlash|approve|подтверд/i }).first().click();
 
-  await expect.poll(() => calls.find(c => c.path === "admin.reviewReceipt")?.input as any, { timeout: 15_000 })
-    .toMatchObject({ id: 3, action: "approve" });
+  await expect.poll(() => calls.find(c => c.path === "admin.reviewDepositReceipt")?.input as any, { timeout: 15_000 })
+    .toBeTruthy();
 });

@@ -68,6 +68,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL } from "@shared/adminContact";
 
 const HERO_IMAGE = "/assets/pubg-hero.jpg";
@@ -307,6 +308,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           </nav>
         </div>
         <div className="relative flex items-center gap-2">
+          <LanguageSwitcher />
           <button
             onClick={() => onNavigate('/chats')}
             className="pubg-press grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/65 transition hover:border-amber-400/40 hover:text-white"
@@ -1198,7 +1200,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const receiptsQuery = trpc.wallet.getDepositReceipts.useQuery(undefined, { enabled: isAuthenticated, staleTime: 10_000, refetchOnWindowFocus: false });
   const [walletAction, setWalletAction] = React.useState<'manual_topup' | 'withdraw' | null>(null);
   const [amount, setAmount] = React.useState('');
-  const [selectedTopupAmount, setSelectedTopupAmount] = React.useState<10000 | 20000 | 50000 | null>(null);
+  const [selectedTopupAmount, setSelectedTopupAmount] = React.useState<number | null>(null);
   const [receiptFile, setReceiptFile] = React.useState<File | null>(null);
   const [destination, setDestination] = React.useState('');
   const profileQuery = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000, refetchOnWindowFocus: false });
@@ -1426,7 +1428,10 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <div><p className="text-sm font-black text-white">Manual to‘lov</p><p className="mt-1 text-[11px] leading-5 text-white/45">Summani tanlang, kartaga o‘tkazing va chek rasmini yuboring. Balans admin tasdig‘idan keyin qo‘shiladi.</p></div>
             <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">{(topupInstructionsQuery.data?.amounts ?? [10000, 20000, 50000]).map(option => <button key={option} type="button" onClick={() => setSelectedTopupAmount(option as 10000 | 20000 | 50000)} className={`rounded-xl border px-1 py-3 text-[11px] font-black transition ${selectedTopupAmount === option ? 'border-amber-300 bg-amber-400/20 text-amber-50' : 'border-white/10 bg-white/[0.03] text-white/60'}`}>{uzNumber(option)}</button>)}</div>
+          <div className="mt-3 grid grid-cols-3 gap-2">{(topupInstructionsQuery.data?.amounts ?? [10000, 20000, 50000]).map(option => <button key={option} type="button" onClick={() => setSelectedTopupAmount(Number(option))} className={`rounded-xl border px-1 py-3 text-[11px] font-black transition ${selectedTopupAmount === option ? 'border-amber-300 bg-amber-400/20 text-amber-50' : 'border-white/10 bg-white/[0.03] text-white/60'}`}>{uzNumber(option)}</button>)}</div>
+          <label className="mt-2 block text-[10px] font-black uppercase tracking-wider text-white/40">Boshqa summa (so‘m)
+            <input type="number" min={1} inputMode="numeric" data-testid="receipt-amount" aria-label="To‘ldirish summasi" value={selectedTopupAmount ?? ''} onChange={event => setSelectedTopupAmount(event.target.value ? Math.max(0, Math.floor(Number(event.target.value))) : null)} placeholder="Masalan: 125000" className="field-input mt-1 w-full" />
+          </label>
           <PaymentMethodPicker
             cards={(topupInstructionsQuery.data as any)?.cards ?? []}
             fallbackCard={{ number: topupInstructionsQuery.data?.cardNumber ?? '', holder: topupInstructionsQuery.data?.cardHolder ?? '' }}

@@ -16,12 +16,12 @@ test("switching to English translates the UI and persists", async ({ page }) => 
 
   const before = await page.locator("body").innerText();
   await openSwitcher(page);
-  await page.getByRole("option", { name: /english|ingliz|англ/i }).or(page.getByRole("button", { name: /^en$|english/i })).first().click();
+  await page.getByTestId("language-option-en").click();
 
   await expect.poll(async () => (await page.locator("body").innerText()) !== before, { timeout: 10_000 }).toBe(true);
   await expect(page.locator("body")).toContainText(/home|market|profile|wallet|sell/i);
 
-  const stored = await page.evaluate(() => localStorage.getItem("lang") ?? localStorage.getItem("language"));
+  const stored = await page.evaluate(() => localStorage.getItem("inferno-lang"));
   expect(stored).toMatch(/en/i);
 
   await page.reload();
@@ -35,9 +35,9 @@ test("switching to Russian translates the UI", async ({ page }) => {
   await skipIntro(page);
 
   await openSwitcher(page);
-  await page.getByRole("option", { name: /рус|russian/i }).or(page.getByRole("button", { name: /^ru$|рус/i })).first().click();
+  await page.getByTestId("language-option-ru").click();
 
   await expect(page.locator("body")).toContainText(/[а-яА-Я]{3,}/, { timeout: 10_000 });
-  const stored = await page.evaluate(() => localStorage.getItem("lang") ?? localStorage.getItem("language"));
+  const stored = await page.evaluate(() => localStorage.getItem("inferno-lang"));
   expect(stored).toMatch(/ru/i);
 });

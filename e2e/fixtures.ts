@@ -16,7 +16,7 @@ export function baseHandlers(overrides: Handlers = {}, opts: { admin?: boolean }
     "profile.get": user,
     "profile.update": (input: any) => ({ ...user, ...(input ?? {}) }),
     "profile.referral": { code: "INFERNO7", invited: 0, earned: 0 },
-    "accounts.search": searchResult,
+    "accounts.search": [demoAccount],
     "accounts.suggestions": [],
     "accounts.getById": demoAccount,
     "accounts.getSellerAccounts": [demoAccount],
@@ -28,13 +28,23 @@ export function baseHandlers(overrides: Handlers = {}, opts: { admin?: boolean }
     "notifications.getUnread": [],
     "wallet.getBalance": { balance: 150000, currency: "UZS" },
     "wallet.getTransactions": [],
-    "wallet.getTopupInstructions": { cardNumber: "8600 1234 5678 9012", cardHolder: "PUBG MARKET", note: "Chek yuboring" },
+    "wallet.getTopupInstructions": { amounts: [10000, 20000, 50000], cardNumber: "8600 1234 5678 9012", cardHolder: "PUBG MARKET", note: "Chek yuboring" },
     "wallet.getDepositReceipts": [demoReceipt],
     "wallet.myReceipts": [demoReceipt],
     "wallet.submitReceipt": { success: true, receiptId: 55, status: "pending" },
     "wallet.uploadReceipt": { success: true, receiptId: 55, status: "pending" },
     "media.presignUpload": { uploadUrl: "https://storage.test/upload/mock", key: "users/7/media/mock.jpg", url: "https://picsum.photos/seed/up/600/600" },
     "media.upload": { url: "https://picsum.photos/seed/up/600/600", key: "users/7/media/mock.jpg" },
+    "orders.getSellerOrders": [],
+    "reviews.getSellerReviews": [],
+    "notifications.getAll": [],
+    "phrases.list": [],
+    "admin.getPendingAccounts": [],
+    "admin.getSellerVerificationQueue": [],
+    "admin.getReviewReports": [],
+    "admin.getDisputes": [],
+    "admin.getPayoutQueue": [],
+    "admin.getAuditLogs": [],
     "admin.getStats": { users: 12, accounts: 5, orders: 3, revenue: 100000 },
     "admin.pendingReceipts": [{ ...demoReceipt, amount: 137000, userName: "INSPECTOR", userOpenId: "telegram:12345" }],
     "admin.getDepositReceipts": [demoReceipt],
@@ -58,6 +68,7 @@ export async function setupApp(
   );
   const calls = await mockTrpc(page, baseHandlers(opts.handlers ?? {}, { admin: opts.admin }));
   await page.addInitScript((lang: string) => {
+    localStorage.setItem("inferno-lang", lang);
     localStorage.setItem("lang", lang);
     localStorage.setItem("language", lang);
     localStorage.setItem("pubg-intro-seen", "1");
