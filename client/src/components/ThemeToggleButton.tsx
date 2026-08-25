@@ -58,7 +58,7 @@ export default function ThemeToggleButton() {
         onClick={() => setOpen(value => { if (!value) window.dispatchEvent(new CustomEvent("app:close-popovers")); return !value; })}
         aria-label="Tema"
         aria-expanded={open}
-        className="grid h-10 min-w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] px-2 text-white/70 transition hover:border-amber-400/40"
+        className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.04] text-white/65 ring-1 ring-inset ring-white/10 transition duration-200 hover:bg-white/[0.07] hover:text-amber-100 hover:ring-amber-400/35 active:scale-[.96]"
       >
         <span className="relative grid place-items-center">
           <Palette className="h-4 w-4" />

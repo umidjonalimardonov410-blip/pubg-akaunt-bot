@@ -5,7 +5,7 @@ import { LANGUAGES, useI18n, type Lang } from "@/lib/i18n";
  * Til almashtirgich — bayroq + kod ko'rinishida, tanlov localStorage'ga saqlanadi
  * va butun interfeys darhol qayta tarjima qilinadi (LanguageSync orqali).
  */
-export default function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
+export default function LanguageSwitcher(_props: { compact?: boolean } = {}) {
   const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -41,20 +41,17 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
         aria-expanded={open}
         aria-label="Tilni tanlash"
         data-testid="language-switcher-button"
-        className="pubg-press flex h-10 min-w-10 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-white/70 transition hover:border-amber-400/40 hover:text-white"
+        className="pubg-press grid h-10 min-w-10 place-items-center rounded-xl bg-white/[0.04] px-3 text-white/70 ring-1 ring-inset ring-white/10 transition hover:bg-white/[0.07] hover:text-white hover:ring-amber-400/35"
       >
-        <span className="text-base leading-none">{active.flag}</span>
-        {!compact && (
-          <span className="text-[11px] font-black uppercase tracking-widest" data-testid="language-current">
-            {active.code}
-          </span>
-        )}
+        <span className="text-[11px] font-black uppercase tracking-[0.14em]" data-testid="language-current">
+          {active.code}
+        </span>
       </button>
       {open && (
         <div
           role="listbox"
           data-testid="language-menu"
-          className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-2xl border border-white/10 bg-[#0e1013] p-1 shadow-[0_18px_50px_rgba(0,0,0,.6)]"
+          className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-2xl bg-[#0e1013]/95 p-1 shadow-[0_18px_50px_rgba(0,0,0,.6)] ring-1 ring-inset ring-white/10 backdrop-blur-xl"
         >
           {LANGUAGES.map(item => (
             <button
@@ -68,7 +65,7 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
                 item.code === lang ? "bg-amber-400/15 text-amber-100" : "text-white/70 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
-              <span className="text-base leading-none">{item.flag}</span>
+              <span className="w-7 shrink-0 text-[10px] font-black uppercase tracking-[0.12em] opacity-70">{item.code}</span>
               <span className="truncate">{item.label}</span>
             </button>
           ))}

@@ -231,9 +231,8 @@ function pageFromPath(pathname: string): { key: PageKey; id?: number } {
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="group flex items-center gap-3" aria-label="Inferno Stealth bosh sahifa">
-      <span className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl border border-amber-400/60 bg-amber-400/10 text-amber-400 shadow-[0_0_25px_rgba(245,197,66,.25)]">
-        <img src="/assets/inferno-logo.png" alt="Inferno Gold Market" className="h-8 w-8 object-contain" />
-        <span className="absolute inset-x-1 bottom-1 h-px bg-amber-400/70" />
+      <span className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl bg-[linear-gradient(150deg,rgba(245,197,66,.16),rgba(245,197,66,.03))] ring-1 ring-inset ring-amber-400/25 transition duration-300 group-hover:ring-amber-300/50">
+        <img src="/assets/inferno-logo.png" alt="Inferno Gold Market" className="h-7 w-7 object-contain drop-shadow-[0_2px_10px_rgba(245,197,66,.35)]" />
       </span>
       {!compact && (
         <span className="leading-none">
@@ -296,7 +295,9 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#08090b]/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(14,16,19,.92),rgba(8,9,11,.88))] backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,.04)_inset,0_14px_40px_-24px_rgba(0,0,0,.9)]">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-32 bg-[radial-gradient(60%_100%_at_18%_100%,rgba(245,197,66,.13),transparent_70%)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,197,66,.35),transparent)]" />
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-3 sm:h-[72px] sm:px-4 lg:px-8">
         <div className="flex items-center gap-10">
           <span className="sm:hidden"><Brand compact /></span>
@@ -311,14 +312,14 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           <LanguageSwitcher />
           <button
             onClick={() => onNavigate('/chats')}
-            className="pubg-press grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/65 transition hover:border-amber-400/40 hover:text-white"
+            className="pubg-press grid h-10 w-10 place-items-center rounded-xl bg-white/[0.04] text-white/65 ring-1 ring-inset ring-white/10 transition duration-200 hover:bg-white/[0.07] hover:text-amber-100 hover:ring-amber-400/35 active:scale-[.96]"
             aria-label="Chatlar"
           >
             <MessageCircle className="h-4 w-4" />
           </button>
           <button
             onClick={() => setNotificationsOpen(value => { if (!value) closeOtherPopovers(); return !value; })}
-            className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/65 transition hover:border-amber-400/40 hover:text-white"
+            className="relative grid h-10 w-10 place-items-center rounded-xl bg-white/[0.04] text-white/65 ring-1 ring-inset ring-white/10 transition duration-200 hover:bg-white/[0.07] hover:text-amber-100 hover:ring-amber-400/35 active:scale-[.96]"
             aria-label="Bildirishnomalar"
             aria-expanded={notificationsOpen}
           >
@@ -352,7 +353,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-400/15 text-amber-200"><UserRound className="h-4 w-4" /></span>
             <span><span className="block text-[10px] font-bold uppercase tracking-wider text-white/45">Kabinet</span><span className="block text-xs font-bold text-white">Mening profilim</span></span>
           </button>
-          <button onClick={() => { if (!menuOpen) closeOtherPopovers(); setMenuOpen(!menuOpen); }} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70 lg:hidden" aria-label="Menyu"><Menu className="h-5 w-5" /></button>
+          <button onClick={() => { if (!menuOpen) closeOtherPopovers(); setMenuOpen(!menuOpen); }} className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.04] text-white/65 ring-1 ring-inset ring-white/10 transition duration-200 hover:bg-white/[0.07] hover:text-amber-100 hover:ring-amber-400/35 active:scale-[.96] lg:hidden" aria-label="Menyu"><Menu className="h-5 w-5" /></button>
         </div>
       </div>
       {menuOpen && (
