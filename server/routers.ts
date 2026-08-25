@@ -405,13 +405,13 @@ export const appRouter = router({
     upload: protectedProcedure
       .input(z.object({
         fileName: z.string().min(1).max(180),
-        contentType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"]),
-        dataBase64: z.string().min(1).max(12_000_000),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"]),
+        dataBase64: z.string().min(1).max(60_000_000),
       }))
       .mutation(async ({ ctx, input }) => {
         const bytes = Buffer.from(input.dataBase64, "base64");
-        if (bytes.length > 8 * 1024 * 1024) {
-          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Fayl hajmi 8 MB dan oshmasin" });
+        if (bytes.length > 40 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Fayl hajmi 40 MB dan oshmasin" });
         }
         const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
         return await storagePut(`users/${ctx.user.id}/accounts/${safeName}`, bytes, input.contentType);
@@ -831,6 +831,18 @@ export const appRouter = router({
           });
           return { receiptId: getInsertId(receiptResult), transactionId };
         });
+
+        try {
+          const { notifyAdminsAboutDepositReceipt } = await import('./telegramBot');
+          await notifyAdminsAboutDepositReceipt({
+            receiptId: Number(result.receiptId),
+            userId: ctx.user.id,
+            amount: input.amount,
+            receiptUrl: input.receiptUrl,
+          });
+        } catch (error) {
+          console.error('[wallet] adminlarga chek xabari yuborilmadi:', error);
+        }
 
         await notifyOwner({
           title: 'Yangi balans cheki',

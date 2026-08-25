@@ -67,8 +67,9 @@ export function ThemeProvider({ children, defaultTheme = "dark", switchable = tr
 
 export function useTheme() {
   const context = useContext(ThemeContext);
+  // Provider bo'lmasa ham UI qulab tushmasin.
   if (!context) {
-    throw new Error("useTheme must be used within ThemeProvider");
+    return { theme: "dark" as AppTheme, setTheme: () => {}, toggleTheme: undefined, switchable: false };
   }
   return context;
 }

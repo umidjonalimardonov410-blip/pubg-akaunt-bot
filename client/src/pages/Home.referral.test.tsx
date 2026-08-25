@@ -2,26 +2,37 @@ import React from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const claimMutation = {
-  mutate: vi.fn((_input: { code: string }, callbacks?: { onSuccess?: (result: { reward: number }) => void }) => callbacks?.onSuccess?.({ reward: 2500 })),
-};
-
 vi.mock('@/_core/hooks/useAuth', () => ({
   useAuth: () => ({ isAuthenticated: true, user: { id: 7, role: 'user', name: 'Test User' } }),
 }));
 
-vi.mock('@/lib/trpc', () => ({
-  trpc: {
-    notifications: {
-      getUnread: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
-      markAsRead: { useMutation: () => ({ mutate: vi.fn() }) },
+// Home ko'p tRPC yo'llarini ishlatadi - Proxy orqali barchasi avtomatik mock qilinadi.
+const { claimMutation, trpcProxy } = vi.hoisted(() => {
+  const claimMutation = {
+    mutate: vi.fn((_input: { code: string }, callbacks?: { onSuccess?: (result: { reward: number }) => void }) => callbacks?.onSuccess?.({ reward: 2500 })),
+  };
+  const defaultQuery = { data: undefined, isLoading: false, refetch: vi.fn(), fetchNextPage: vi.fn(), hasNextPage: false };
+  const defaultMutation = { mutate: vi.fn(), mutateAsync: vi.fn(async () => ({})), isPending: false };
+  const endpoint = { useQuery: () => defaultQuery, useInfiniteQuery: () => defaultQuery, useMutation: () => defaultMutation };
+  const trpcProxy: any = new Proxy({}, {
+    get(_target, namespace: string) {
+      if (namespace === 'profile') {
+        return {
+          claimReferral: { useMutation: () => claimMutation },
+          referral: { useQuery: () => ({ ...defaultQuery, data: { code: 'IS7DEMO', totalInvites: 0, totalReward: 0, recentRewards: [] } }) },
+          get: { useQuery: () => defaultQuery },
+          update: { useMutation: () => defaultMutation },
+        };
+      }
+      return new Proxy({}, { get: () => endpoint });
     },
-    profile: {
-      claimReferral: { useMutation: () => claimMutation },
-      referral: { useQuery: () => ({ data: { code: 'IS7DEMO', totalInvites: 0, totalReward: 0, recentRewards: [] }, refetch: vi.fn() }) },
-    },
-  },
-}));
+  });
+  return { claimMutation, trpcProxy };
+});
+
+vi.mock('@/lib/trpc', () => ({ trpc: trpcProxy }));
+
+void React;
 
 import Home from './Home';
 

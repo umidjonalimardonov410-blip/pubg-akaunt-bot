@@ -793,7 +793,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
 
 export const SELLER_MEDIA_MAX_FILES = 12;
 export const SELLER_MEDIA_MAX_BYTES = 200 * 1024 * 1024;
-export const SELLER_DIRECT_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
+export const SELLER_DIRECT_UPLOAD_MAX_BYTES = 40 * 1024 * 1024;
 export const SELLER_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 export const SELLER_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'] as const;
 
@@ -978,7 +978,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
         // Rasmlar yuklashdan oldin brauzerda siqiladi (video siqilmaydi).
         const { file, originalSize, compressed } = await compressImage(original);
         if (compressed) toast.info(`${original.name} siqildi: ${(originalSize / 1048576).toFixed(1)} MB → ${(file.size / 1048576).toFixed(1)} MB`);
-        if (file.type.startsWith('video/') || file.size > SELLER_DIRECT_UPLOAD_MAX_BYTES) {
+        if (file.size > SELLER_DIRECT_UPLOAD_MAX_BYTES) {
           // Katta fayllar (200 MB gacha video) to‘g‘ridan-to‘g‘ri S3 ga yuboriladi.
           const presigned = await presignMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'video/mp4' | 'video/webm' | 'video/quicktime' | 'image/jpeg' | 'image/png' | 'image/webp', size: file.size });
           setVideoPercent(0);
@@ -1016,7 +1016,9 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
             uploaded.push({ url: fallback.url, type: file.type });
           }
         } else {
-          const result = await uploadMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4' | 'video/webm', dataBase64: await fileToBase64(file) });
+          if (file.type.startsWith('video/')) setVideoPercent(10);
+          const result = await uploadMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4' | 'video/webm' | 'video/quicktime', dataBase64: await fileToBase64(file) });
+          if (file.type.startsWith('video/')) setVideoPercent(100);
           uploaded.push({ url: result.url, type: file.type });
         }
         const justUploaded = uploaded[uploaded.length - 1];
@@ -1406,10 +1408,11 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       </section>
 
       {/* ===== Wallet ===== */}
-      <section className="pro-clip overflow-hidden rounded-2xl border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,197,66,.10),rgba(14,16,19,.98))] p-2.5">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+      <section className="hud-crate pro-clip relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,197,66,.12),rgba(10,11,13,.98))] p-2.5">
+        <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-20" />
+        <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <div className="min-w-0">
-            <span className="block text-[8px] font-black uppercase tracking-[0.18em] text-white/35">Hamyon</span>
+            <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.22em] text-amber-200/80"><WalletCards className="h-3 w-3" />Hamyon</span>
             <div className="truncate font-display text-base font-black leading-tight text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[9px] font-bold text-white/40">so‘m</span></div>
           </div>
           <div className="flex shrink-0 gap-1.5">
@@ -1417,8 +1420,9 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-9 items-center rounded-lg border border-white/12 bg-black/40 px-2.5 text-[10px] font-bold text-white/75 active:scale-95">Yechish</button>
           </div>
         </div>
-        {walletAction === 'manual_topup' && <div className="mt-4 rounded-2xl border border-amber-300/20 bg-black/30 p-3.5">
-          <div className="flex items-start justify-between gap-3">
+        {walletAction === 'manual_topup' && <div className="hud-crate relative mt-4 overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
+          <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-10" />
+          <div className="relative flex items-start justify-between gap-3">
             <div><p className="text-sm font-black text-white">Manual to‘lov</p><p className="mt-1 text-[11px] leading-5 text-white/45">Summani tanlang, kartaga o‘tkazing va chek rasmini yuboring. Balans admin tasdig‘idan keyin qo‘shiladi.</p></div>
             <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
           </div>
@@ -1447,10 +1451,10 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         </div>}
         <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-widest text-white/35">Chek holati</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-200/70">Chek holati</span>
             <button type="button" onClick={() => receiptsQuery.refetch()} className="text-[10px] font-bold text-amber-200">Yangilash</button>
           </div>
-          {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+          {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className={`hud-row flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${receipt.status === 'approved' ? 'border-emerald-400/30 bg-emerald-400/[0.06]' : receipt.status === 'rejected' ? 'border-red-500/30 bg-red-500/[0.06]' : 'border-amber-300/30 bg-amber-400/[0.06]'}`}>
             <div><p className="text-[11px] font-bold text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-0.5 text-[10px] text-white/35">{new Date(receipt.createdAt).toLocaleString()}</p></div>
             <div className="shrink-0 text-right"><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? '✅ Balansga tushdi' : receipt.status === 'rejected' ? '❌ Tushmadi' : '⏳ Tekshirilmoqda'}</StatusPill>{(receipt as any).reviewNote && <p className="mt-1 max-w-[150px] text-[10px] leading-4 text-white/40">Sabab: {(receipt as any).reviewNote}</p>}</div>
           </div>)}</div>}

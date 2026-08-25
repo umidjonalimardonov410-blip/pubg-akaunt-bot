@@ -601,6 +601,31 @@ async function sendPaymentCard(chatId: number | string, method: PaymentMethodId,
   return await telegramApiRequest('sendMessage', { chat_id: chatId, text: caption, parse_mode: 'HTML' });
 }
 
+/** Mini App orqali kelgan chek haqida adminlarga xabar (tasdiqlash tugmalari bilan). */
+export async function notifyAdminsAboutDepositReceipt(input: { receiptId: number; userId: number; amount: number; receiptUrl: string }) {
+  const admins = getTelegramAdminIds();
+  if (admins.length === 0) return { sent: false as const, reason: 'no_admins' as const };
+  const base = getPublicBaseUrl();
+  const url = input.receiptUrl.startsWith('http') ? input.receiptUrl : `${base}${input.receiptUrl.startsWith('/') ? '' : '/'}${input.receiptUrl}`;
+  const text = botText('uz').adminNewReceipt
+    .replace('{user}', String(input.userId))
+    .replace('{amount}', formatUzAmount(input.amount))
+    .replace('{url}', url);
+  const reply_markup = {
+    inline_keyboard: [[
+      { text: botText('uz').adminApprove, callback_data: `deposit_ok:${input.receiptId}` },
+      { text: botText('uz').adminReject, callback_data: `deposit_no:${input.receiptId}` },
+    ]],
+  };
+  const results = await Promise.all(admins.map(async adminId => {
+    const photo = await telegramApiRequest('sendPhoto', { chat_id: adminId, photo: url, caption: text, parse_mode: 'HTML', reply_markup });
+    if (photo.ok) return true;
+    const message = await telegramApiRequest('sendMessage', { chat_id: adminId, text, parse_mode: 'HTML', reply_markup });
+    return message.ok;
+  }));
+  return { sent: results.some(Boolean) };
+}
+
 /** Admin tugmasi bosilganda chekni tasdiqlaydi yoki rad etadi. */
 async function reviewDepositReceipt(receiptId: number, approved: boolean, adminTelegramId?: number | string) {
   const db = await getDb();

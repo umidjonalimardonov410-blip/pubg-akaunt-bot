@@ -1,3 +1,4 @@
+import React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Check, Palette } from "lucide-react";
 import { toast } from "sonner";

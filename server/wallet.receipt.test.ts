@@ -37,6 +37,7 @@ vi.mock("./db", async () => {
 
 vi.mock("./telegramBot", () => ({
   notifyTelegramUser: vi.fn(async () => undefined),
+  notifyAdminsAboutDepositReceipt: vi.fn(async () => ({ sent: true })),
 }));
 
 import { appRouter } from "./routers";

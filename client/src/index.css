@@ -685,3 +685,39 @@ body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-off
 }
 .pubg-kenburns { animation: pubgKenBurns 26s ease-in-out infinite; will-change: transform; }
 @media (prefers-reduced-motion: reduce) { .pubg-kenburns { animation: none; } }
+
+/* ==== PUBG HUD (hamyon va chek panellari) ==== */
+.hud-stripes {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(245, 197, 66, 0.14) 0px,
+    rgba(245, 197, 66, 0.14) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+}
+
+.hud-crate::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(245, 197, 66, 0.8), transparent);
+}
+
+.hud-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(245, 197, 66, 0.9), rgba(245, 197, 66, 0.12));
+}

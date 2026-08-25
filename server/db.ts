@@ -120,6 +120,7 @@ export async function searchPubgAccounts(filters: {
   sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'level_desc' | 'popular';
   limit?: number;
   offset?: number;
+  sort?: 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'level_desc';
 }) {
   const db = await getDb();
   if (!db) return [];

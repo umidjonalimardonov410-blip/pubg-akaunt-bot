@@ -36,8 +36,8 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: "120mb" }));
+  app.use(express.urlencoded({ limit: "120mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
 
