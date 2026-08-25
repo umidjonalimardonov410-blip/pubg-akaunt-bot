@@ -51,7 +51,7 @@ describe('SellPage upload and submit flow', () => {
       target: { files: [new File(['bad'], 'notes.txt', { type: 'text/plain' })] },
     });
 
-    expect(screen.getByRole('alert').textContent).toContain('Faqat JPG, PNG, WEBP, MP4, MOV yoki W');
+    expect(screen.getByRole('alert').textContent).toContain('Faqat rasm');
     expect(state.upload).not.toHaveBeenCalled();
   });
 

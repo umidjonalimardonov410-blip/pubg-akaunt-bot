@@ -780,4 +780,7 @@ export const PHRASES: Record<string, { ru: string; en: string }> = {
   "Sotilgan akkaunt": { ru: "Продано аккаунтов", en: "Accounts sold" },
   "Xavfsiz bitim": { ru: "Безопасных сделок", en: "Safe deals" },
   "O‘rtacha yetkazish": { ru: "Средняя выдача", en: "Avg delivery" },
+  "Tilni tanlash": { ru: "Выбор языка", en: "Select language" },
+  "Faqat rasm (JPG, PNG, WEBP, HEIC) yoki video (MP4, MOV, WEBM) fayllari qabul qilinadi.": { ru: "Принимаются только изображения (JPG, PNG, WEBP, HEIC) или видео (MP4, MOV, WEBM).", en: "Only images (JPG, PNG, WEBP, HEIC) or videos (MP4, MOV, WEBM) are accepted." },
+  "To‘ldirish summasi": { ru: "Сумма пополнения", en: "Top-up amount" },
 };

@@ -3,7 +3,7 @@
  * Videolar siqilmaydi — ular presigned URL orqali to'g'ridan-to'g'ri yuboriladi.
  */
 export const MEDIA_MAX_BYTES = 200 * 1024 * 1024;
-export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif', 'image/bmp'] as const;
 export const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const;
 export const ACCEPTED_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES] as readonly string[];
 
@@ -12,8 +12,18 @@ export function formatBytes(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+export function isImageLike(file: Pick<File, 'type' | 'name'>): boolean {
+  if (file.type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(file.name ?? '');
+}
+
+export function isVideoLike(file: Pick<File, 'type' | 'name'>): boolean {
+  if (file.type.startsWith('video/')) return true;
+  return /\.(mp4|webm|mov|m4v)$/i.test(file.name ?? '');
+}
+
 export function validateMediaFile(file: Pick<File, 'type' | 'size' | 'name'>): string | null {
-  if (!ACCEPTED_TYPES.includes(file.type)) {
+  if (!isImageLike(file) && !isVideoLike(file)) {
     return `"${file.name}" formati qo'llab-quvvatlanmaydi. Faqat JPG, PNG, WEBP, MP4, WEBM, MOV.`;
   }
   if (file.size > MEDIA_MAX_BYTES) {
@@ -32,8 +42,9 @@ export async function compressImage(
 ): Promise<CompressionResult> {
   const { maxDimension = 1920, quality = 0.82, maxBytes = 1.5 * 1024 * 1024 } = options;
   const originalSize = file.size;
-  if (!file.type.startsWith('image/') || typeof document === 'undefined') return { file, originalSize, compressed: false };
-  if (file.size <= maxBytes) return { file, originalSize, compressed: false };
+  const needsConvert = !['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+  if (!isImageLike(file) || typeof document === 'undefined') return { file, originalSize, compressed: false };
+  if (file.size <= maxBytes && !needsConvert) return { file, originalSize, compressed: false };
   try {
     const bitmap = await loadImage(file);
     const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
@@ -43,9 +54,9 @@ export async function compressImage(
     const ctx = canvas.getContext('2d');
     if (!ctx) return { file, originalSize, compressed: false };
     ctx.drawImage(bitmap as CanvasImageSource, 0, 0, canvas.width, canvas.height);
-    const targetType = file.type === 'image/png' ? 'image/webp' : file.type;
+    const targetType = ['image/jpeg', 'image/webp'].includes(file.type) ? file.type : file.type === 'image/png' ? 'image/webp' : 'image/jpeg';
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, targetType, quality));
-    if (!blob || blob.size >= file.size) return { file, originalSize, compressed: false };
+    if (!blob || (blob.size >= file.size && !needsConvert)) return { file, originalSize, compressed: false };
     const name = file.name.replace(/\.[^.]+$/, '') + (targetType === 'image/webp' ? '.webp' : '.jpg');
     return { file: new File([blob], name, { type: targetType }), originalSize, compressed: true };
   } catch (error) {

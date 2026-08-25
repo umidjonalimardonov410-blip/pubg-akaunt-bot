@@ -192,6 +192,7 @@ export default function GamerIntro() {
       role="presentation"
       onClick={() => finishRef.current?.()}
     >
+      <div className="intro-bg" />
       <div className="intro-grid" />
       <div className="intro-horizon" />
       <div className="intro-scan" />
@@ -228,7 +229,7 @@ export default function GamerIntro() {
           <div className="intro-hex">
             <span className="intro-hex-ring" />
             <span className="intro-hex-ring intro-hex-ring-2" />
-            <span className="intro-hex-core">IG</span>
+            <span className="intro-hex-core"><img src="/assets/inferno-logo.png" alt="" className="h-full w-full object-contain p-2" /></span>
           </div>
           <h1 className="intro-title" data-text={copy.boot}>{copy.boot}</h1>
           <p className="intro-tag">{copy.tag}</p>
