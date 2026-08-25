@@ -1350,23 +1350,30 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         {[8, 26, 44, 62, 80, 92].map((left, index) => (
           <span key={left} className="pro-ember" style={{ left: `${left}%`, animationDelay: `${index * 0.85}s` }} />
         ))}
-        <div className="relative px-3 pb-3 pt-4 sm:px-6 sm:pt-10">
-          <div className="mobile-scroll-row -mx-3 mb-2 gap-1.5 px-3 sm:mx-0 sm:px-0">
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300/35 bg-black/55 px-2 py-[3px]">
-              <WalletCards className="h-2.5 w-2.5 shrink-0 text-amber-200" />
-              <span className="font-display text-[10px] font-black text-white"><AnimatedNumber value={balance} /></span>
-              <span className="text-[8px] font-bold text-white/40">so‘m</span>
+        <div className="relative px-3 pb-3 pt-3 sm:px-6 sm:pt-6">
+          {/* Statistika paneli */}
+          <div className="mobile-scroll-row -mx-3 mb-3 items-center gap-0 px-3 sm:mx-0 sm:px-0">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-300/35 bg-black/60 px-2.5 py-1.5">
+              <WalletCards className="h-3.5 w-3.5 shrink-0 text-amber-200" />
+              <span className="font-display text-[13px] font-black text-white"><AnimatedNumber value={balance} /></span>
+              <span className="text-[9px] font-bold text-white/40">so‘m</span>
             </span>
-            {[['E‘lon', String(listingsCount)], ['Savdo', String(salesCount)], ['Reyting', reviews.length ? averageRating.toFixed(1) : '—']].map(([label, value]) => (
-              <span key={label} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2 py-[3px] text-[9px] font-bold text-white/60">
-                {label}<b className="text-white">{value}</b>
+            <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-white/55">E‘lon<b className="text-white">{listingsCount}</b></span>
+            <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-white/55">Savdo<b className="text-white">{salesCount}</b></span>
+            <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
+            <span className="inline-flex shrink-0 items-center gap-2 text-[11px] font-bold text-white/55">
+              Reyting
+              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+                <span className="block h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-200" style={{ width: `${Math.min(100, (averageRating / 5) * 100)}%` }} />
               </span>
-            ))}
+            </span>
           </div>
-          <div className="flex items-end gap-2.5">
-            <div className="relative shrink-0">
+          <div className="flex items-end gap-3">
+            <div className="relative shrink-0 pb-3">
               <span className="pro-ring" />
-              <label className="relative grid h-12 w-12 cursor-pointer place-items-center overflow-hidden rounded-full border border-amber-300/40 bg-black/60 text-amber-200 active:scale-95 sm:h-16 sm:w-16">
+              <label className="relative grid h-[68px] w-[68px] cursor-pointer place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/70 bg-black/60 text-amber-200 shadow-[0_0_22px_rgba(245,197,66,.28)] active:scale-95 sm:h-24 sm:w-24">
                 {avatarUrl
                   ? <img src={avatarUrl} alt={displayName} className="img-live h-full w-full object-cover" />
                   : <img src="/assets/pubg-avatar.jpg" alt={displayName} className="img-live h-full w-full object-cover" />}
@@ -1375,40 +1382,52 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
                 </span>
                 <input type="file" accept="image/*" className="sr-only" onChange={event => { const file = event.target.files?.[0]; if (file) pickAvatar(file); event.target.value = ''; }} />
               </label>
+              <span className="absolute inset-x-0 bottom-0 mx-auto flex w-max items-center gap-1 rounded-md border border-amber-300/40 bg-black/85 px-2 py-[2px] text-[8px] font-black uppercase tracking-wider text-amber-100">
+                <Shield className="h-2.5 w-2.5" />{badge === 'Elite sotuvchi' ? 'Elite' : badge === 'Tasdiqlangan sotuvchi' ? 'Tasdiq' : 'Suray'}
+              </span>
             </div>
             <div className="min-w-0 flex-1">
-              <span className="pubg-live inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/15 px-1.5 py-[2px] text-[8px] font-black uppercase tracking-[0.16em] text-amber-100">
-                <span className="h-1 w-1 rounded-full bg-red-400" />{badge}
+              <span className="pubg-live inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-black/45 px-2 py-[3px] text-[9px] font-black uppercase tracking-[0.18em] text-amber-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />{badge}
               </span>
-              <h1 className="mt-1 truncate font-display text-base font-black leading-tight text-white drop-shadow sm:text-2xl">{displayName}</h1>
-              <p className="mt-0.5 flex items-center gap-x-1.5 truncate text-[10px] font-bold text-white/60">
-                <span className="text-amber-200">★ {averageRating.toFixed(1)}</span>
+              <h1 className="mt-1.5 flex items-center gap-2 truncate font-display text-xl font-black uppercase italic leading-tight text-white drop-shadow sm:text-3xl">
+                <Sparkles className="h-5 w-5 shrink-0 text-white/80" />
+                <span className="truncate">{displayName}</span>
+              </h1>
+              <p className="mt-1 flex items-center gap-x-2 truncate text-[11px] font-bold text-white/60">
+                <span className="flex items-center gap-1 text-amber-200"><Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />{averageRating.toFixed(1)}</span>
                 <span className="text-white/25">•</span>
                 <span>{salesCount} savdo</span>
                 <span className="text-white/25">•</span>
                 <span>{listingsCount} e‘lon</span>
               </p>
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <span className="shrink-0 rounded bg-amber-400/20 px-1.5 py-[1px] text-[8px] font-black text-amber-100">LVL {Math.max(1, Math.floor(salesCount / 5) + 1)}</span>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="shrink-0 rounded-md border border-amber-300/40 bg-amber-400/15 px-2 py-[2px] text-[9px] font-black text-amber-100">LVL {Math.max(1, Math.floor(salesCount / 5) + 1)}</span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                   <span className="block h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-amber-200 transition-all duration-700" style={{ width: `${Math.min(100, ((salesCount % 5) / 5) * 100 + 8)}%` }} />
                 </span>
-                <span className="shrink-0 text-[8px] font-bold text-white/40">{5 - (salesCount % 5)} savdo → keyingi daraja</span>
+                <span className="shrink-0 text-[8px] font-bold text-white/40">{5 - (salesCount % 5)} savdo — keyingi daraja</span>
               </div>
             </div>
           </div>
-          <div className="mt-2.5 space-y-1.5">
-            <button onClick={() => onNavigate('/sell')} className="pubg-press flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[linear-gradient(120deg,#f5c542,#ffe08a)] text-[12px] font-black uppercase tracking-wide text-black active:scale-95"><Plus className="h-4 w-4" />Akkaunt sotish</button>
-            <div className="grid grid-cols-4 gap-1.5">
+          <div className="mt-3 space-y-2">
+            <button onClick={() => onNavigate('/sell')} className="pubg-press relative flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] text-[15px] font-black uppercase tracking-wide text-black shadow-[0_0_24px_rgba(240,185,11,.35)] active:scale-95">
+              <span aria-hidden className="pointer-events-none absolute left-1.5 top-1.5 h-3 w-3 border-l-2 border-t-2 border-black/45" />
+              <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 h-3 w-3 border-r-2 border-t-2 border-black/45" />
+              <span aria-hidden className="pointer-events-none absolute bottom-1.5 left-1.5 h-3 w-3 border-b-2 border-l-2 border-black/45" />
+              <span aria-hidden className="pointer-events-none absolute bottom-1.5 right-1.5 h-3 w-3 border-b-2 border-r-2 border-black/45" />
+              <ShoppingBag className="h-5 w-5" />+ Akkaunt sotish
+            </button>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {([
-                [ShoppingBag, 'Buyurtma', () => onNavigate('/orders')],
+                [FileCheck2, 'Buyurtma', () => onNavigate('/orders')],
                 [Clock3, 'Tranzaksiya', () => onNavigate('/transactions')],
                 [Star, 'Sharhlar', () => onNavigate('/reviews')],
-                [MessageCircle, 'Admin', openAdminChat],
+                [Headphones, 'Admin', openAdminChat],
               ] as const).map(([Icon, label, action]) => (
-                <button key={label} onClick={action} className="pubg-press flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-white/12 bg-black/45 px-1 text-[9px] font-black uppercase tracking-wide text-white/75 active:scale-95">
-                  <Icon className="h-4 w-4 text-amber-200" />
-                  <span className="w-full truncate text-center">{label}</span>
+                <button key={label} onClick={action} className="pubg-press flex min-h-[74px] flex-col items-center justify-center gap-1.5 rounded-xl border border-amber-300/25 bg-black/55 px-2 text-[10px] font-black uppercase tracking-wide text-white/85 active:scale-95">
+                  <Icon className="h-5 w-5 text-amber-300" />
+                  <span className="flex w-full items-center justify-center gap-1 truncate text-center">{label}<ChevronRight className="h-3 w-3 shrink-0 text-white/35" /></span>
                 </button>
               ))}
             </div>
@@ -1417,16 +1436,16 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       </section>
 
       {/* ===== Wallet ===== */}
-      <section className="hud-crate pro-clip relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,197,66,.12),rgba(10,11,13,.98))] p-2.5">
+      <section className="hud-crate pro-clip relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,197,66,.12),rgba(10,11,13,.98))] p-3.5">
         <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-20" />
         <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <div className="min-w-0">
-            <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.22em] text-amber-200/80"><WalletCards className="h-3 w-3" />Hamyon</span>
-            <div className="truncate font-display text-base font-black leading-tight text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[9px] font-bold text-white/40">so‘m</span></div>
+            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80"><WalletCards className="h-4 w-4" />Hamyon</span>
+            <div className="mt-1 truncate font-display text-[26px] font-black leading-none text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[11px] font-bold text-white/45">so‘m</span></div>
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <button type="button" aria-label="To‘ldirish" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-9 items-center gap-1 rounded-lg bg-amber-400 px-2.5 text-[10px] font-black text-black active:scale-95"><CreditCard className="h-3.5 w-3.5" />To‘ldirish</button>
-            <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-9 items-center rounded-lg border border-white/12 bg-black/40 px-2.5 text-[10px] font-bold text-white/75 active:scale-95">Yechish</button>
+            <button type="button" aria-label="To‘ldirish" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#22c9ee] px-3.5 text-[12px] font-black text-black shadow-[0_0_18px_rgba(34,201,238,.35)] active:scale-95"><CreditCard className="h-4 w-4" />To‘ldirish</button>
+            <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-11 items-center rounded-xl border border-white/15 bg-black/40 px-3.5 text-[12px] font-bold text-white/80 active:scale-95">Yechish</button>
           </div>
         </div>
         {walletAction === 'manual_topup' && <div className="hud-crate relative mt-4 overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
@@ -1463,11 +1482,11 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         </div>}
         <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-200/70">Chek holati</span>
-            <button type="button" onClick={() => receiptsQuery.refetch()} className="text-[10px] font-bold text-amber-200">Yangilash</button>
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80">Chek holati</span>
+            <button type="button" onClick={() => receiptsQuery.refetch()} className="text-[11px] font-bold text-[#22c9ee]">Yangilash</button>
           </div>
           {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className={`hud-row flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${receipt.status === 'approved' ? 'border-emerald-400/30 bg-emerald-400/[0.06]' : receipt.status === 'rejected' ? 'border-red-500/30 bg-red-500/[0.06]' : 'border-amber-300/30 bg-amber-400/[0.06]'}`}>
-            <div><p className="text-[11px] font-bold text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-0.5 text-[10px] text-white/35">{new Date(receipt.createdAt).toLocaleString()}</p></div>
+            <div><p className="text-[13px] font-black text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Clock3 className="h-3 w-3" />{new Date(receipt.createdAt).toLocaleString()}</p></div>
             <div className="shrink-0 text-right"><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? '✅ Balansga tushdi' : receipt.status === 'rejected' ? '❌ Tushmadi' : '⏳ Tekshirilmoqda'}</StatusPill>{(receipt as any).reviewNote && <p className="mt-1 max-w-[150px] text-[10px] leading-4 text-white/40">Sabab: {(receipt as any).reviewNote}</p>}</div>
           </div>)}</div>}
         </div>
