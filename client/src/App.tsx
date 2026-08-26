@@ -8,6 +8,9 @@ import Home from "./pages/Home";
 import GamerIntro from "./components/GamerIntro";
 import LanguageSync from "./components/LanguageSync";
 import { AutoTranslate } from "./lib/autoTranslate";
+import PageTransition from "./components/pro/PageTransition";
+import { installGlobalHaptics } from "./lib/haptics";
+import { useEffect } from "react";
 
 
 function Router() {
@@ -45,6 +48,7 @@ function Router() {
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
+  useEffect(() => { installGlobalHaptics(); }, []);
   return (
     <ErrorBoundary>
       <ThemeProvider
@@ -56,7 +60,9 @@ function App() {
           <GamerIntro />
           <AutoTranslate />
           <LanguageSync />
-          <Router />
+          <PageTransition>
+            <Router />
+          </PageTransition>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

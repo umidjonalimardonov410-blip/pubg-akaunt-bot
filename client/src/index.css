@@ -864,3 +864,34 @@ body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-off
   .px-frame::before, .px-shine::after, .px-pulse, .px-scan::before, .px-ripple { animation: none !important; }
   .px-img { opacity: 1; filter: none; transform: none; }
 }
+
+/* ============ PRO: skeleton shimmer, press, sticky safe-area ============ */
+.pro-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.08), rgba(255,255,255,.05));
+}
+.pro-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(245,197,66,.16), transparent);
+  animation: pro-shimmer 1.4s infinite;
+}
+@keyframes pro-shimmer { 100% { transform: translateX(100%); } }
+
+.pro-lift { transition: transform .18s ease, box-shadow .18s ease; }
+.pro-lift:hover { transform: translateY(-2px); }
+.pro-lift:active { transform: scale(.98); }
+
+.pro-sticky-space { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .pro-skeleton::after { animation: none; }
+}
