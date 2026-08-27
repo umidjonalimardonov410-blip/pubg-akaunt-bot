@@ -49,6 +49,17 @@ export function initTelegramWebApp() {
   webApp.expand?.();
   webApp.setHeaderColor?.('#08090b');
   webApp.setBackgroundColor?.('#08090b');
+  // Telegram mini-app'da pastki menyu sakrab ketmasligi uchun:
+  // vertikal swipe bilan yopilishni o'chiramiz va viewport balandligini CSS o'zgaruvchiga yozamiz.
+  (webApp as any).disableVerticalSwipes?.();
+  const syncViewport = () => {
+    const height = (webApp as any).viewportStableHeight ?? (webApp as any).viewportHeight;
+    if (typeof height === 'number' && height > 0) {
+      document.documentElement.style.setProperty('--tg-viewport-height', `${height}px`);
+    }
+  };
+  syncViewport();
+  (webApp as any).onEvent?.('viewportChanged', syncViewport);
   return webApp;
 }
 
