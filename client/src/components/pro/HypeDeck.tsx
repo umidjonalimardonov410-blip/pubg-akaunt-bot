@@ -93,7 +93,6 @@ export function MarketPulse() {
 export default function HypeDeck() {
   return (
     <div className="space-y-3">
-      <LiveTicker />
       <MarketPulse />
       <AimTrainer />
     </div>
