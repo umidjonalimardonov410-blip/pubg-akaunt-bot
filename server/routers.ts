@@ -402,9 +402,21 @@ export const appRouter = router({
             `\u{26A0}\u{FE0F} <b>Anti-scam ogohlantirish</b>\n\n#${accountId} e'lon xavf bali: ${risk.score}/100 (${risk.level})\n${risk.flags.map(flag => `\u{2022} ${flag.label}`).join('\n')}`,
           ).catch(() => undefined);
         }
-        await notifyTelegramAdmins(
-          `\u{1F195} <b>Yangi e'lon</b>\n\u{1F464} ${input.playerName} (${input.region})\n\u{1F4B0} ${input.price} so'm\nTasdiqlash uchun admin panelga kiring.`,
-        ).catch(() => undefined);
+        // Tasdiqlash bevosita bot ichida bo'lishi uchun tugmali xabar yuboriladi.
+        try {
+          const { notifyAdminsAboutNewListing } = await import('./telegramBot');
+          await notifyAdminsAboutNewListing({
+            accountId,
+            sellerId: ctx.user.id,
+            playerName: input.playerName,
+            region: input.region,
+            price: input.price,
+            level: input.level,
+            thumbnailUrl: input.thumbnailUrl ?? null,
+          });
+        } catch (error) {
+          console.warn('[Telegram] listing admin notification failed:', error);
+        }
         await notifyOwner({
           title: "Yangi PUBG akkaunt e'loni",
           content: `${input.playerName} (${input.region}) e'loni admin tasdig'ini kutmoqda. Narx: ${input.price} so'm.`,
