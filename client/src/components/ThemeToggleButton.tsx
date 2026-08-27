@@ -43,7 +43,6 @@ export default function ThemeToggleButton() {
     update.mutate(
       { themePreference: next },
       {
-        onSuccess: () => toast.success("Tema saqlandi"),
         onError: () => toast.error("Temani saqlab bo‘lmadi"),
       },
     );
