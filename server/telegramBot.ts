@@ -173,13 +173,33 @@ export function getPublicBaseUrl() {
   return configured.replace(/\/$/, "");
 }
 
-export function getTelegramWebhookSecret() {
-  const configured = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-  if (configured) return configured;
+function deriveTelegramWebhookSecret() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return null;
   // Stable, derivable secret so setWebhook and the handler always agree.
   return createHash("sha256").update(`telegram-webhook:${token}`).digest("base64url");
+}
+
+export function getTelegramWebhookSecret() {
+  const configured = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  if (configured) return configured;
+  return deriveTelegramWebhookSecret();
+}
+
+/**
+ * Telegram keeps the secret_token that was registered with setWebhook. If the
+ * environment changes (TELEGRAM_WEBHOOK_SECRET added/removed) the previously
+ * registered secret stays in place and every update fails with 401 until the
+ * webhook is registered again. Accept both the configured and the derived
+ * secret so a redeploy never locks the bot out.
+ */
+export function getAcceptedTelegramWebhookSecrets() {
+  const secrets = new Set<string>();
+  const configured = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  if (configured) secrets.add(configured);
+  const derived = deriveTelegramWebhookSecret();
+  if (derived) secrets.add(derived);
+  return Array.from(secrets);
 }
 
 export function getTelegramWebhookUrl() {
@@ -1110,13 +1130,39 @@ export async function registerTelegramBot() {
   return { status: "active" as const, commands: commands.ok, menu: menu.ok, webhook: webhook.ok };
 }
 
+let lastWebhookResync = 0;
+
+/**
+ * Re-register the webhook (throttled) so a stale secret_token on Telegram's
+ * side self-heals instead of dropping every update with 401.
+ */
+async function resyncTelegramWebhook() {
+  const now = Date.now();
+  if (now - lastWebhookResync < 60_000) return;
+  lastWebhookResync = now;
+
+  const webhookUrl = getTelegramWebhookUrl();
+  const webhookSecret = getTelegramWebhookSecret();
+  if (!webhookUrl || !process.env.TELEGRAM_BOT_TOKEN) return;
+
+  const result = await telegramApiRequest("setWebhook", {
+    url: webhookUrl,
+    allowed_updates: ["message", "callback_query"],
+    drop_pending_updates: false,
+    ...(webhookSecret ? { secret_token: webhookSecret } : {}),
+  });
+  console.log(`[Telegram] webhook resync ok=${result.ok} url=${webhookUrl}`);
+}
+
 export function registerTelegramWebhook(app: Express) {
   app.post("/api/telegram/webhook", async (req: Request, res: Response) => {
     console.log(`[Telegram Webhook] Received update:`, JSON.stringify(req.body));
     
-    const expectedSecret = getTelegramWebhookSecret();
-    if (expectedSecret && req.header("x-telegram-bot-api-secret-token") !== expectedSecret) {
-      console.warn("[Telegram Webhook] Secret mismatch");
+    const acceptedSecrets = getAcceptedTelegramWebhookSecrets();
+    const providedSecret = req.header("x-telegram-bot-api-secret-token") ?? "";
+    if (acceptedSecrets.length > 0 && !acceptedSecrets.includes(providedSecret)) {
+      console.warn("[Telegram Webhook] Secret mismatch — re-registering webhook");
+      void resyncTelegramWebhook();
       res.status(401).json({ ok: false, message: "Webhook signature tekshiruvi muvaffaqiyatsiz." });
       return;
     }
