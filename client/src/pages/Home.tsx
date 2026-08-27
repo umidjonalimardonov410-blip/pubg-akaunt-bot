@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link, useLocation } from "wouter";
+import { getParentPath, isHomePath } from "@/lib/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -281,12 +282,11 @@ function StatusPill({ children, tone = "red" }: { children: React.ReactNode; ton
 
 function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [headerLocation] = useLocation();
-  const isHomePage = headerLocation === '/' || headerLocation === '';
-  /** Har bir bo'limda ortga qaytish tugmasi bo'lishi uchun. */
+  const isHomePage = isHomePath(headerLocation);
+  /** Har bir bo'limda ortga tugmasi bir xil ishlashi uchun mantiqiy ota-sahifaga qaytamiz. */
   const goBack = () => {
     telegramHaptic('light');
-    if (typeof window !== 'undefined' && window.history.length > 1) window.history.back();
-    else onNavigate('/');
+    onNavigate(getParentPath(headerLocation));
   };
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -1434,12 +1434,9 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       </div>}
       {/* ===== Pro live hero ===== */}
       <section className="pro-live pro-clip relative -mx-1 overflow-hidden rounded-3xl border border-amber-400/25 sm:mx-0">
-        <div className="pro-live__frame" style={{ backgroundImage: `url(${PROFILE_BANNER})` }} />
-        <div className="pro-live__frame" style={{ backgroundImage: `url(${HERO_IMAGE})` }} />
-        <div className="pro-live__frame" style={{ backgroundImage: `url(${SQUAD_IMAGE})` }} />
-        <div className="pro-live__frame" style={{ backgroundImage: `url(${SNIPER_IMAGE})` }} />
+        {/* Profil banneri qotib turadi — aylanma slayd o'chirildi. */}
+        <div className="pro-static-hero" style={{ backgroundImage: `url(${PROFILE_BANNER})` }} />
         <div className="pro-live__grid" />
-        <div className="pro-live__scan" />
         <div className="pro-live__veil" />
         {[8, 26, 44, 62, 80, 92].map((left, index) => (
           <span key={left} className="pro-ember" style={{ left: `${left}%`, animationDelay: `${index * 0.85}s` }} />
@@ -1536,8 +1533,8 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <div className="mt-1 truncate font-display text-[26px] font-black leading-none text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[11px] font-bold text-white/45">so‘m</span></div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" aria-label="To‘ldirish" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#22c9ee] px-4 text-[13px] font-black text-black shadow-[0_0_18px_rgba(34,201,238,.35)] active:scale-95"><CreditCard className="h-4 w-4" />To‘ldirish</button>
-            <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/40 px-4 text-[13px] font-black text-white/85 active:scale-95"><ArrowRight className="h-4 w-4" />Yechish</button>
+            <button type="button" aria-label="To‘ldirish" title="Kartadan balansni to‘ldirish: summani tanlang va chek rasmini yuboring" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'manual_topup'; setWalletAction(opening ? 'manual_topup' : null); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); toast.info(opening ? 'To‘ldirish formasi ochildi — summani tanlang' : 'To‘ldirish formasi yopildi'); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#22c9ee] px-4 text-[13px] font-black text-black shadow-[0_0_18px_rgba(34,201,238,.35)] transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'To‘ldirish'}</button>
+            <button type="button" aria-label="Yechish" title="Balansdan pul yechish: summa va karta raqamini kiriting" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'withdraw'; setWalletAction(opening ? 'withdraw' : null); setAmount(''); toast.info(opening ? 'Yechish formasi ochildi — summani kiriting' : 'Yechish formasi yopildi'); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/40 px-4 text-[13px] font-black text-white/85 transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'Yechish'}</button>
           </div>
         </div>
         {walletAction === 'manual_topup' && <div className="hud-crate relative mt-4 overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
@@ -1817,10 +1814,9 @@ export default function Home() {
     const webApp = initTelegramWebApp();
     if (!webApp) return;
     const goBack = () => {
-      if (typeof window !== 'undefined' && window.history.length > 1) window.history.back();
-      else setLocation('/');
+      setLocation(getParentPath(location));
     };
-    if (page.key === 'home') webApp.BackButton?.hide?.();
+    if (isHomePath(location)) webApp.BackButton?.hide?.();
     else {
       webApp.BackButton?.show?.();
       webApp.BackButton?.onClick?.(goBack);
