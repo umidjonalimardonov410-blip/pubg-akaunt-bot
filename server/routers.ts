@@ -4,8 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads, saveUserFilter, getUserSavedFilters, deleteSavedFilter } from "./db";
-import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits, phraseOverrides } from "../drizzle/schema";
-import { eq, and, gte, desc, sql, or, isNull } from "drizzle-orm";
+import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits, phraseOverrides, promoCodes } from "../drizzle/schema";
+import { eq, and, gte, lt, desc, sql, or, isNull } from "drizzle-orm";
 import { storagePut, storagePresignPut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
@@ -430,11 +430,50 @@ export const appRouter = router({
       }),
   }),
 
+  // Promo codes: validate at checkout, admin-managed
+  promo: router({
+    validate: protectedProcedure
+      .input(z.object({ code: z.string().trim().min(2).max(64) }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const rows = await db.select().from(promoCodes).where(eq(promoCodes.code, input.code.toUpperCase())).limit(1);
+        const promo = rows[0];
+        if (!promo || !promo.isActive) throw new TRPCError({ code: 'NOT_FOUND', message: 'Promo-kod topilmadi yoki faol emas' });
+        if (promo.expiresAt && new Date(promo.expiresAt).getTime() < Date.now()) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Promo-kod muddati tugagan' });
+        if (promo.usedCount >= promo.maxUses) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Promo-kod limiti tugagan' });
+        return { code: promo.code, discountPercent: promo.discountPercent, discountAmount: Number(promo.discountAmount) };
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        code: z.string().trim().min(3).max(64),
+        discountPercent: z.number().int().min(0).max(90).default(0),
+        discountAmount: z.number().int().min(0).default(0),
+        maxUses: z.number().int().min(1).max(100000).default(100),
+        expiresAt: z.string().datetime().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.insert(promoCodes).values({
+          code: input.code.toUpperCase(),
+          discountPercent: input.discountPercent,
+          discountAmount: input.discountAmount.toString(),
+          maxUses: input.maxUses,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        });
+        return { ok: true };
+      }),
+  }),
+
   // Marketplace: Orders
   orders: router({
     create: protectedProcedure
       .input(z.object({
         accountId: z.number(),
+        promoCode: z.string().trim().min(2).max(64).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
@@ -445,8 +484,25 @@ export const appRouter = router({
         if (account.status !== 'available') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Akkaunt sotilmagan' });
         if (account.sellerId === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'O\'z e\'loningizni sotib olmang' });
 
-        const price = account.price.toString();
+        let finalPrice = Number(account.price);
+        if (input.promoCode) {
+          const promoRows = await db.select().from(promoCodes).where(eq(promoCodes.code, input.promoCode.toUpperCase())).limit(1);
+          const promo = promoRows[0];
+          if (!promo || !promo.isActive) throw new TRPCError({ code: 'NOT_FOUND', message: 'Promo-kod topilmadi yoki faol emas' });
+          if (promo.expiresAt && new Date(promo.expiresAt).getTime() < Date.now()) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Promo-kod muddati tugagan' });
+          const discount = Math.round(finalPrice * (promo.discountPercent / 100)) + Number(promo.discountAmount);
+          finalPrice = Math.max(0, finalPrice - discount);
+        }
+        const price = finalPrice.toString();
         const orderResult = await db.transaction(async (tx: any) => {
+          if (input.promoCode) {
+            const promoResult = await tx.update(promoCodes)
+              .set({ usedCount: sql`usedCount + 1` })
+              .where(and(eq(promoCodes.code, input.promoCode.toUpperCase()), eq(promoCodes.isActive, true), lt(promoCodes.usedCount, promoCodes.maxUses)));
+            if (!promoResult || getAffectedRows(promoResult) !== 1) {
+              throw new TRPCError({ code: 'BAD_REQUEST', message: 'Promo-kod limiti tugagan' });
+            }
+          }
           const balanceResult = await tx.update(users)
             .set({ walletBalance: sql`walletBalance - ${price}` })
             .where(and(eq(users.id, ctx.user.id), gte(users.walletBalance, price)));
