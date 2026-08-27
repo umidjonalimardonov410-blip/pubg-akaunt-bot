@@ -39,6 +39,11 @@ export const users = mysqlTable("users", {
   xp: int("xp").default(0).notNull(),
   spinStreak: int("spinStreak").default(0).notNull(),
   lastSpinAt: timestamp("lastSpinAt"),
+
+  // Aim Trainer mini-o'yin (bir martalik chegirma)
+  aimBestScore: int("aimBestScore").default(0).notNull(),
+  aimPlayedAt: timestamp("aimPlayedAt"),
+  aimPromoCode: varchar("aimPromoCode", { length: 32 }),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

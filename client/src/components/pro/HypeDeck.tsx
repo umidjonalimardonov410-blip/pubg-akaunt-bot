@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Crown, Flame, Gauge, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import AimTrainer from "./AimTrainer";
 
 const uz = (value: number) => new Intl.NumberFormat("uz-UZ").format(Math.round(value || 0));
 
@@ -94,6 +95,7 @@ export default function HypeDeck() {
     <div className="space-y-3">
       <LiveTicker />
       <MarketPulse />
+      <AimTrainer />
     </div>
   );
 }

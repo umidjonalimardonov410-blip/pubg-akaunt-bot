@@ -15,6 +15,16 @@ import {
   pickSpinPrize,
 } from "./gamification";
 import { sendTelegramNotification } from "./telegramNotifications";
+import {
+  AIM_DURATION_MS,
+  AIM_MAX_HITS,
+  AIM_PROMO_TTL_MS,
+  AIM_TIERS,
+  buildAimPromoCode,
+  scoreAimHits,
+  signAimToken,
+  verifyAimToken,
+} from "./aimGame";
 
 function money(value: unknown) {
   return Number(value ?? 0);
@@ -250,4 +260,102 @@ export const hypeRouter = router({
       nextSpinAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
     };
   }),
+  /** Aim Trainer holati — foydalanuvchi o'ynaganmi va qanday promo olgan. */
+  aimStatus: protectedProcedure.query(async ({ ctx }) => {
+    const user = await getUserById(ctx.user.id);
+    if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+    const playedAt = (user as any).aimPlayedAt as Date | null | undefined;
+    return {
+      played: Boolean(playedAt),
+      playedAt: playedAt ?? null,
+      bestScore: Number((user as any).aimBestScore ?? 0),
+      promoCode: ((user as any).aimPromoCode as string | null) ?? null,
+      durationMs: AIM_DURATION_MS,
+      tiers: AIM_TIERS,
+    };
+  }),
+
+  /** O'yin sessiyasini boshlaydi — imzolangan token qaytaradi (anti-cheat). */
+  aimStart: protectedProcedure.mutation(async ({ ctx }) => {
+    const user = await getUserById(ctx.user.id);
+    if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+    if ((user as any).aimPlayedAt) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Aim Trainer faqat bir marta o'ynaladi." });
+    }
+    return { token: signAimToken(ctx.user.id), durationMs: AIM_DURATION_MS };
+  }),
+
+  /** Natijani yuborish — ball serverda qayta hisoblanadi va promo-kod beriladi. */
+  aimSubmit: protectedProcedure
+    .input(z.object({ token: z.string().min(8), hits: z.array(z.number()).max(AIM_MAX_HITS * 3) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const user = await getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      if ((user as any).aimPlayedAt) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Aim Trainer faqat bir marta o'ynaladi." });
+      }
+      if (!verifyAimToken(input.token, ctx.user.id)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Sessiya eskirgan — o'yinni qaytadan boshlang." });
+      }
+
+      const result = scoreAimHits(input.hits);
+      const now = new Date();
+      let promoCode: string | null = null;
+
+      await db.transaction(async (tx: any) => {
+        if (result.discountPercent > 0) {
+          promoCode = buildAimPromoCode(ctx.user.id, result.discountPercent, now.getTime());
+          const expiresAt = new Date(now.getTime() + AIM_PROMO_TTL_MS);
+          await tx
+            .insert(promoCodes)
+            .values({ code: promoCode, discountPercent: result.discountPercent, maxUses: 1, isActive: true, expiresAt })
+            .onDuplicateKeyUpdate({ set: { discountPercent: result.discountPercent, isActive: true, expiresAt } });
+        }
+
+        await tx
+          .update(users)
+          .set({
+            aimBestScore: result.score,
+            aimPlayedAt: now,
+            aimPromoCode: promoCode,
+            xp: sql`xp + ${result.score * 10}`,
+          })
+          .where(eq(users.id, ctx.user.id));
+
+        await tx.insert(notifications).values({
+          userId: ctx.user.id,
+          type: "admin_message",
+          title: "Aim Trainer",
+          message: promoCode
+            ? `🎯 ${result.score} ball — ${result.discountPercent}% chegirma: ${promoCode} (24 soat)`
+            : `🎯 ${result.score} ball — chegirma uchun kamida 4 ball kerak edi.`,
+        });
+      });
+
+      await telegramPush(
+        ctx.user.id,
+        [
+          `🎯 Aim Trainer natijasi: ${result.score} ball`,
+          result.tierLabel ? `🏅 Daraja: ${result.tierLabel}` : "",
+          promoCode
+            ? `🎟️ Promo-kod: ${promoCode} — ${result.discountPercent}% chegirma, 24 soat amal qiladi`
+            : "😔 Chegirma uchun 4 ball kerak edi.",
+          `⚡ +${result.score * 10} XP`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+
+      return {
+        score: result.score,
+        rejected: result.rejected,
+        discountPercent: result.discountPercent,
+        tierLabel: result.tierLabel,
+        promoCode,
+        expiresAt: promoCode ? new Date(now.getTime() + AIM_PROMO_TTL_MS) : null,
+        xpGained: result.score * 10,
+      };
+    }),
 });

@@ -275,6 +275,13 @@ export async function resolveChatLanguage(
   return normalizeBotLang(fallback);
 }
 
+/** Aim Trainer mini-o'yin tugmasi matni (bir martalik chegirma). */
+function aimButtonText(lang: BotLang) {
+  if (lang === 'ru') return '🎯 Aim Trainer — скидка до 5%';
+  if (lang === 'en') return '🎯 Aim Trainer — up to 5% off';
+  return '🎯 Aim Trainer — 5% gacha chegirma';
+}
+
 function buildMainKeyboard(lang: BotLang = 'uz', isAdmin = false) {
   const texts = botText(lang);
   const appButton = webAppButton(texts.openApp, '/');
@@ -282,6 +289,7 @@ function buildMainKeyboard(lang: BotLang = 'uz', isAdmin = false) {
   return {
     keyboard: [
       [appButton],
+      [webAppButton(aimButtonText(lang), '/')],
       [{ text: texts.menuMarket }, { text: texts.menuSell }],
       [{ text: texts.menuWallet }, { text: texts.menuListings }],
       [{ text: texts.menuRules }, { text: texts.menuReferral }],
