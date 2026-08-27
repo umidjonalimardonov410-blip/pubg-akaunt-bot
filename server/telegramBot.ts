@@ -10,7 +10,7 @@ import { depositReceipts, transactions, securityAudits, users, notifications, pu
 import { storagePut } from './storage';
 import { and, eq, sql } from 'drizzle-orm';
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL, ADMIN_PANEL_TELEGRAM_ID, ADMIN_PANEL_TELEGRAM_LABEL, ADMIN_PANEL_TELEGRAM_URL } from '../shared/adminContact';
-import { channelTexts, isChannelMember, isForcedSubscriptionEnabled, sendSubscriptionGate } from './telegramChannel';
+import { channelTexts, isChannelMember, isForcedSubscriptionEnabled, sendSubscriptionGate, deleteChannelGateMessage } from './telegramChannel';
 
 
 export type TelegramCommand = {
@@ -41,7 +41,7 @@ export type TelegramUpdate = {
     id: string;
     data?: string;
     from?: { id?: number | string };
-    message?: { chat?: { id?: number | string } };
+    message?: { message_id?: number; chat?: { id?: number | string } };
   };
   message?: {
     text?: string;
@@ -601,8 +601,8 @@ export function getTelegramCommandResponse(command: string, userId?: number | st
   return item;
 }
 
-async function answerTelegramCallback(callbackQueryId: string, text: string) {
-  return await telegramApiRequest('answerCallbackQuery', { callback_query_id: callbackQueryId, text, show_alert: false });
+async function answerTelegramCallback(callbackQueryId: string, text: string, showAlert = false) {
+  return await telegramApiRequest('answerCallbackQuery', { callback_query_id: callbackQueryId, text, show_alert: showAlert });
 }
 
 async function sendWalletMenu(chatId: number | string, lang: BotLang = getChatLanguage(chatId)) {
@@ -955,11 +955,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const cbLang = getChatLanguage(callbackChatId);
       const t = channelTexts(cbLang);
       const subscribed = await isChannelMember(callback.from?.id);
-      await answerTelegramCallback(callback.id, subscribed ? t.done : t.stillNot);
+      await answerTelegramCallback(callback.id, subscribed ? t.done : t.stillNot, !subscribed);
       if (!subscribed) {
-        const gate = await sendSubscriptionGate(callbackChatId, cbLang);
-        return { handled: true as const, command: 'check_sub', status: gate.status, sent: gate.ok, subscribed: false };
+        // Yangi xabar yubormaymiz — eski gate xabari joyida qoladi (spam bo'lmasin).
+        return { handled: true as const, command: 'check_sub', status: 'active' as const, sent: false, subscribed: false };
       }
+      // Obuna tasdiqlandi — gate xabarini o'chiramiz va menyuni ochamiz.
+      await deleteChannelGateMessage(callbackChatId, callback.message?.message_id);
       const welcome = await sendWelcome(callbackChatId, cbLang, callback.from?.id ? `#${callback.from.id}` : 'do‘stim');
       await telegramApiRequest('sendMessage', {
         chat_id: callbackChatId,

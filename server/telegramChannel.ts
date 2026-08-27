@@ -124,6 +124,12 @@ export async function sendSubscriptionGate(chatId: number | string, lang: string
   });
 }
 
+/** Majburiy obuna xabarini o'chirish (obuna tasdiqlangach). */
+export async function deleteChannelGateMessage(chatId: number | string, messageId?: number) {
+  if (!messageId) return { ok: false as const, status: 'skipped' as const };
+  return await channelApiRequest('deleteMessage', { chat_id: chatId, message_id: messageId });
+}
+
 function publicBaseUrl() {
   const configured =
     process.env.TELEGRAM_MINI_APP_URL ||
