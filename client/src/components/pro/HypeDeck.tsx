@@ -1,10 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Crown, Flame, Gauge, Gift, ShieldCheck, Sparkles, Timer, TrendingUp, Trophy, Zap } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { Crown, Flame, Gauge, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { haptic } from "@/lib/haptics";
 
 const uz = (value: number) => new Intl.NumberFormat("uz-UZ").format(Math.round(value || 0));
 
@@ -93,99 +89,11 @@ export function MarketPulse() {
   );
 }
 
-/** Daraja, XP progressi va nishonlar. */
-export function LevelCard() {
-  const { isAuthenticated } = useAuth();
-  const me = trpc.hype.me.useQuery(undefined, { enabled: isAuthenticated, staleTime: 20_000 });
-  if (!isAuthenticated || !me.data) return null;
-  const data = me.data;
-  const earned = data.badges.filter(badge => badge.earned);
-  return (
-    <section className="hype-card relative overflow-hidden rounded-2xl border border-amber-400/20 bg-[#0e1013] p-4">
-      <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-amber-400/10 blur-3xl" />
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">Sizning darajangiz</span>
-          <h3 className="mt-1 font-display text-xl font-black text-white">
-            LVL {data.level} <span className="text-amber-200">{data.title}</span>
-          </h3>
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/25 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-black text-amber-100">
-          <Zap className="h-3.5 w-3.5" />
-          {uz(data.xp)} XP
-        </span>
-      </div>
-      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
-        <motion.div
-          className="xp-bar h-full rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.round(data.progress * 100)}%` }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
-        />
-      </div>
-      <p className="mt-1.5 text-[11px] text-white/40">
-        Keyingi darajaga {uz(Math.max(0, data.nextLevelXp - data.xp))} XP • streak {data.spinStreak} kun
-      </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {data.badges.map(badge => (
-          <span
-            key={badge.key}
-            title={badge.hint}
-            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold ${
-              badge.earned
-                ? "border-amber-400/30 bg-amber-400/10 text-amber-100"
-                : "border-white/[0.07] bg-white/[0.02] text-white/25"
-            }`}
-          >
-            <span>{badge.emoji}</span>
-            {badge.label}
-          </span>
-        ))}
-      </div>
-      <p className="mt-2 text-[10px] text-white/30">{earned.length}/{data.badges.length} nishon ochilgan</p>
-    </section>
-  );
-}
-
-
-/** Eng faol treyderlar reytingi. */
-export function TopTraders() {
-  const traders = trpc.hype.topTraders.useQuery({ limit: 5 }, { staleTime: 60_000 });
-  const rows = traders.data ?? [];
-  if (rows.length === 0) return null;
-  return (
-    <section className="hype-card rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4">
-      <div className="flex items-center gap-2">
-        <Trophy className="h-4 w-4 text-amber-300" />
-        <h3 className="font-display text-sm font-black uppercase tracking-wider text-white">Top treyderlar</h3>
-      </div>
-      <div className="mt-3 space-y-2">
-        {rows.map(row => (
-          <div key={row.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-            <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-black ${row.rank === 1 ? "bg-amber-400/20 text-amber-200" : "bg-white/[0.05] text-white/45"}`}>
-              {row.rank}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-black text-white">
-                {row.name} {row.verified ? <ShieldCheck className="inline h-3 w-3 text-amber-300" /> : null}
-              </p>
-              <p className="text-[10px] text-white/35">LVL {row.level} • {row.title} • {row.totalSales} savdo</p>
-            </div>
-            <span className="shrink-0 text-[11px] font-bold text-amber-200">★ {row.rating.toFixed(1)}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 export default function HypeDeck() {
   return (
     <div className="space-y-3">
       <LiveTicker />
       <MarketPulse />
-      <LevelCard />
-      <TopTraders />
     </div>
   );
 }
