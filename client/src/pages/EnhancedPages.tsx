@@ -5,7 +5,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
 import { referralShareUrl, shareTelegramText, telegramHaptic } from '@/lib/telegram';
 
-const CARD_IMAGE = '/manus-storage/soldier-red_6bdf1882.jpg';
+const CARD_IMAGE = '/assets/pubg-card-1.jpg';
 const uzNumber = (value: number) => new Intl.NumberFormat('uz-UZ').format(value);
 
 type ListingLike = { id: number; playerName: string; level: number; rank: string; price: number; region: string; image: string; description?: string; tag?: string };

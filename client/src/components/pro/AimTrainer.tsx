@@ -14,7 +14,7 @@ function randomTarget(id: number): Target {
     id,
     x: 8 + Math.random() * 84,
     y: 12 + Math.random() * 76,
-    size: 34 + Math.random() * 22,
+    size: 44 + Math.random() * 22,
   };
 }
 
@@ -133,7 +133,7 @@ export default function AimTrainer() {
 
       {phase === "playing" ? (
         <div
-          className="relative mt-3 h-52 w-full select-none overflow-hidden rounded-xl border border-amber-400/20 bg-[#08090b]"
+          className="relative mt-3 h-[58vw] max-h-72 min-h-52 w-full touch-none select-none overflow-hidden rounded-xl border border-amber-400/20 bg-[#08090b]"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
@@ -157,6 +157,16 @@ export default function AimTrainer() {
 
       {phase !== "playing" ? (
         <div className="relative mt-3">
+          {!played && !result && (
+            <img
+              src="/assets/pro/aim.jpg"
+              alt="Snayper pritseli"
+              loading="lazy"
+              width={1024}
+              height={512}
+              className="mb-3 h-24 w-full rounded-xl border border-white/[0.06] object-cover opacity-80 sm:h-28"
+            />
+          )}
           {result || (played && savedPromo) ? (
             <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.07] p-3">
               <p className="text-xs font-bold text-white">

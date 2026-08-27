@@ -15,9 +15,24 @@ import { telegramHaptic } from "@/lib/telegram";
 
 const uz = (value: number) => Number(value || 0).toLocaleString("uz-UZ");
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Card({ children, className = "", banner, bannerAlt }: { children: React.ReactNode; className?: string; banner?: string; bannerAlt?: string }) {
   return (
-    <section className={`card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 ${className}`}>{children}</section>
+    <section className={`card-glow overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e1013] ${className}`}>
+      {banner && (
+        <div className="relative h-20 w-full overflow-hidden sm:h-24">
+          <img
+            src={banner}
+            alt={bannerAlt ?? ""}
+            loading="lazy"
+            width={1024}
+            height={512}
+            className="h-full w-full object-cover opacity-70"
+          />
+          <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0e1013] via-[#0e1013]/40 to-transparent" />
+        </div>
+      )}
+      <div className="p-3.5 sm:p-4">{children}</div>
+    </section>
   );
 }
 
@@ -39,7 +54,7 @@ export function TrustRankBadge({ userId }: { userId: number }) {
   const data = query.data;
   if (!data) return null;
   return (
-    <Card>
+    <Card banner="/assets/pro/trust.jpg" bannerAlt="Ishonch qalqoni">
       <Heading icon={<ShieldCheck className="h-4 w-4" />} title="Ishonch reytingi" sub={`${data.completedOrders} yakunlangan savdo`} />
       <div className="mt-3 flex items-center gap-3">
         <span
@@ -80,7 +95,7 @@ export function FairPriceMeter({ accountId }: { accountId: number }) {
   if (!data) return null;
   const ratio = Math.max(0, Math.min(1.8, Number(data.price) / Math.max(1, Number(data.fair))));
   return (
-    <Card>
+    <Card banner="/assets/pro/fairprice.jpg" bannerAlt="Narx o‘lchagich">
       <Heading icon={<Gauge className="h-4 w-4" />} title="Fair-price radar" sub="Bozor medianasi asosida" />
       <div className="mt-3 flex items-end justify-between gap-3">
         <div>
@@ -116,7 +131,7 @@ export function RiskScanCard({ accountId }: { accountId: number }) {
   const tone = data.level === "safe" ? "#22c55e" : data.level === "watch" ? "#eab308" : data.level === "risky" ? "#f97316" : "#ef4444";
   const label = data.level === "safe" ? "Xavfsiz" : data.level === "watch" ? "E'tiborli bo'ling" : data.level === "risky" ? "Xavfli" : "Juda xavfli";
   return (
-    <Card>
+    <Card banner="/assets/pro/scan.jpg" bannerAlt="Anti-scam radar">
       <Heading icon={<ShieldAlert className="h-4 w-4" />} title="Anti-scam skaner" sub={`Xavf bali ${data.score}/100`} />
       <span className="mt-3 inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-black" style={{ borderColor: `${tone}55`, background: `${tone}1a`, color: tone }}>
         {label}
@@ -162,7 +177,7 @@ export function HoldButton({ accountId }: { accountId: number }) {
 
   if (status.data?.held && !status.data.mine) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2.5 text-[11px] font-bold text-rose-200">
+      <div className="flex items-center gap-2 rounded-xl border border-rose-400/25 bg-rose-400/10 min-h-11 px-3 py-2.5 text-[11px] font-bold text-rose-200">
         <Timer className="h-4 w-4" />Boshqa xaridor bron qilgan • {countdown}
       </div>
     );
@@ -171,7 +186,7 @@ export function HoldButton({ accountId }: { accountId: number }) {
     return (
       <button
         onClick={() => { telegramHaptic("light"); release.mutate({ accountId }); }}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2.5 text-[11px] font-bold text-emerald-200 active:scale-95"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 min-h-11 px-3 py-2.5 text-[11px] font-bold text-emerald-200 active:scale-95"
       >
         <AlarmClock className="h-4 w-4" />Siz bron qildingiz • {countdown} • bekor qilish
       </button>
@@ -181,7 +196,7 @@ export function HoldButton({ accountId }: { accountId: number }) {
     <button
       onClick={() => { telegramHaptic("light"); hold.mutate({ accountId }); }}
       disabled={hold.isPending}
-      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[11px] font-bold text-white/80 transition active:scale-95"
+      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] min-h-11 px-3 py-2.5 text-[11px] font-bold text-white/80 transition active:scale-95"
     >
       <Timer className="h-4 w-4 text-amber-200" />{hold.isPending ? "Bron qilinmoqda..." : "15 daqiqaga bron qilish"}
     </button>
@@ -195,7 +210,7 @@ export function DealRoomPanel({ orderId }: { orderId: number }) {
   const countdown = useCountdown(data?.deadline ?? null);
   if (!data) return null;
   return (
-    <Card className={data.yourTurn ? "ring-1 ring-amber-300/30" : ""}>
+    <Card banner="/assets/pro/dealroom.jpg" bannerAlt="Kafolatli savdo" className={data.yourTurn ? "ring-1 ring-amber-300/30" : ""}>
       <Heading icon={<Handshake className="h-4 w-4" />} title={`Deal Room #${data.orderId}`} sub={`${uz(data.price)} so'm kafolatda`} />
       <div className="mt-3 flex items-center justify-between gap-3">
         <span className="text-xs font-black text-white">{data.label}</span>
@@ -222,7 +237,7 @@ export function TopSellersBoard({ limit = 10 }: { limit?: number }) {
   const rows = query.data ?? [];
   if (rows.length === 0) return null;
   return (
-    <Card>
+    <Card banner="/assets/pro/leaderboard.jpg" bannerAlt="Top sotuvchilar kubogi">
       <Heading icon={<Trophy className="h-4 w-4" />} title="Top sotuvchilar" sub="Ishonch bali bo'yicha" />
       <ul className="mt-3 space-y-2">
         {rows.map((row: any, index: number) => (
@@ -265,7 +280,7 @@ export function CashbackCard() {
 /** E'lon sahifasidagi to'liq pro-blok. */
 export default function ProDetailPanel({ accountId, sellerId }: { accountId: number; sellerId: number }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <FairPriceMeter accountId={accountId} />
       <RiskScanCard accountId={accountId} />
       <TrustRankBadge userId={sellerId} />
