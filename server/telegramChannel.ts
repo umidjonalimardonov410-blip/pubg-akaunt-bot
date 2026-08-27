@@ -76,8 +76,8 @@ export async function isChannelMember(userId?: number | string) {
 
 const SUBSCRIBE_TEXTS = {
   uz: {
-    title: '🔒 Avval kanalga obuna bo‘ling',
-    body: 'Botdan foydalanish uchun rasmiy kanalimizga obuna bo‘lishingiz shart.\nU yerda sotilgan akkauntlar, narxlar va yangi e’lonlar chiqib turadi.',
+    title: '🔒 KANALGA OBUNA BO‘LING',
+    body: 'Botdan foydalanish uchun rasmiy kanalimizga obuna bo‘ling.\n\n📌 Bu kanalda sotilgan PUBG akkauntlar va ularning narxlari ko‘rsatiladi.\n\n👇 Obuna bo‘ling va «Obunani tekshirish» tugmasini bosing.',
     join: '📢 Kanalga obuna bo‘lish',
     check: '✅ Obunani tekshirish',
     stillNot: '❌ Obuna topilmadi. Iltimos, kanalga qo‘shiling va yana tekshiring.',
@@ -112,7 +112,7 @@ export async function sendSubscriptionGate(chatId: number | string, lang: string
   const t = channelTexts(lang);
   return await channelApiRequest('sendMessage', {
     chat_id: chatId,
-    text: `<b>${t.title}</b>\n\n${t.body}\n\n👉 ${getChannelUrl()}`,
+    text: `<b>${t.title}</b>\n\n${t.body}`,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
     reply_markup: {

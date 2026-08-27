@@ -33,7 +33,9 @@ describe('Majburiy kanal obunasi', () => {
     expect(result.command).toBe('force_subscribe');
     const gateCall = fetchMock.mock.calls.find(call => String(call[0]).includes('/sendMessage'));
     const body = JSON.parse(String(gateCall?.[1]?.body));
-    expect(body.text).toContain(getChannelUrl());
+    expect(body.text).toContain('KANALGA OBUNA BO‘LING');
+    expect(body.text).toContain('sotilgan PUBG akkauntlar');
+    expect(body.reply_markup.inline_keyboard[0][0].url).toBe(getChannelUrl());
     expect(JSON.stringify(body.reply_markup)).toContain('check_sub');
   });
 
