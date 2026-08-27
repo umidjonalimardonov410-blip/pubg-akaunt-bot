@@ -6,7 +6,7 @@ import { createTelegramLoginToken } from './telegramLoginTokens';
 import { listFaq } from './faqData';
 const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 import { botText, matchMenuKey, normalizeBotLang, type BotLang } from './botTexts';
-import { depositReceipts, transactions, securityAudits, users, notifications } from '../drizzle/schema';
+import { depositReceipts, transactions, securityAudits, users, notifications, pubgAccounts } from '../drizzle/schema';
 import { storagePut } from './storage';
 import { and, eq, sql } from 'drizzle-orm';
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL, ADMIN_PANEL_TELEGRAM_ID, ADMIN_PANEL_TELEGRAM_LABEL, ADMIN_PANEL_TELEGRAM_URL } from '../shared/adminContact';
@@ -29,6 +29,7 @@ export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
   { command: "wallet", description: "Wallet va to‘lovlar", title: "Inferno Wallet", text: "Summani tanlang, UZCARD yoki VISA’ga o‘tkazing.\nChek rasmini yuboring — admin tasdiqlagach balans qo‘shiladi.", path: "/profile" },
   { command: "support", description: "Yordam markazi", title: "Yordam markazi", text: "Muammo bo‘lsa, buyurtma raqami va dalillar bilan ticket yuboring. Login yoki parolni hech qachon chatga yozmang.", path: "/support" },
   { command: "contactadmin", description: "Admin bilan bog‘lanish", title: "Admin bilan aloqa", text: "Savdo, to‘lov yoki nizo bo‘yicha to‘g‘ridan-to‘g‘ri admin bilan bog‘laning.", path: "/support" },
+  { command: "listings", description: "Tasdiqlash kutayotgan e’lonlar", title: "E’lon moderatsiyasi", text: "Yangi qo‘yilgan akkauntlarni shu yerda tasdiqlang, rad eting yoki o‘chiring.", path: "/admin", adminOnly: true },
   { command: "admin", description: "Admin nazorati", title: "Admin nazorati", text: "E’lonlar, escrow, nizolar va support navbatini tartibli ravishda boshqaring.", path: "/admin", adminOnly: true },
 ];
 
@@ -654,6 +655,140 @@ export async function notifyAdminsAboutDepositReceipt(input: { receiptId: number
   return { sent: results.some(Boolean) };
 }
 
+
+/** ===== E'lon (akkaunt) moderatsiyasi — to'g'ridan-to'g'ri bot ichida ===== */
+
+function listingAdminKeyboard(accountId: number) {
+  return {
+    inline_keyboard: [[
+      { text: '\u2705 Tasdiqlash', callback_data: `listing_ok:${accountId}` },
+      { text: '\u274C Rad etish', callback_data: `listing_no:${accountId}` },
+    ], [
+      { text: '\u{1F5D1} O\u2018chirish', callback_data: `listing_del:${accountId}` },
+    ]],
+  };
+}
+
+/** Mini App'da yangi akkaunt qo'yilganda adminlarga tasdiqlash tugmalari bilan xabar. */
+export async function notifyAdminsAboutNewListing(input: {
+  accountId: number;
+  sellerId: number;
+  playerName: string;
+  region: string;
+  price: number;
+  level?: number;
+  thumbnailUrl?: string | null;
+}) {
+  const admins = getTelegramAdminIds();
+  if (admins.length === 0) return { sent: false as const, reason: 'no_admins' as const };
+  const text = [
+    `\u{1F195} <b>Yangi akkaunt e'loni</b>`,
+    ``,
+    `\u{1F194} E'lon: <b>#${input.accountId}</b>`,
+    `\u{1F464} O\u2018yinchi: <b>${escapeHtml(input.playerName)}</b>`,
+    `\u{1F30D} Mintaqa: ${escapeHtml(input.region)}${input.level ? ` \u00B7 LVL ${input.level}` : ''}`,
+    `\u{1F4B0} Narx: <b>${formatUzAmount(input.price)}</b> so\u2018m`,
+    `\u{1F9D1} Sotuvchi ID: <code>${input.sellerId}</code>`,
+    ``,
+    `Quyidagi tugmalar orqali shu yerda tasdiqlang yoki o\u2018chiring.`,
+  ].join('\n');
+  const reply_markup = listingAdminKeyboard(input.accountId);
+  const base = getPublicBaseUrl();
+  const photo = input.thumbnailUrl
+    ? (input.thumbnailUrl.startsWith('http') ? input.thumbnailUrl : `${base}${input.thumbnailUrl.startsWith('/') ? '' : '/'}${input.thumbnailUrl}`)
+    : '';
+  const results = await Promise.all(admins.map(async adminId => {
+    if (photo) {
+      const sentPhoto = await telegramApiRequest('sendPhoto', { chat_id: adminId, photo, caption: text, parse_mode: 'HTML', reply_markup });
+      if (sentPhoto.ok) return true;
+    }
+    const sent = await telegramApiRequest('sendMessage', { chat_id: adminId, text, parse_mode: 'HTML', reply_markup });
+    return sent.ok;
+  }));
+  return { sent: results.some(Boolean) };
+}
+
+/** Admin bot tugmasi orqali e'lonni tasdiqlaydi, rad etadi yoki o'chiradi. */
+export async function reviewListing(accountId: number, action: 'approve' | 'reject' | 'delete', adminTelegramId?: number | string) {
+  const db = await getDb();
+  if (!db) return { ok: false as const, reason: 'database_unavailable' as const };
+  const rows = await db.select().from(pubgAccounts).where(eq(pubgAccounts.id, accountId)).limit(1);
+  const account = rows[0];
+  if (!account) return { ok: false as const, reason: 'not_found' as const };
+  if (account.status === 'sold') return { ok: false as const, reason: 'already_sold' as const };
+
+  const note = `telegram:${adminTelegramId ?? 'admin'}`;
+  if (action === 'approve') {
+    await db.update(pubgAccounts)
+      .set({ status: 'available', isVerified: true, verificationNotes: `Admin tasdiqladi (${note})` })
+      .where(eq(pubgAccounts.id, accountId));
+  } else if (action === 'reject') {
+    await db.update(pubgAccounts)
+      .set({ status: 'delisted', isVerified: false, verificationNotes: `Admin rad etdi (${note})` })
+      .where(eq(pubgAccounts.id, accountId));
+  } else {
+    await db.delete(pubgAccounts).where(eq(pubgAccounts.id, accountId));
+  }
+
+  await db.insert(securityAudits).values({
+    userId: account.sellerId,
+    eventType: `listing_${action}_telegram`,
+    riskScore: 0,
+    details: JSON.stringify({ accountId, reviewedBy: note }),
+  }).catch(() => undefined);
+
+  const title = action === 'approve' ? "E'lon tasdiqlandi" : action === 'reject' ? "E'lon rad etildi" : "E'lon o‘chirildi";
+  const message = action === 'approve'
+    ? `${account.playerName} akkaunti bozorda ko‘rinmoqda.`
+    : action === 'reject'
+      ? `${account.playerName} akkaunti admin tomonidan rad etildi.`
+      : `${account.playerName} akkaunti admin tomonidan o‘chirildi.`;
+
+  if (action !== 'delete') {
+    await db.insert(notifications).values({
+      userId: account.sellerId,
+      type: 'new_listing',
+      title,
+      message,
+      accountId,
+    }).catch(() => undefined);
+  } else {
+    await db.insert(notifications).values({ userId: account.sellerId, type: 'admin_message', title, message }).catch(() => undefined);
+  }
+
+  const owner = await db.select({ openId: users.openId }).from(users).where(eq(users.id, account.sellerId)).limit(1);
+  const openId = owner[0]?.openId ?? '';
+  if (openId.startsWith('telegram:')) {
+    const sellerChatId = openId.slice('telegram:'.length);
+    await telegramApiRequest('sendMessage', {
+      chat_id: sellerChatId,
+      text: `${action === 'approve' ? '\u2705' : action === 'reject' ? '\u274C' : '\u{1F5D1}'} <b>${escapeHtml(title)}</b>\n\n${escapeHtml(message)}`,
+      parse_mode: 'HTML',
+    }).catch(() => undefined);
+  }
+  return { ok: true as const, playerName: account.playerName, action };
+}
+
+/** Adminlar uchun: tasdiqlash kutayotgan e'lonlar ro'yxati. */
+async function sendPendingListings(chatId: number | string) {
+  const db = await getDb();
+  if (!db) return await telegramApiRequest('sendMessage', { chat_id: chatId, text: 'Baza hozir mavjud emas.' });
+  const rows = await db.select().from(pubgAccounts).where(eq(pubgAccounts.status, 'pending_verification')).limit(10);
+  if (rows.length === 0) {
+    return await telegramApiRequest('sendMessage', { chat_id: chatId, text: '\u2705 Tasdiqlash kutayotgan e\u2018lon yo\u2018q.' });
+  }
+  let last: Awaited<ReturnType<typeof telegramApiRequest>> = { ok: false as const, status: 'setup_required' as const } as any;
+  for (const account of rows) {
+    last = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `\u{1F4E6} <b>#${account.id} ${escapeHtml(account.playerName)}</b>\n\u{1F30D} ${escapeHtml(account.region)} \u00B7 LVL ${account.level}\n\u{1F4B0} ${formatUzAmount(Number(account.price))} so\u2018m`,
+      parse_mode: 'HTML',
+      reply_markup: listingAdminKeyboard(account.id),
+    });
+  }
+  return last;
+}
+
 /** Admin tugmasi bosilganda chekni tasdiqlaydi yoki rad etadi. */
 async function reviewDepositReceipt(receiptId: number, approved: boolean, adminTelegramId?: number | string) {
   const db = await getDb();
@@ -900,6 +1035,25 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         : await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: cbTexts.walletSoon });
       return { handled: true as const, command: 'wallet_soon', status: sent.status, sent: sent.ok };
     }
+    const listingMatch = /^listing_(ok|no|del):(\d+)$/.exec(data);
+    if (listingMatch) {
+      if (!isTelegramAdmin(callback.from?.id)) {
+        await answerTelegramCallback(callback.id, '\u26D4');
+        return { handled: true as const, command: 'listing_review', status: 'active' as const, sent: false };
+      }
+      const action = listingMatch[1] === 'ok' ? 'approve' as const : listingMatch[1] === 'no' ? 'reject' as const : 'delete' as const;
+      const accountId = Number(listingMatch[2]);
+      const review = await reviewListing(accountId, action, callback.from?.id);
+      await answerTelegramCallback(callback.id, review.ok ? (action === 'approve' ? '\u2705' : action === 'reject' ? '\u274C' : '\u{1F5D1}') : '\u26A0\uFE0F');
+      const label = action === 'approve' ? 'tasdiqlandi' : action === 'reject' ? 'rad etildi' : 'o\u2018chirildi';
+      const sent = await telegramApiRequest('sendMessage', {
+        chat_id: callbackChatId,
+        text: review.ok
+          ? `${action === 'approve' ? '\u2705' : action === 'reject' ? '\u274C' : '\u{1F5D1}'} #${accountId} e'lon ${label}.`
+          : `\u26A0\uFE0F #${accountId} e'lon ustida amal bajarilmadi (${String((review as { reason?: string }).reason ?? 'xatolik')}).`,
+      });
+      return { handled: true as const, command: 'listing_review', status: sent.status, sent: sent.ok };
+    }
     const depositMatch = /^deposit_(ok|no):(\d+)$/.exec(data);
     if (depositMatch) {
       if (!isTelegramAdmin(callback.from?.id)) {
@@ -1019,6 +1173,14 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       reply_markup: buildInlineKeyboard('/support'),
     });
     return { handled: true as const, command: 'faq', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'listings' || command === 'elonlar' || command === 'akkauntlar') {
+    if (!isAdminUser) {
+      const denied = await telegramApiRequest('sendMessage', { chat_id: chatId, text: 'Bu bo\u2018lim faqat admin uchun.' });
+      return { handled: true as const, command: 'listings', status: denied.status, sent: denied.ok };
+    }
+    const sent = await sendPendingListings(chatId);
+    return { handled: true as const, command: 'listings', status: sent.status, sent: sent.ok };
   }
   if (command === 'admin' || command === 'panel' || rawText === botText('uz').menuPanel || rawText === botText('ru').menuPanel || rawText === botText('en').menuPanel) {
     if (!isAdminUser) {
