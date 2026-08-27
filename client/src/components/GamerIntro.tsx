@@ -229,7 +229,7 @@ export default function GamerIntro() {
           <div className="intro-hex">
             <span className="intro-hex-ring" />
             <span className="intro-hex-ring intro-hex-ring-2" />
-            <span className="intro-hex-core"><img src="/assets/inferno-logo.png" alt="" className="h-full w-full object-contain p-2" /></span>
+            <span className="intro-hex-core"><img loading="lazy" decoding="async" src="/assets/inferno-logo.png" alt="" className="h-full w-full object-contain p-2" /></span>
           </div>
           <h1 className="intro-title" data-text={copy.boot}>{copy.boot}</h1>
           <p className="intro-tag">{copy.tag}</p>

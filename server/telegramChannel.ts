@@ -296,3 +296,124 @@ export async function postSoldAccountToChannel(account: SoldAccountPost) {
   });
   return sent.ok ? { ok: true as const, mode: 'text' as const } : { ok: false as const, reason: 'failed' as const };
 }
+
+/** ===== Yangi (premium) e'lon posti — sozlanadigan ===== */
+
+/** Yangi e'lonlar kanalga joylanadimi (default: yoqilgan). */
+export function isNewListingPostEnabled() {
+  const flag = (process.env.TELEGRAM_POST_NEW_LISTINGS ?? 'true').toLowerCase();
+  return flag !== 'false' && flag !== '0' && flag !== 'off';
+}
+
+/** Faqat shu narxdan qimmat e'lonlar "premium" hisoblanadi (0 = hammasi). */
+export function newListingMinPrice() {
+  const raw = Number(process.env.TELEGRAM_POST_MIN_PRICE ?? 0);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+export function shouldPostNewListing(price: number | string, isPremium = false) {
+  if (!isNewListingPostEnabled()) return false;
+  if (isPremium) return true;
+  return Number(price || 0) >= newListingMinPrice();
+}
+
+export type NewListingPost = SoldAccountPost & { botUsername?: string | null };
+
+/** Pro darajali "YANGI E'LON" posti matni. */
+export function buildNewListingCaption(account: NewListingPost) {
+  const price = Number(account.price || 0);
+  const lines: string[] = [];
+  lines.push('🆕 <b>YANGI AKKAUNT SOTUVDA</b> 🔥');
+  lines.push('━━━━━━━━━━━━━━━━━━');
+  lines.push(`🎮 <b>${escapeHtml(account.title || `PUBG akkaunt #${account.accountId}`)}</b>`);
+  lines.push('');
+
+  const stats: string[] = [];
+  if (account.level) stats.push(`🏅 Level: <b>${account.level}</b>`);
+  if (account.tier) stats.push(`🌍 Region: <b>${escapeHtml(String(account.tier))}</b>`);
+  if (account.kdRatio) stats.push(`🎯 K/D: <b>${Number(account.kdRatio).toFixed(2)}</b>`);
+  if (account.winRate) stats.push(`🏆 Win rate: <b>${Number(account.winRate).toFixed(1)}%</b>`);
+  if (account.ucBalance) stats.push(`💎 UC: <b>${uzNumber(Number(account.ucBalance))}</b>`);
+  if (account.hasXSuit) stats.push('✨ X-Suit: <b>bor</b>');
+  if (account.hasConquerorHistory) stats.push('🥇 Conqueror tarixi: <b>bor</b>');
+  if (stats.length) {
+    lines.push(stats.join('\n'));
+    lines.push('');
+  }
+
+  lines.push('━━━━━━━━━━━━━━━━━━');
+  lines.push(`💰 Narx: <b>${uzNumber(price)} so‘m</b>`);
+  lines.push('🛡 To‘lov escrow bilan himoyalangan');
+  lines.push('');
+  lines.push('👉 Botda ko‘ring va xavfsiz xarid qiling!');
+  return lines.join('\n');
+}
+
+function listingKeyboard(accountId: number, botUsername?: string | null) {
+  const username = (botUsername || process.env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, '');
+  if (!username) return undefined;
+  return {
+    inline_keyboard: [[
+      { text: '🛒 Botda ko‘rish', url: `https://t.me/${username}?start=acc_${accountId}` },
+    ]],
+  };
+}
+
+/** Yangi e'lonni kanalga joylaydi (rasm bo'lsa rasm bilan). */
+export async function postNewListingToChannel(account: NewListingPost) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return { ok: false as const, reason: 'no_token' as const };
+  const chatId = getChannelChatId();
+  const caption = buildNewListingCaption(account);
+  const shortCaption = caption.length > 1000 ? `${caption.slice(0, 990)}…` : caption;
+  const reply_markup = listingKeyboard(account.accountId, account.botUsername);
+  const photo = absoluteUrl(account.thumbnailUrl);
+
+  if (photo) {
+    const sent = await channelApiRequest('sendPhoto', { chat_id: chatId, photo, caption: shortCaption, parse_mode: 'HTML', ...(reply_markup ? { reply_markup } : {}) });
+    if (sent.ok) return { ok: true as const, mode: 'photo' as const };
+  }
+  const sent = await channelApiRequest('sendMessage', { chat_id: chatId, text: caption, parse_mode: 'HTML', disable_web_page_preview: true, ...(reply_markup ? { reply_markup } : {}) });
+  return sent.ok ? { ok: true as const, mode: 'text' as const } : { ok: false as const, reason: 'failed' as const };
+}
+
+/** ===== Kunlik digest ===== */
+
+export type DigestSale = { playerName: string; price: number | string };
+
+/** "Bugun N ta akkaunt sotildi, eng qimmati $X" — digest matni. */
+export function buildDailyDigestText(input: { dayKey: string; sales: DigestSale[]; newListings?: number }) {
+  const prices = input.sales.map(sale => Number(sale.price || 0));
+  const total = prices.reduce((sum, value) => sum + value, 0);
+  const topIndex = prices.reduce((best, value, index) => (value > (prices[best] ?? -1) ? index : best), 0);
+  const lines: string[] = [];
+  lines.push('📊 <b>KUNLIK HISOBOT</b>');
+  lines.push(`🗓 ${escapeHtml(input.dayKey)}`);
+  lines.push('━━━━━━━━━━━━━━━━━━');
+  if (input.sales.length === 0) {
+    lines.push('Bugun savdo bo‘lmadi — ertaga yangi imkoniyatlar sizni kutmoqda!');
+  } else {
+    lines.push(`✅ Sotilgan akkauntlar: <b>${input.sales.length} ta</b>`);
+    lines.push(`💰 Umumiy savdo: <b>${uzNumber(total)} so‘m</b>`);
+    const top = input.sales[topIndex];
+    if (top) lines.push(`🔥 Eng qimmati: <b>${escapeHtml(top.playerName)}</b> — <b>${uzNumber(Number(top.price || 0))} so‘m</b>`);
+  }
+  if (input.newListings && input.newListings > 0) {
+    lines.push(`🆕 Yangi e'lonlar: <b>${input.newListings} ta</b>`);
+  }
+  lines.push('━━━━━━━━━━━━━━━━━━');
+  lines.push('🛡 Har bir savdo escrow orqali himoyalangan');
+  lines.push('👉 Botda akkaunt soting yoki sotib oling!');
+  return lines.join('\n');
+}
+
+/** Digest matnini kanalga joylaydi. */
+export async function postDailyDigestToChannel(text: string) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return { ok: false as const, reason: 'no_token' as const };
+  const sent = await channelApiRequest('sendMessage', {
+    chat_id: getChannelChatId(),
+    text,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  });
+  return sent.ok ? { ok: true as const } : { ok: false as const, reason: 'failed' as const };
+}

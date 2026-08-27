@@ -68,7 +68,7 @@ export function FlashSalePage() {
         transition={{ duration: 0.4 }}
         className="relative overflow-hidden rounded-3xl border border-amber-300/20"
       >
-        <img src="/assets/flash-sale.jpg" alt="Flash-sale" width={1024} height={640} className="h-44 w-full object-cover sm:h-60" />
+        <img loading="lazy" decoding="async" src="/assets/flash-sale.jpg" alt="Flash-sale" width={1024} height={640} className="h-44 w-full object-cover sm:h-60" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         <motion.div
           animate={{ opacity: [0.25, 0.6, 0.25] }}
@@ -219,7 +219,7 @@ export function MysteryBoxPage() {
         transition={{ duration: 0.4 }}
         className="relative overflow-hidden rounded-3xl border border-amber-300/20"
       >
-        <img src="/assets/mystery-box.jpg" alt="Mystery Box" width={1024} height={640} className="h-44 w-full object-cover sm:h-60" />
+        <img loading="lazy" decoding="async" src="/assets/mystery-box.jpg" alt="Mystery Box" width={1024} height={640} className="h-44 w-full object-cover sm:h-60" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-black/50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-200">

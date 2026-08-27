@@ -18,8 +18,8 @@ import { accountHolds, savedFilters } from "../drizzle/schema";
 import { matchesSavedSearch, parseSavedFilters } from "./savedSearchMatch";
 import { scanListing } from "./scamGuard";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
-import { postSoldAccountToChannel } from './telegramChannel';
-import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins } from "./telegramBot";
+import { postSoldAccountToChannel, postNewListingToChannel, shouldPostNewListing } from './telegramChannel';
+import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins, notifyAdminsAboutReport } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
 import { buildDailySeries, buildStatusBreakdown, buildTopSellers } from "./analytics";
 
@@ -967,6 +967,12 @@ export const appRouter = router({
         if (existing.length) throw new TRPCError({ code: 'CONFLICT', message: 'Bu sharh bo‘yicha shikoyatingiz allaqachon yuborilgan' });
         const result = await db.insert(reviewReports).values({ reviewId: input.reviewId, reporterId: ctx.user.id, reason: input.reason.trim(), status: 'pending' });
         await notifyOwner({ title: 'Yangi sharh shikoyati', content: `Review #${input.reviewId}: ${input.reason.trim()}` }).catch(() => undefined);
+        await notifyAdminsAboutReport({
+          kind: 'review',
+          refId: input.reviewId,
+          reporterId: ctx.user.id,
+          reason: input.reason.trim(),
+        }).catch(() => undefined);
         return { reportId: getInsertId(result), status: 'pending' as const };
       }),
   }),

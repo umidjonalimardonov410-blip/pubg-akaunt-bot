@@ -10,7 +10,7 @@ import { depositReceipts, transactions, securityAudits, users, notifications, pu
 import { storagePut } from './storage';
 import { and, eq, sql } from 'drizzle-orm';
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL, ADMIN_PANEL_TELEGRAM_ID, ADMIN_PANEL_TELEGRAM_LABEL, ADMIN_PANEL_TELEGRAM_URL } from '../shared/adminContact';
-import { channelTexts, isChannelMember, isForcedSubscriptionEnabled, sendSubscriptionGate, deleteChannelGateMessage } from './telegramChannel';
+import { channelTexts, isChannelMember, isForcedSubscriptionEnabled, sendSubscriptionGate, deleteChannelGateMessage, postNewListingToChannel, shouldPostNewListing } from './telegramChannel';
 
 
 export type TelegramCommand = {
@@ -37,6 +37,11 @@ export const TELEGRAM_BOT_COMMANDS: TelegramCommand[] = [
 
 export type TelegramUpdate = {
   update_id?: number;
+  inline_query?: {
+    id: string;
+    query?: string;
+    from?: { id?: number | string; language_code?: string };
+  };
   callback_query?: {
     id: string;
     data?: string;
@@ -81,6 +86,36 @@ export async function notifyTelegramAdmins(text: string, extra: Record<string, u
     ...extra,
   })));
   return { sent: results.filter(r => r.status === 'fulfilled').length };
+}
+
+
+/** ===== Spam himoyasi: chat bo'yicha oddiy rate limit ===== */
+
+export const BOT_RATE_LIMIT_WINDOW_MS = 10_000;
+export const BOT_RATE_LIMIT_MAX = 12;
+
+const rateBuckets = new Map<string, { count: number; startedAt: number; warned: boolean }>();
+
+/**
+ * Bitta chatdan 10 soniyada 12 tadan ko'p so'rov kelsa bloklaymiz.
+ * Birinchi bloklashda foydalanuvchi ogohlantiriladi, keyingilari jim tashlanadi.
+ */
+export function checkBotRateLimit(chatId: number | string, now = Date.now()) {
+  const key = String(chatId);
+  const bucket = rateBuckets.get(key);
+  if (!bucket || now - bucket.startedAt > BOT_RATE_LIMIT_WINDOW_MS) {
+    rateBuckets.set(key, { count: 1, startedAt: now, warned: false });
+    return { allowed: true as const, warn: false as const };
+  }
+  bucket.count += 1;
+  if (bucket.count <= BOT_RATE_LIMIT_MAX) return { allowed: true as const, warn: false as const };
+  const warn = !bucket.warned;
+  bucket.warned = true;
+  return { allowed: false as const, warn };
+}
+
+export function resetBotRateLimit() {
+  rateBuckets.clear();
 }
 
 const MANUAL_TOPUP_AMOUNTS = [10000, 20000, 50000, 100000, 200000, 500000] as const;
@@ -658,6 +693,55 @@ export async function notifyAdminsAboutDepositReceipt(input: { receiptId: number
 }
 
 
+
+/** Shikoyat (report) kelganda adminlarga darhol signal. */
+export async function notifyAdminsAboutReport(input: {
+  kind: 'review' | 'dispute' | 'support';
+  refId: number;
+  reporterId?: number;
+  reason: string;
+  extra?: string;
+}) {
+  const label = input.kind === 'review' ? "Sharh shikoyati" : input.kind === 'dispute' ? 'Nizo ochildi' : 'Support murojaati';
+  const text = [
+    `\u{1F6A8} <b>${label}</b>`,
+    ``,
+    `\u{1F194} Raqam: <b>#${input.refId}</b>`,
+    ...(input.reporterId ? [`\u{1F464} Foydalanuvchi ID: <code>${input.reporterId}</code>`] : []),
+    ``,
+    `\u{1F4DD} Sabab: ${escapeHtml(input.reason).slice(0, 600)}`,
+    ...(input.extra ? [``, escapeHtml(input.extra).slice(0, 400)] : []),
+  ].join('\n');
+  const adminUrl = getTelegramMiniAppUrl('/admin');
+  return await notifyTelegramAdmins(text, adminUrl ? { reply_markup: { inline_keyboard: [[{ text: '\u{1F6E0} Admin panel', web_app: { url: adminUrl } }]] } } : {});
+}
+
+/** /broadcast — barcha Telegram foydalanuvchilariga xabar. */
+export async function broadcastToAllUsers(text: string, limit = 2000) {
+  const db = await getDb();
+  if (!db) return { sent: 0, total: 0, failed: 0 };
+  const rows = await db
+    .select({ openId: users.openId })
+    .from(users)
+    .where(sql`${users.openId} like 'telegram:%'`)
+    .limit(limit);
+  let sent = 0;
+  let failed = 0;
+  for (const row of rows) {
+    const chatId = row.openId.slice('telegram:'.length);
+    const result = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+    if (result.ok) sent += 1; else failed += 1;
+    // Telegram limiti: sekundiga ~30 xabar.
+    await new Promise(resolve => setTimeout(resolve, 40));
+  }
+  return { sent, total: rows.length, failed };
+}
+
 /** ===== E'lon (akkaunt) moderatsiyasi — to'g'ridan-to'g'ri bot ichida ===== */
 
 function listingAdminKeyboard(accountId: number) {
@@ -711,7 +795,7 @@ export async function notifyAdminsAboutNewListing(input: {
 }
 
 /** Admin bot tugmasi orqali e'lonni tasdiqlaydi, rad etadi yoki o'chiradi. */
-export async function reviewListing(accountId: number, action: 'approve' | 'reject' | 'delete', adminTelegramId?: number | string) {
+export async function reviewListing(accountId: number, action: 'approve' | 'reject' | 'delete', adminTelegramId?: number | string, reason?: string) {
   const db = await getDb();
   if (!db) return { ok: false as const, reason: 'database_unavailable' as const };
   const rows = await db.select().from(pubgAccounts).where(eq(pubgAccounts.id, accountId)).limit(1);
@@ -740,11 +824,29 @@ export async function reviewListing(accountId: number, action: 'approve' | 'reje
   }).catch(() => undefined);
 
   const title = action === 'approve' ? "E'lon tasdiqlandi" : action === 'reject' ? "E'lon rad etildi" : "E'lon o‘chirildi";
+  const reasonText = reason?.trim();
   const message = action === 'approve'
     ? `${account.playerName} akkaunti bozorda ko‘rinmoqda.`
     : action === 'reject'
-      ? `${account.playerName} akkaunti admin tomonidan rad etildi.`
-      : `${account.playerName} akkaunti admin tomonidan o‘chirildi.`;
+      ? `${account.playerName} akkaunti admin tomonidan rad etildi.${reasonText ? `\nSabab: ${reasonText}` : '\nSabab: qoidalarga mos kelmadi (ma’lumot yoki media yetarli emas).'}`
+      : `${account.playerName} akkaunti admin tomonidan o‘chirildi.${reasonText ? `\nSabab: ${reasonText}` : ''}`;
+
+  // Tasdiqlangan e'lonni (sozlamaga qarab) kanalga avtomatik joylaymiz.
+  if (action === 'approve' && shouldPostNewListing(account.price)) {
+    await postNewListingToChannel({
+      accountId: account.id,
+      title: account.playerName,
+      level: account.level,
+      tier: account.region,
+      kdRatio: account.kdRatio,
+      winRate: account.winRate,
+      ucBalance: account.ucBalance,
+      hasXSuit: account.hasXSuit,
+      hasConquerorHistory: account.hasConquerorHistory,
+      price: account.price,
+      thumbnailUrl: account.thumbnailUrl,
+    }).catch(() => undefined);
+  }
 
   if (action !== 'delete') {
     await db.insert(notifications).values({
@@ -943,7 +1045,55 @@ async function handleTelegramReceiptPhoto(message: NonNullable<TelegramUpdate['m
   }
 }
 
+/** ===== Inline search: @bot <so'z> orqali akkaunt izlash ===== */
+export async function handleInlineQuery(query: NonNullable<TelegramUpdate['inline_query']>) {
+  const term = (query.query ?? '').trim();
+  let rows: Array<Record<string, any>> = [];
+  try {
+    rows = await searchPubgAccounts({ ...(term ? { search: term } : {}), limit: 20 }) as Array<Record<string, any>>;
+  } catch (error) {
+    console.warn('[Telegram Bot] inline search failed', error);
+  }
+  const botUsername = await resolveBotUsername();
+  const results = rows.slice(0, 20).map(account => {
+    const price = formatUzAmount(Number(account.price ?? 0));
+    const badge = account.hasXSuit ? 'Pro / X-Suit' : account.hasConquerorHistory ? 'Conqueror' : 'Classic';
+    const openUrl = botUsername ? `https://t.me/${botUsername}?start=acc_${account.id}` : null;
+    return {
+      type: 'article',
+      id: `acc_${account.id}`,
+      title: `${account.playerName} — ${price} so'm`,
+      description: `LVL ${account.level} · K/D ${account.kdRatio} · ${badge}`,
+      ...(account.thumbnailUrl ? { thumbnail_url: account.thumbnailUrl } : {}),
+      input_message_content: {
+        message_text: [
+          `\u{1F3AE} <b>${escapeTelegramHtml(account.playerName)}</b>`,
+          `\u{1F3C5} LVL ${account.level} \u00B7 \u{1F3AF} K/D ${escapeTelegramHtml(account.kdRatio)}`,
+          `\u{1F3C6} ${badge}`,
+          `\u{1F4B0} <b>${price} so\u2018m</b>`,
+          '',
+          '\u{1F6E1} Escrow bilan xavfsiz savdo',
+        ].join('\n'),
+        parse_mode: 'HTML',
+      },
+      ...(openUrl ? { reply_markup: { inline_keyboard: [[{ text: '\u{1F6D2} Botda ochish', url: openUrl }]] } } : {}),
+    };
+  });
+
+  const answered = await telegramApiRequest('answerInlineQuery', {
+    inline_query_id: query.id,
+    results,
+    cache_time: 30,
+    is_personal: true,
+    button: botUsername ? { text: '\u{1F525} Barcha akkauntlar', start_parameter: 'inline' } : undefined,
+  });
+  return { handled: true as const, command: 'inline_query', status: answered.status, sent: answered.ok, count: results.length };
+}
+
 export async function handleTelegramUpdate(update: TelegramUpdate) {
+  if (update.inline_query) {
+    return await handleInlineQuery(update.inline_query);
+  }
   const callback = update.callback_query;
   if (callback) {
     const callbackChatId = callback.message?.chat?.id;
@@ -1107,6 +1257,18 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const chatId = message?.chat?.id;
   if (!message || chatId === undefined) return { handled: false as const, status: 'ignored' as const };
 
+  // Spam himoyasi: juda tez yozilgan xabarlar e'tiborsiz qoldiriladi.
+  const rate = checkBotRateLimit(chatId);
+  if (!rate.allowed) {
+    if (rate.warn) {
+      await telegramApiRequest('sendMessage', {
+        chat_id: chatId,
+        text: '\u23F3 Juda tez yozyapsiz. Iltimos, bir necha soniya kutib turing.',
+      });
+    }
+    return { handled: true as const, command: 'rate_limited', status: 'active' as const, sent: false };
+  }
+
   await telegramApiRequest('sendChatAction', { chat_id: chatId, action: 'typing' });
 
   if (message.photo?.length) {
@@ -1228,6 +1390,42 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     const sent = await sendAdminPanel(chatId, lang);
     return { handled: true as const, command: 'admin', status: sent.status, sent: sent.ok };
   }
+  if (command === 'broadcast') {
+    if (!isAdminUser) {
+      const denied = await telegramApiRequest('sendMessage', { chat_id: chatId, text: 'Bu buyruq faqat admin uchun.' });
+      return { handled: true as const, command: 'broadcast', status: denied.status, sent: denied.ok };
+    }
+    const payload = rawText.replace(/^\/broadcast(@\S+)?\s*/i, '').trim();
+    if (!payload) {
+      const hint = await telegramApiRequest('sendMessage', {
+        chat_id: chatId,
+        text: '\u{1F4E3} <b>Broadcast</b>\n\nFoydalanish: <code>/broadcast Xabar matni</code>',
+        parse_mode: 'HTML',
+      });
+      return { handled: true as const, command: 'broadcast', status: hint.status, sent: hint.ok };
+    }
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: '\u{1F4E4} Yuborilmoqda...' });
+    const result = await broadcastToAllUsers(`\u{1F4E3} <b>Inferno Stealth</b>\n\n${escapeTelegramHtml(payload)}`);
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: `\u2705 Broadcast yakunlandi.\n\nYuborildi: <b>${result.sent}</b> / ${result.total}\nXato: ${result.failed}`,
+      parse_mode: 'HTML',
+    });
+    return { handled: true as const, command: 'broadcast', status: sent.status, sent: sent.ok, delivered: result.sent };
+  }
+  if (command === 'digest') {
+    if (!isAdminUser) {
+      const denied = await telegramApiRequest('sendMessage', { chat_id: chatId, text: 'Bu buyruq faqat admin uchun.' });
+      return { handled: true as const, command: 'digest', status: denied.status, sent: denied.ok };
+    }
+    const { postDailyDigestNow } = await import('./telegramDigest');
+    const digest = await postDailyDigestNow();
+    const sent = await telegramApiRequest('sendMessage', {
+      chat_id: chatId,
+      text: digest.ok ? '\u2705 Kunlik digest kanalga joylandi.' : '\u26A0\uFE0F Digest joylanmadi.',
+    });
+    return { handled: true as const, command: 'digest', status: sent.status, sent: sent.ok };
+  }
   if (command === 'contactadmin' || menuKey === 'menuAdmin') {
     const sent = await telegramApiRequest('sendMessage', {
       chat_id: chatId,
@@ -1292,10 +1490,27 @@ export async function registerTelegramBot() {
   for (const scope of [undefined, { type: "all_private_chats" }, { type: "all_group_chats" }, { type: "default" }]) {
     await telegramApiRequest("deleteMyCommands", scope ? { scope } : {});
   }
+  const publicCommands = TELEGRAM_BOT_COMMANDS.filter(item => !item.adminOnly)
+    .map(item => ({ command: item.command, description: item.description }));
   const commands = await telegramApiRequest("setMyCommands", {
-    commands: [{ command: "start", description: botText('uz').startCommandHint }],
+    commands: publicCommands,
     scope: { type: "all_private_chats" },
   });
+
+  // Adminlar uchun qo'shimcha buyruqlar (faqat admin chatlarida ko'rinadi).
+  const adminCommands = [
+    ...publicCommands,
+    { command: "listings", description: "Tasdiqlash kutayotgan e'lonlar" },
+    { command: "admin", description: "Admin nazorati" },
+    { command: "broadcast", description: "Hammaga xabar yuborish" },
+    { command: "digest", description: "Kunlik digestni kanalga joylash" },
+  ];
+  for (const adminId of getTelegramAdminIds()) {
+    await telegramApiRequest("setMyCommands", {
+      commands: adminCommands,
+      scope: { type: "chat", chat_id: adminId },
+    });
+  }
 
   const menuUrl = getTelegramMiniAppUrl("/");
   const menu = menuUrl
@@ -1309,7 +1524,7 @@ export async function registerTelegramBot() {
   const webhook = webhookUrl
     ? await telegramApiRequest("setWebhook", {
         url: webhookUrl,
-        allowed_updates: ["message", "callback_query"],
+        allowed_updates: ["message", "callback_query", "inline_query"],
         drop_pending_updates: false,
         ...(webhookSecret ? { secret_token: webhookSecret } : {}),
       })
@@ -1343,7 +1558,7 @@ async function resyncTelegramWebhook() {
 
   const result = await telegramApiRequest("setWebhook", {
     url: webhookUrl,
-    allowed_updates: ["message", "callback_query"],
+    allowed_updates: ["message", "callback_query", "inline_query"],
     drop_pending_updates: false,
     ...(webhookSecret ? { secret_token: webhookSecret } : {}),
   });

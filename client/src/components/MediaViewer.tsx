@@ -159,7 +159,7 @@ export default function MediaViewer({ items, index, onClose, onIndexChange, titl
             className="media-viewer-fade max-h-full max-w-full object-contain"
           />
         ) : (
-          <img
+          <img loading="lazy" decoding="async"
             key={current.url}
             src={current.url}
             alt={current.alt || title || "Media"}
@@ -194,7 +194,7 @@ export default function MediaViewer({ items, index, onClose, onIndexChange, titl
               {item.type === "video" ? (
                 <video src={item.url} muted playsInline className="h-full w-full object-cover" />
               ) : (
-                <img src={item.url} alt="" className="h-full w-full object-cover" />
+                <img loading="lazy" decoding="async" src={item.url} alt="" className="h-full w-full object-cover" />
               )}
             </button>
           ))}

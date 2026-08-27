@@ -52,7 +52,7 @@ export function BlurImage({ src, alt, className = '', ...rest }: React.ImgHTMLAt
   return (
     <span className="relative block h-full w-full overflow-hidden">
       {!loaded && <span className="pro-skeleton absolute inset-0" aria-hidden />}
-      <img
+      <img loading="lazy" decoding="async"
         {...rest}
         src={src}
         alt={alt}

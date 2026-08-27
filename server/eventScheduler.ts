@@ -17,6 +17,7 @@ import {
   tashkentDayKey,
 } from "./flashSale";
 import { sendTelegramNotification } from "./telegramNotifications";
+import { runDailyDigestCycle } from "./telegramDigest";
 
 /** Bitta xabar to'lqinida ko'pi bilan shuncha foydalanuvchiga yuboriladi. */
 export const FLASH_BROADCAST_LIMIT = 300;
@@ -125,7 +126,8 @@ export async function startFlashSaleNow(now = new Date()) {
 export async function runFlashSaleCycle(now = new Date()) {
   const ended = await endExpiredFlashSales(now);
   const started = isFlashWindow(now) ? await startFlashSaleNow(now) : 0;
-  return { ended, started };
+  const digest = await runDailyDigestCycle(now).catch(() => ({ posted: false as const }));
+  return { ended, started, digest: digest.posted };
 }
 
 let timer: ReturnType<typeof setInterval> | null = null;
