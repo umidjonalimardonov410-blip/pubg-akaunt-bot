@@ -46,8 +46,8 @@ const TITLES: Record<string, Copy> = {
 };
 
 const SEGMENTS = 14;
-const HOLD_MS = 3000;
-const LEAVE_MS = 900;
+const HOLD_MS = 1500;
+const LEAVE_MS = 400;
 const SOUND_KEY = "inferno-intro-sound";
 
 function haptic(style: "light" | "medium" | "rigid" = "light") {
