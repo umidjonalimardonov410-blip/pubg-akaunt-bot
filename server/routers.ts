@@ -12,6 +12,10 @@ import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
 import { hypeRouter } from "./hypeRouters";
+import { getActiveHold, proRouter } from "./proRouters";
+import { accountHolds, savedFilters } from "../drizzle/schema";
+import { matchesSavedSearch, parseSavedFilters } from "./savedSearchMatch";
+import { scanListing } from "./scamGuard";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
 import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
@@ -26,6 +30,77 @@ async function notifyTelegramUser(userId: number, text: string, path = '/profile
   if (!user?.openId.startsWith('telegram:')) return;
   const chatId = user.openId.slice('telegram:'.length);
   await sendTelegramNotification(chatId, text, path).catch(() => undefined);
+}
+
+/** Referal cashback: xaridorni taklif qilgan foydalanuvchiga har savdodan 2% qaytadi. */
+export const REFERRAL_CASHBACK_RATE = 0.02;
+
+async function creditReferralCashback(db: any, buyerId: number, price: number, orderId: number) {
+  const rows = await db.select().from(referrals).where(eq(referrals.referredUserId, buyerId)).limit(1);
+  const link = rows[0];
+  if (!link || link.referrerId === buyerId) return;
+  const cashback = Math.round(price * REFERRAL_CASHBACK_RATE);
+  if (cashback <= 0) return;
+
+  await db.transaction(async (tx: any) => {
+    await tx.update(users).set({ walletBalance: sql`walletBalance + ${cashback}` }).where(eq(users.id, link.referrerId));
+    await tx.update(referrals)
+      .set({ rewardAmount: sql`rewardAmount + ${cashback}`, status: 'credited', creditedAt: new Date() })
+      .where(eq(referrals.id, link.id));
+    await tx.insert(transactions).values({
+      userId: link.referrerId,
+      type: 'referral_reward',
+      amount: cashback.toString(),
+      orderId,
+      description: `#${orderId} savdosidan 2% referal cashback`,
+      status: 'completed',
+    });
+    await tx.insert(notifications).values({
+      userId: link.referrerId,
+      type: 'admin_message',
+      title: 'Referal cashback',
+      message: `Taklif qilgan do'stingiz savdo qildi — hamyoningizga ${cashback.toLocaleString('uz-UZ')} so'm cashback tushdi.`,
+    });
+  });
+  await notifyTelegramUser(link.referrerId, `\u{1F4B8} <b>Referal cashback</b>\n\nDo'stingiz savdo qildi — +${cashback.toLocaleString('uz-UZ')} so'm hamyoningizga tushdi.`, '/wallet');
+}
+
+/** Yangi e'lon bozorga chiqqanda saqlangan qidiruvga mos foydalanuvchilarga Telegram push. */
+async function notifySavedSearchMatches(db: any, account: any) {
+  const snapshot = {
+    playerName: account.playerName,
+    description: account.description,
+    region: account.region,
+    price: Number(account.price),
+    level: Number(account.level),
+    kdRatio: Number(account.kdRatio),
+    ucBalance: Number(account.ucBalance),
+    hasXSuit: Boolean(account.hasXSuit),
+    hasConquerorHistory: Boolean(account.hasConquerorHistory),
+  };
+  const rows = await db.select().from(savedFilters).limit(500);
+  const seen = new Set<number>();
+  let notified = 0;
+  for (const row of rows) {
+    if (seen.has(row.userId) || row.userId === account.sellerId) continue;
+    if (!matchesSavedSearch(parseSavedFilters(row.filters), snapshot)) continue;
+    seen.add(row.userId);
+    await db.insert(notifications).values({
+      userId: row.userId,
+      type: 'price_drop',
+      title: 'Qidiruvingizga mos yangi akkaunt',
+      message: `"${row.name}" qidiruvingizga mos e'lon: ${account.playerName} — ${snapshot.price.toLocaleString('uz-UZ')} so'm`,
+      accountId: account.id,
+    }).catch(() => undefined);
+    await notifyTelegramUser(
+      row.userId,
+      `\u{1F50E} <b>Saqlangan qidiruv</b>\n\n"${escapeTelegramHtml(row.name)}" filtriga mos yangi akkaunt chiqdi:\n${escapeTelegramHtml(account.playerName)} — ${snapshot.price.toLocaleString('uz-UZ')} so'm`,
+      '/',
+    );
+    notified += 1;
+    if (notified >= 50) break;
+  }
+  return notified;
 }
 
 const REVIEW_ABUSE_TERMS = ['suka', 'blyat', 'блять', 'ебать', 'idiot', 'тупой', 'ahmoq', 'harom'];
@@ -104,6 +179,7 @@ export const appRouter = router({
   system: systemRouter,
   expansion: expansionRouter,
   hype: hypeRouter,
+  pro: proRouter,
   support: supportRouter,
   faqAdmin: faqAdminRouter,
   categories: categoriesRouter,
@@ -297,6 +373,33 @@ export const appRouter = router({
         });
 
         const accountId = getInsertId(result);
+        // Anti-scam skaner: yuqori xavfli e'lon adminlarga alohida belgilanadi.
+        const risk = scanListing({
+          description: input.description,
+          playerName: input.playerName,
+          price: input.price,
+          level: input.level,
+          kdRatio: input.kdRatio,
+          winRate: input.winRate,
+          totalMatches: input.totalMatches,
+          ucBalance: input.ucBalance,
+          galleryCount: input.galleryUrls.length,
+          hasVideo: Boolean(input.videoUrl),
+          sellerTotalSales: Number(ctx.user.totalSales ?? 0),
+          sellerIsVerified: Boolean(ctx.user.isVerifiedSeller),
+          sellerAccountAgeDays: ctx.user.createdAt ? Math.max(0, (Date.now() - new Date(ctx.user.createdAt).getTime()) / 86_400_000) : 0,
+        });
+        if (risk.score >= 15) {
+          await db.insert(securityAudits).values({
+            userId: ctx.user.id,
+            eventType: 'listing_risk_flagged',
+            riskScore: Math.round(risk.score / 10),
+            details: JSON.stringify({ accountId, level: risk.level, flags: risk.flags.map(flag => flag.key) }),
+          }).catch(() => undefined);
+          await notifyTelegramAdmins(
+            `\u{26A0}\u{FE0F} <b>Anti-scam ogohlantirish</b>\n\n#${accountId} e'lon xavf bali: ${risk.score}/100 (${risk.level})\n${risk.flags.map(flag => `\u{2022} ${flag.label}`).join('\n')}`,
+          ).catch(() => undefined);
+        }
         await notifyTelegramAdmins(
           `\u{1F195} <b>Yangi e'lon</b>\n\u{1F464} ${input.playerName} (${input.region})\n\u{1F4B0} ${input.price} so'm\nTasdiqlash uchun admin panelga kiring.`,
         ).catch(() => undefined);
@@ -512,6 +615,14 @@ export const appRouter = router({
             throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Hamyon balansida mablag‘ yetarli emas' });
           }
 
+          const activeHold = await getActiveHold(tx, input.accountId);
+          if (activeHold && activeHold.userId !== ctx.user.id) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Akkaunt hozir boshqa xaridor tomonidan bron qilingan' });
+          }
+          if (activeHold) {
+            await tx.update(accountHolds).set({ status: 'converted' }).where(eq(accountHolds.id, activeHold.id));
+          }
+
           const reservationResult = await tx.update(pubgAccounts)
             .set({ status: 'pending_verification' })
             .where(and(eq(pubgAccounts.id, input.accountId), eq(pubgAccounts.status, 'available')));
@@ -710,6 +821,9 @@ export const appRouter = router({
           orderId: input,
         });
         await notifyTelegramUser(order.sellerId, saleMessage, '/orders');
+        await creditReferralCashback(db, order.buyerId, Number(order.price), input).catch(error =>
+          console.warn('[Cashback] referral bonus failed:', error),
+        );
 
         return { success: true };
       }),
@@ -1497,6 +1611,10 @@ export const appRouter = router({
             ? `✅ <b>E’lon tasdiqlandi</b>\n\n${account.playerName} e’loni bozorda ko‘rinmoqda.`
             : `❌ <b>E’lon rad etildi</b>\n\n${account.playerName}\nSabab: ${input.notes?.trim() || 'ko‘rsatilmagan'}`,
         ).catch(() => undefined);
+        if (input.approved) {
+          // Saqlangan qidiruvga mos xaridorlarga darhol Telegram push yuboriladi.
+          await notifySavedSearchMatches(db, account).catch(error => console.warn('[SavedSearch] push failed:', error));
+        }
         return { success: true };
       }),
 

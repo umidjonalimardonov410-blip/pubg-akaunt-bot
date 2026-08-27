@@ -688,3 +688,18 @@ export const savedFilters = mysqlTable("saved_filters", {
 
 export type SavedFilter = typeof savedFilters.$inferSelect;
 export type InsertSavedFilter = typeof savedFilters.$inferInsert;
+
+/**
+ * Akkaunt broni (hold) — xaridor to'lov tayyorlagunicha e'lonni 15 daqiqaga band qiladi.
+ */
+export const accountHolds = mysqlTable("account_holds", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  userId: int("userId").notNull(),
+  status: mysqlEnum("status", ["active", "released", "converted"]).default("active").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AccountHold = typeof accountHolds.$inferSelect;
+export type InsertAccountHold = typeof accountHolds.$inferInsert;
