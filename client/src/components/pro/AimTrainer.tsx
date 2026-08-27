@@ -164,7 +164,7 @@ export default function AimTrainer() {
               loading="lazy"
               width={1024}
               height={512}
-              className="mb-3 h-24 w-full rounded-xl border border-white/[0.06] object-cover opacity-80 sm:h-28"
+              className="mb-3 hidden h-24 w-full rounded-xl border border-white/[0.06] object-cover opacity-80 sm:block sm:h-28"
             />
           )}
           {result || (played && savedPromo) ? (

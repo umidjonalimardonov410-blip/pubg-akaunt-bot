@@ -57,7 +57,7 @@ function PulseValue({ value, suffix }: { value: number; suffix?: string }) {
     return () => cancelAnimationFrame(raf);
   }, [value]);
   return (
-    <span className="font-display text-lg font-black text-white sm:text-xl">
+    <span className="font-display text-[13px] font-black text-white sm:text-xl">
       {uz(shown)}
       {suffix ? <span className="ml-1 font-sans text-[10px] font-bold text-white/40">{suffix}</span> : null}
     </span>
@@ -74,10 +74,10 @@ export function MarketPulse() {
     { label: "Eng qimmat", value: data?.topPrice ?? 0, icon: Crown, suffix: "so'm" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
       {cards.map(card => (
-        <div key={card.label} className="hype-card rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3">
-          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">
+        <div key={card.label} className="hype-card rounded-xl sm:rounded-2xl border border-white/[0.08] bg-[#0e1013] p-2 sm:p-3">
+          <span className="flex items-center gap-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white/35">
             <card.icon className="h-3.5 w-3.5 text-amber-300" />
             {card.label}
           </span>

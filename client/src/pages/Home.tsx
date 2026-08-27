@@ -315,7 +315,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(14,16,19,.92),rgba(8,9,11,.88))] backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,.04)_inset,0_14px_40px_-24px_rgba(0,0,0,.9)]">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(14,16,19,.92),rgba(8,9,11,.88))] backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,.04)_inset,0_14px_40px_-24px_rgba(0,0,0,.9)]">
       <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-32 bg-[radial-gradient(60%_100%_at_18%_100%,rgba(245,197,66,.13),transparent_70%)]" />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,197,66,.35),transparent)]" />
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-3 sm:h-[72px] sm:px-4 lg:px-8">
@@ -388,9 +388,9 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
       </div>
       {menuOpen && (
         <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3 lg:hidden">
-          <div className="mx-auto flex max-w-[1440px] flex-col gap-1">
+          <div className="mx-auto grid max-w-[1440px] grid-cols-2 gap-1">
             {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.transactions', '/transactions'], ['nav.referral', '/referral'], ['nav.flash', '/flash'], ['nav.mystery', '/mystery'], ['nav.rules', '/rules'], ['nav.profile', '/profile'], ['nav.support', '/support']].map(([label, path]) => (
-              <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{t(label)}</button>
+              <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{t(label)}</button>
             ))}
           </div>
         </div>
@@ -694,7 +694,7 @@ function Hero({ onExplore, onSell }: { onExplore: () => void; onSell: () => void
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_72%_30%,rgba(245,197,66,.26),transparent_38%),linear-gradient(90deg,#111316_15%,rgba(17,19,22,.9)_44%,rgba(17,19,22,.35))]" />
       <div className="absolute -right-32 -top-32 -z-10 h-96 w-96 rounded-full bg-amber-400/10 blur-3xl" />
       <BattleEffects />
-      <div className="grid min-h-[380px] items-end gap-6 p-5 sm:p-8 md:p-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+      <div className="grid min-h-[300px] items-end gap-6 p-4 sm:min-h-[380px] sm:p-8 md:p-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
         <div className="max-w-2xl">
           <StatusPill><Flame className="h-3 w-3" />INFERNO STEALTH MARKET</StatusPill>
           <h1 className="mt-4 max-w-xl font-display text-2xl sm:text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">PUBG akkauntingiz uchun <span className="text-amber-300 [text-shadow:0_0_30px_rgba(245,197,66,.35)]">xavfsiz bozor.</span></h1>
@@ -725,7 +725,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       <TrustStrip />
       <HypeDeck />
       <TopSellersBoard limit={5} />
-      <SellerLeaderboard />
+      <div className="hidden sm:block"><SellerLeaderboard /></div>
       <section>
         <SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasi" onAction={() => onNavigate('/accounts')} />
         {featuredQuery.isLoading ? (
@@ -1824,5 +1824,5 @@ export default function Home() {
     return () => webApp.BackButton?.offClick?.(goBack);
   }, [location, page.key, setLocation]);
   const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminAnalyticsPanel /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : page.key === 'flash' ? <FlashSalePage /> : page.key === 'mystery' ? <MysteryBoxPage /> : <ReferralPage />;
-  return <div className="relative min-h-screen bg-[#08090b] text-white"><BattleBackdrop /><div className="relative z-10"><AppHeader onNavigate={navigate} />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div></div>;
+  return <div className="relative min-h-screen bg-[#08090b] text-white"><BattleBackdrop /><div className="relative z-10"><AppHeader onNavigate={navigate} /><div aria-hidden className="h-16 sm:h-[72px]" />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div></div>;
 }

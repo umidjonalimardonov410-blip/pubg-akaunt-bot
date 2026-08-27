@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { LANGUAGES, useI18n, type Lang } from "@/lib/i18n";
 
 /**
