@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerTelegramBot, registerTelegramWebhook } from "../telegramBot";
+import { startEventScheduler } from "../eventScheduler";
 import { registerTelegramAuthRoute, registerTelegramTokenAuthRoute } from "../telegramAuth";
 import { ensureProductionDatabaseSchema } from "../databaseMigrations";
 import { appRouter } from "../routers";
@@ -192,6 +193,7 @@ async function startServer() {
   server.listen(port, async () => {
     console.log(`Server running on http://localhost:${port}/`);
     // Register Telegram bot commands, menu button, and webhook
+    startEventScheduler();
     const botStatus = await registerTelegramBot();
     console.log(`[Telegram] commands=${botStatus.commands} menu=${botStatus.menu} webhook=${botStatus.webhook} status=${botStatus.status}`);
   });

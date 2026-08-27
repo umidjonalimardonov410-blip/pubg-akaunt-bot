@@ -703,3 +703,41 @@ export const accountHolds = mysqlTable("account_holds", {
 
 export type AccountHold = typeof accountHolds.$inferSelect;
 export type InsertAccountHold = typeof accountHolds.$inferInsert;
+
+/**
+ * Har kuni 20:00 da (Toshkent) boshlanadigan 1 soatlik flash-sale yozuvi.
+ * `originalPrice` saqlanadi, chunki aksiya tugagach narx avtomatik tiklanadi.
+ */
+export const flashSales = mysqlTable("flash_sales", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  originalPrice: decimal("originalPrice", { precision: 12, scale: 2 }).notNull(),
+  salePrice: decimal("salePrice", { precision: 12, scale: 2 }).notNull(),
+  discountPercent: int("discountPercent").notNull(),
+  dayKey: varchar("dayKey", { length: 16 }).notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  status: mysqlEnum("status", ["active", "ended", "cancelled"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FlashSale = typeof flashSales.$inferSelect;
+export type InsertFlashSale = typeof flashSales.$inferInsert;
+
+/**
+ * Mystery Box ochilishlari — kunlik limit va sovrin tarixi shu jadvaldan hisoblanadi.
+ */
+export const mysteryBoxOpens = mysqlTable("mystery_box_opens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  dayKey: varchar("dayKey", { length: 16 }).notNull(),
+  price: decimal("price", { precision: 12, scale: 2 }).notNull(),
+  prize: mysqlEnum("prize", ["account", "promo", "uc", "empty"]).notNull(),
+  prizeLabel: varchar("prizeLabel", { length: 255 }).notNull(),
+  rewardCode: varchar("rewardCode", { length: 64 }),
+  accountId: int("accountId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MysteryBoxOpen = typeof mysteryBoxOpens.$inferSelect;
+export type InsertMysteryBoxOpen = typeof mysteryBoxOpens.$inferInsert;

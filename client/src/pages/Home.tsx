@@ -56,6 +56,7 @@ import MediaViewer, { type MediaItem } from "@/components/MediaViewer";
 import { compressImage, validateMediaFile } from "@/lib/mediaCompression";
 import { ChatInboxPage, NotificationsPage } from "@/pages/InboxPages";
 import { RulesPage } from "@/pages/RulesPage";
+import { FlashSalePage, MysteryBoxPage } from "@/pages/EventPages";
 import { motion, AnimatePresence } from "framer-motion";
 import { ListingGridSkeleton, ListRowSkeleton } from "@/components/pro/Skeleton";
 import BottomSheet from "@/components/pro/BottomSheet";
@@ -170,7 +171,7 @@ function normalizeAccount(row: any): Listing {
   };
 }
 
-type PageKey = "home" | "accounts" | "sell" | "orders" | "profile" | "transactions" | "reviews" | "support" | "admin" | "details" | "escrow" | "saved" | "chat" | "chats" | "notifications" | "referral" | "rules";
+type PageKey = "home" | "accounts" | "sell" | "orders" | "profile" | "transactions" | "reviews" | "support" | "admin" | "details" | "escrow" | "saved" | "chat" | "chats" | "notifications" | "referral" | "rules" | "flash" | "mystery";
 
 export const ESCROW_STAGES = [
   { key: 'payment_frozen', label: 'To‘lov muzlatildi', description: 'Pul bitim yakunigacha himoyalangan.' },
@@ -224,6 +225,8 @@ function pageFromPath(pathname: string): { key: PageKey; id?: number } {
   if (pathname.startsWith("/saved")) return { key: "saved" };
   if (pathname.startsWith("/referral")) return { key: "referral" };
   if (pathname.startsWith("/rules")) return { key: "rules" };
+  if (pathname.startsWith("/flash")) return { key: "flash" };
+  if (pathname.startsWith("/mystery")) return { key: "mystery" };
   if (pathname.startsWith("/chats")) return { key: "chats" };
   if (pathname.startsWith("/notifications")) return { key: "notifications" };
   if (pathname.startsWith("/chat/")) return { key: "chat", id: Number(pathname.split("/").pop()) || 1 };
@@ -312,7 +315,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           <span className="sm:hidden"><Brand compact /></span>
           <span className="hidden sm:inline-flex"><Brand /></span>
           <nav className="hidden items-center gap-6 text-sm font-semibold text-white/55 lg:flex">
-            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.referral', '/referral'], ['nav.rules', '/rules'], ['nav.support', '/support']].map(([label, path]) => (
+            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.referral', '/referral'], ['nav.flash', '/flash'], ['nav.mystery', '/mystery'], ['nav.rules', '/rules'], ['nav.support', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => onNavigate(path)} className="transition hover:text-white">{t(label)}</button>
             ))}
           </nav>
@@ -368,7 +371,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
       {menuOpen && (
         <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3 lg:hidden">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-1">
-            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.transactions', '/transactions'], ['nav.referral', '/referral'], ['nav.rules', '/rules'], ['nav.profile', '/profile'], ['nav.support', '/support']].map(([label, path]) => (
+            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.transactions', '/transactions'], ['nav.referral', '/referral'], ['nav.flash', '/flash'], ['nav.mystery', '/mystery'], ['nav.rules', '/rules'], ['nav.profile', '/profile'], ['nav.support', '/support']].map(([label, path]) => (
               <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{t(label)}</button>
             ))}
           </div>
@@ -1803,6 +1806,6 @@ export default function Home() {
     }
     return () => webApp.BackButton?.offClick?.(goBack);
   }, [location, page.key, setLocation]);
-  const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminAnalyticsPanel /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : <ReferralPage />;
+  const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminAnalyticsPanel /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : page.key === 'flash' ? <FlashSalePage /> : page.key === 'mystery' ? <MysteryBoxPage /> : <ReferralPage />;
   return <div className="relative min-h-screen bg-[#08090b] text-white"><BattleBackdrop /><div className="relative z-10"><AppHeader onNavigate={navigate} />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div></div>;
 }

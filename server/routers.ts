@@ -10,6 +10,7 @@ import { storagePut, storagePresignPut } from "./storage";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
+import { eventsRouter } from "./eventRouters";
 import { expansionRouter } from "./ExpansionRouters";
 import { hypeRouter } from "./hypeRouters";
 import { getActiveHold, proRouter } from "./proRouters";
@@ -177,6 +178,7 @@ async function reviewDepositReceiptCore(params: { adminId: number; receiptId: nu
 
 export const appRouter = router({
   system: systemRouter,
+  events: eventsRouter,
   expansion: expansionRouter,
   hype: hypeRouter,
   pro: proRouter,

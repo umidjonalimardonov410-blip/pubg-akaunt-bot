@@ -32,6 +32,8 @@ function Router() {
       <Route path={"/reviews"} component={Home} />
       <Route path={"/support"} component={Home} />
       <Route path={"/rules"} component={Home} />
+      <Route path={"/flash"} component={Home} />
+      <Route path={"/mystery"} component={Home} />
 
       <Route path={"/admin"} component={Home} />
       <Route path={"/account/:id"} component={Home} />
