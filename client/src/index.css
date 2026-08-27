@@ -916,3 +916,23 @@ body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-off
 @media (prefers-reduced-motion: reduce) {
   .rise-in, .price-flame, .btn-shine::after, .fade-in-soft { animation: none !important; }
 }
+
+
+/* ===== Hype deck: jonli lenta, XP bar va omad g'ildiragi ===== */
+@keyframes hype-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.hype-ticker-track { animation: hype-marquee 32s linear infinite; }
+.hype-ticker:hover .hype-ticker-track { animation-play-state: paused; }
+
+@keyframes live-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.6); } }
+.live-dot { animation: live-pulse 1.4s ease-in-out infinite; }
+
+.hype-card { transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.hype-card:hover { transform: translateY(-2px); border-color: rgba(245, 197, 66, .28); box-shadow: 0 18px 40px -24px rgba(245, 197, 66, .55); }
+
+.xp-bar { background: linear-gradient(90deg, #f5c542, #ff7a18, #f5c542); background-size: 200% 100%; animation: hype-marquee 3s linear infinite; }
+
+.wheel-glow { box-shadow: 0 0 0 4px rgba(0,0,0,.6), 0 0 45px -8px rgba(245, 197, 66, .55) inset, 0 0 40px -12px rgba(245, 197, 66, .5); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hype-ticker-track, .xp-bar, .live-dot { animation: none; }
+}

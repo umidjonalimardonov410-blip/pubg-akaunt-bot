@@ -11,6 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { expansionRouter } from "./ExpansionRouters";
+import { hypeRouter } from "./hypeRouters";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
 import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
@@ -102,6 +103,7 @@ async function reviewDepositReceiptCore(params: { adminId: number; receiptId: nu
 export const appRouter = router({
   system: systemRouter,
   expansion: expansionRouter,
+  hype: hypeRouter,
   support: supportRouter,
   faqAdmin: faqAdminRouter,
   categories: categoriesRouter,
@@ -684,8 +686,10 @@ export const appRouter = router({
             .set({ status: 'sold' })
             .where(eq(pubgAccounts.id, order.accountId));
           await tx.update(users)
-            .set({ walletBalance: sql`walletBalance + ${order.price}`, totalSales: sql`totalSales + 1` })
+            .set({ walletBalance: sql`walletBalance + ${order.price}`, totalSales: sql`totalSales + 1`, xp: sql`xp + 200` })
             .where(eq(users.id, order.sellerId));
+          // Xaridor ham yakunlangan savdo uchun XP oladi (daraja tizimi).
+          await tx.update(users).set({ xp: sql`xp + 120` }).where(eq(users.id, order.buyerId));
           await tx.insert(transactions).values({
             userId: order.sellerId,
             type: 'seller_payout',

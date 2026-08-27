@@ -63,6 +63,7 @@ import StickyBuyBar from "@/components/pro/StickyBuyBar";
 import PullToRefresh from "@/components/pro/PullToRefresh";
 import SuccessBurst from "@/components/pro/SuccessBurst";
 import { haptic } from "@/lib/haptics";
+import HypeDeck, { LiveTicker } from "@/components/pro/HypeDeck";
 import { listContainer, listItem } from "@/components/pro/motion";
 import {
   AlertDialog,
@@ -697,8 +698,10 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const featured = (featuredQuery.data ?? []).map(normalizeAccount);
   return (
     <main className="space-y-5 pb-2">
+      <LiveTicker />
       <Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} />
       <TrustStrip />
+      <HypeDeck />
       <SellerLeaderboard />
       <section>
         <SectionHeading eyebrow="Bozor" title="Tanlangan akkauntlar" actionLabel="Barchasi" onAction={() => onNavigate('/accounts')} />

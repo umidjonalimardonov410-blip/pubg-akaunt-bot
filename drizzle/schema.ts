@@ -34,6 +34,11 @@ export const users = mysqlTable("users", {
   referralCode: varchar("referralCode", { length: 32 }),
   alertPreferences: text("alertPreferences"),
   themePreference: mysqlEnum("themePreference", ["dark", "neon", "gamer"]).default("dark").notNull(),
+
+  // Gamification: XP, daraja va kunlik omad g'ildiragi
+  xp: int("xp").default(0).notNull(),
+  spinStreak: int("spinStreak").default(0).notNull(),
+  lastSpinAt: timestamp("lastSpinAt"),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

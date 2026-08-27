@@ -317,6 +317,7 @@ async function sendWelcome(chatId: number | string, lang: BotLang, name: string)
     reply_markup: {
       inline_keyboard: [
         ...rowsExtra,
+        ...(appUrl ? [[{ text: '🎡 Kunlik omad g‘ildiragi', web_app: { url: appUrl } }]] : []),
         [
           { text: texts.menuWallet, callback_data: 'wallet_menu' },
           { text: texts.menuLanguage, callback_data: 'show_language' },
