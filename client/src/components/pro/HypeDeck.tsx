@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, Flame, Gauge, Gift, ShieldCheck, Sparkles, Timer, TrendingUp, Trophy, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -147,120 +147,6 @@ export function LevelCard() {
   );
 }
 
-/** Kunlik omad g'ildiragi — 24 soatda 1 marta, natija Telegramga ham yuboriladi. */
-export function SpinWheel() {
-  const { isAuthenticated } = useAuth();
-  const utils = trpc.useUtils();
-  const me = trpc.hype.me.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000 });
-  const [angle, setAngle] = useState(0);
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<{ emoji: string; label: string; promoCode: string | null; xpGained: number } | null>(null);
-  const timer = useRef<number | null>(null);
-
-  const prizes = me.data?.prizes ?? [];
-  const segment = prizes.length > 0 ? 360 / prizes.length : 45;
-
-  const spin = trpc.hype.spin.useMutation({
-    onSuccess: data => {
-      const target = 360 * 6 - (data.index * segment + segment / 2);
-      setAngle(previous => previous + (target - (previous % 360)) + 360);
-      timer.current = window.setTimeout(() => {
-        setSpinning(false);
-        setResult({ emoji: data.prize.emoji, label: data.prize.label, promoCode: data.promoCode, xpGained: data.xpGained });
-        haptic("success");
-        toast.success(`${data.prize.emoji} ${data.prize.label}`, {
-          description: data.promoCode ? `Promo-kod: ${data.promoCode} • +${data.xpGained} XP` : `+${data.xpGained} XP`,
-        });
-        utils.hype.me.invalidate();
-        utils.profile.get.invalidate();
-      }, 4200);
-    },
-    onError: error => {
-      setSpinning(false);
-      toast.error(error.message || "G‘ildirak hozir mavjud emas");
-    },
-  });
-
-  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
-
-  const wheelBackground = useMemo(() => {
-    if (prizes.length === 0) return "conic-gradient(#1a1d21, #101215)";
-    const stops = prizes
-      .map((_, index) => {
-        const color = index % 2 === 0 ? "rgba(245,197,66,.22)" : "rgba(255,255,255,.04)";
-        return `${color} ${index * segment}deg ${(index + 1) * segment}deg`;
-      })
-      .join(", ");
-    return `conic-gradient(${stops})`;
-  }, [prizes, segment]);
-
-  if (!isAuthenticated) return null;
-  const ready = Boolean(me.data?.canSpin) && !spinning;
-
-  return (
-    <section className="hype-card relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4">
-      <div className="flex items-center gap-2">
-        <Gift className="h-4 w-4 text-amber-300" />
-        <h3 className="font-display text-sm font-black uppercase tracking-wider text-white">Omad g‘ildiragi</h3>
-        <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-white/35">
-          <Timer className="h-3 w-3" />24 soatda 1 marta
-        </span>
-      </div>
-
-      <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-        <div className="relative h-44 w-44 shrink-0">
-          <span className="absolute left-1/2 top-0 z-20 -translate-x-1/2 text-lg">🔻</span>
-          <motion.div
-            className="wheel-glow h-44 w-44 rounded-full border border-amber-400/30"
-            style={{ background: wheelBackground }}
-            animate={{ rotate: angle }}
-            transition={{ duration: 4, ease: [0.15, 0.9, 0.2, 1] }}
-          >
-            {prizes.map((prize, index) => (
-              <span
-                key={prize.key}
-                className="absolute left-1/2 top-1/2 origin-left text-[11px] font-black text-white/80"
-                style={{ transform: `rotate(${index * segment + segment / 2}deg) translateX(26px)` }}
-              >
-                {prize.emoji}
-              </span>
-            ))}
-          </motion.div>
-          <span className="absolute left-1/2 top-1/2 z-10 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-amber-400/40 bg-black/70 text-amber-200">
-            <Sparkles className="h-5 w-5" />
-          </span>
-        </div>
-
-        <div className="w-full space-y-2">
-          <button
-            type="button"
-            disabled={!ready || spin.isPending}
-            onClick={() => {
-              if (!ready) return;
-              haptic("light");
-              setResult(null);
-              setSpinning(true);
-              spin.mutate();
-            }}
-            className="btn-shine w-full rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-sm font-black text-amber-100 transition active:scale-95 disabled:opacity-40"
-          >
-            {spinning ? "Aylanmoqda..." : ready ? "Aylantirish" : "Ertaga qayta urinib ko‘ring"}
-          </button>
-          {result ? (
-            <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.07] p-3 text-xs text-amber-50">
-              <p className="font-black">{result.emoji} {result.label}</p>
-              <p className="mt-1 text-[11px] text-white/55">+{uz(result.xpGained)} XP{result.promoCode ? ` • promo: ${result.promoCode}` : ""}</p>
-            </div>
-          ) : (
-            <p className="text-[11px] leading-5 text-white/40">
-              Har kuni aylantiring: XP, pul bonusi yoki shaxsiy chegirma promo-kodi. Natija Telegram botga ham yuboriladi.
-            </p>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /** Eng faol treyderlar reytingi. */
 export function TopTraders() {
@@ -298,10 +184,7 @@ export default function HypeDeck() {
     <div className="space-y-3">
       <LiveTicker />
       <MarketPulse />
-      <div className="grid gap-3 lg:grid-cols-2">
-        <LevelCard />
-        <SpinWheel />
-      </div>
+      <LevelCard />
       <TopTraders />
     </div>
   );
