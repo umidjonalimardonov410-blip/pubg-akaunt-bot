@@ -10,6 +10,8 @@ import { depositReceipts, transactions, securityAudits, users, notifications, pu
 import { storagePut } from './storage';
 import { and, eq, sql } from 'drizzle-orm';
 import { ADMIN_TELEGRAM_LABEL, ADMIN_TELEGRAM_URL, ADMIN_PANEL_TELEGRAM_ID, ADMIN_PANEL_TELEGRAM_LABEL, ADMIN_PANEL_TELEGRAM_URL } from '../shared/adminContact';
+import { channelTexts, isChannelMember, isForcedSubscriptionEnabled, sendSubscriptionGate } from './telegramChannel';
+
 
 export type TelegramCommand = {
   command: string;
@@ -948,7 +950,27 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     if (callbackChatId === undefined) return { handled: false as const, status: 'ignored' as const };
     const data = callback.data || '';
     await resolveChatLanguage(callbackChatId, callback.from?.id);
+
+    if (data === 'check_sub') {
+      const cbLang = getChatLanguage(callbackChatId);
+      const t = channelTexts(cbLang);
+      const subscribed = await isChannelMember(callback.from?.id);
+      await answerTelegramCallback(callback.id, subscribed ? t.done : t.stillNot);
+      if (!subscribed) {
+        const gate = await sendSubscriptionGate(callbackChatId, cbLang);
+        return { handled: true as const, command: 'check_sub', status: gate.status, sent: gate.ok, subscribed: false };
+      }
+      const welcome = await sendWelcome(callbackChatId, cbLang, callback.from?.id ? `#${callback.from.id}` : 'do‘stim');
+      await telegramApiRequest('sendMessage', {
+        chat_id: callbackChatId,
+        text: botText(cbLang).chooseSection,
+        reply_markup: buildMainKeyboard(cbLang, isTelegramAdmin(callback.from?.id)),
+      });
+      return { handled: true as const, command: 'check_sub', status: welcome.status, sent: welcome.ok, subscribed: true };
+    }
+
     const marketPage = parseMarketplacePageData(data);
+
     if (marketPage) {
       await answerTelegramCallback(callback.id, botText(getChatLanguage(callbackChatId)).cbLoading);
       const result = await sendMarketplaceResults(callbackChatId, marketPage.page, marketPage.path);
@@ -1134,11 +1156,21 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const rawText = (message.text ?? '').trim();
   const isAdminUser = isTelegramAdmin(message.from?.id);
 
+  // Majburiy kanal obunasi: admin bo'lmaganlar avval kanalga qo'shilishi kerak.
+  if (!isAdminUser && isForcedSubscriptionEnabled() && (message.chat?.type ?? 'private') === 'private') {
+    const subscribed = await isChannelMember(message.from?.id);
+    if (!subscribed) {
+      const gate = await sendSubscriptionGate(chatId, lang);
+      return { handled: true as const, command: 'force_subscribe', status: gate.status, sent: gate.ok };
+    }
+  }
+
   if (command === 'start' || command === '') {
     const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
     await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang, isAdminUser) });
     return { handled: true as const, command: 'start', status: sent.status, sent: sent.ok };
   }
+
   if (command === 'buy' || menuKey === 'menuMarket') {
     const sent = await sendMarketplaceMenu(chatId);
     return { handled: true as const, command: 'buy', status: sent.status, sent: sent.ok };

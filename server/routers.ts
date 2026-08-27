@@ -18,6 +18,7 @@ import { accountHolds, savedFilters } from "../drizzle/schema";
 import { matchesSavedSearch, parseSavedFilters } from "./savedSearchMatch";
 import { scanListing } from "./scamGuard";
 import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter, trackingRouter } from "./marketplaceRouters";
+import { postSoldAccountToChannel } from './telegramChannel';
 import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
 import { buildDailySeries, buildStatusBreakdown, buildTopSellers } from "./analytics";
@@ -835,9 +836,44 @@ export const appRouter = router({
           orderId: input,
         });
         await notifyTelegramUser(order.sellerId, saleMessage, '/orders');
+
+        // Sotilgan akkauntni rasmiy kanalga avtomatik e'lon qilamiz.
+        try {
+          const soldAccount = await getPubgAccountById(order.accountId);
+          const seller = await getUserById(order.sellerId);
+          if (soldAccount) {
+            await postSoldAccountToChannel({
+              accountId: soldAccount.id,
+              orderId: input,
+              title: soldAccount.playerName,
+              level: soldAccount.level,
+              tier: soldAccount.region,
+              kdRatio: soldAccount.kdRatio,
+              winRate: soldAccount.winRate,
+              totalMatches: soldAccount.totalMatches,
+              ucBalance: soldAccount.ucBalance,
+              outfitCount: soldAccount.outfitCount,
+              gunSkinCount: soldAccount.gunSkinCount,
+              vehicleCount: soldAccount.vehicleCount,
+              hasXSuit: soldAccount.hasXSuit,
+              hasConquerorHistory: soldAccount.hasConquerorHistory,
+              accountCreatedYear: soldAccount.accountCreatedYear,
+              featuredSkins: soldAccount.featuredSkins,
+              price: order.price,
+              thumbnailUrl: soldAccount.thumbnailUrl,
+              galleryUrls: soldAccount.galleryUrls,
+              videoUrl: soldAccount.videoUrl,
+              sellerName: seller?.name ?? null,
+            });
+          }
+        } catch (error) {
+          console.warn('[Telegram Channel] sold post failed:', error);
+        }
+
         await creditReferralCashback(db, order.buyerId, Number(order.price), input).catch(error =>
           console.warn('[Cashback] referral bonus failed:', error),
         );
+
 
         return { success: true };
       }),

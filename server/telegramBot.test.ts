@@ -5,12 +5,15 @@ describe('Telegram Bot Server Helper Tests', () => {
   beforeEach(() => {
     process.env.TELEGRAM_BOT_TOKEN = 'test-token';
     process.env.TELEGRAM_MINI_APP_URL = 'https://example.com';
+    // Majburiy obuna alohida testlarda tekshiriladi.
+    process.env.TELEGRAM_FORCE_SUBSCRIBE = 'false';
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.TELEGRAM_BOT_TOKEN;
     delete process.env.TELEGRAM_MINI_APP_URL;
+    delete process.env.TELEGRAM_FORCE_SUBSCRIBE;
   });
 
   it('parses commands correctly from messages', () => {
