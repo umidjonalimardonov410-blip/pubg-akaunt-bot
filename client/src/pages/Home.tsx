@@ -280,6 +280,14 @@ function StatusPill({ children, tone = "red" }: { children: React.ReactNode; ton
 }
 
 function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const [headerLocation] = useLocation();
+  const isHomePage = headerLocation === '/' || headerLocation === '';
+  /** Har bir bo'limda ortga qaytish tugmasi bo'lishi uchun. */
+  const goBack = () => {
+    telegramHaptic('light');
+    if (typeof window !== 'undefined' && window.history.length > 1) window.history.back();
+    else onNavigate('/');
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { t } = useI18n();
@@ -311,7 +319,17 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-32 bg-[radial-gradient(60%_100%_at_18%_100%,rgba(245,197,66,.13),transparent_70%)]" />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,197,66,.35),transparent)]" />
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-3 sm:h-[72px] sm:px-4 lg:px-8">
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-3 sm:gap-10">
+          {!isHomePage && (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Ortga"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/[0.04] text-white/70 ring-1 ring-inset ring-white/10 transition hover:bg-white/[0.08] hover:text-amber-100 active:scale-95"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
           <span className="sm:hidden"><Brand compact /></span>
           <span className="hidden sm:inline-flex"><Brand /></span>
           <nav className="hidden items-center gap-6 text-sm font-semibold text-white/55 lg:flex">
@@ -1511,15 +1529,15 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       {/* ===== Wallet ===== */}
       <section className="hud-crate pro-clip relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,197,66,.12),rgba(10,11,13,.98))] p-3.5">
         <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-20" />
-        <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="relative flex flex-col gap-3">
           <div className="min-w-0">
           <CashbackCard />
             <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80"><WalletCards className="h-4 w-4" />Hamyon</span>
             <div className="mt-1 truncate font-display text-[26px] font-black leading-none text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[11px] font-bold text-white/45">so‘m</span></div>
           </div>
-          <div className="flex shrink-0 gap-1.5">
-            <button type="button" aria-label="To‘ldirish" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#22c9ee] px-3.5 text-[12px] font-black text-black shadow-[0_0_18px_rgba(34,201,238,.35)] active:scale-95"><CreditCard className="h-4 w-4" />To‘ldirish</button>
-            <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-11 items-center rounded-xl border border-white/15 bg-black/40 px-3.5 text-[12px] font-bold text-white/80 active:scale-95">Yechish</button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" aria-label="To‘ldirish" onClick={() => { setWalletAction(walletAction === 'manual_topup' ? null : 'manual_topup'); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#22c9ee] px-4 text-[13px] font-black text-black shadow-[0_0_18px_rgba(34,201,238,.35)] active:scale-95"><CreditCard className="h-4 w-4" />To‘ldirish</button>
+            <button type="button" aria-label="Yechish" onClick={() => { setWalletAction(walletAction === 'withdraw' ? null : 'withdraw'); setAmount(''); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/40 px-4 text-[13px] font-black text-white/85 active:scale-95"><ArrowRight className="h-4 w-4" />Yechish</button>
           </div>
         </div>
         {walletAction === 'manual_topup' && <div className="hud-crate relative mt-4 overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
@@ -1557,7 +1575,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80">Chek holati</span>
-            <button type="button" onClick={() => receiptsQuery.refetch()} className="text-[11px] font-bold text-[#22c9ee]">Yangilash</button>
+            <button type="button" disabled={receiptsQuery.isFetching} onClick={() => { telegramHaptic('light'); receiptsQuery.refetch(); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-[#22c9ee]/35 bg-[#22c9ee]/10 px-3 text-[11px] font-black text-[#22c9ee] transition active:scale-95 disabled:opacity-60">{receiptsQuery.isFetching ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}Yangilash</button>
           </div>
           {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className={`hud-row flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${receipt.status === 'approved' ? 'border-emerald-400/30 bg-emerald-400/[0.06]' : receipt.status === 'rejected' ? 'border-red-500/30 bg-red-500/[0.06]' : 'border-amber-300/30 bg-amber-400/[0.06]'}`}>
             <div><p className="text-[13px] font-black text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Clock3 className="h-3 w-3" />{new Date(receipt.createdAt).toLocaleString()}</p></div>
@@ -1766,7 +1784,7 @@ function EmptyState({ title, text }: { title: string; text: string }) {
 function BottomNav({ current, onNavigate }: { current: PageKey; onNavigate: (path: string) => void }) {
   const isPro = typeof window !== 'undefined' && (window.location.pathname.includes('pro-tools') || window.location.pathname.includes('pro-market'));
   const items = [['home', '/', Flame], ['accounts', '/accounts', Search], ['sell', '/sell', Plus], ['orders', '/orders', ShoppingBag], ['profile', '/profile', UserRound]] as const;
-  return <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-amber-400/15 bg-[#08090b]/[.98] px-2 pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,.5)] backdrop-blur-xl lg:hidden"><div className="mx-auto grid max-w-md grid-cols-5 gap-1">{items.map(([key, path, Icon]) => {
+  return <nav style={{ transform: 'translateZ(0)' }} className="fixed bottom-0 left-0 right-0 z-40 transform-gpu will-change-transform border-t border-amber-400/15 bg-[#08090b] px-2 pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,.5)] lg:hidden"><div className="mx-auto grid max-w-md grid-cols-5 gap-1">{items.map(([key, path, Icon]) => {
     const active = current === key;
     return <button key={key} onClick={() => { telegramHaptic('light'); onNavigate(path); }} className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[9px] font-bold transition active:scale-95 ${active ? 'text-amber-200' : 'text-white/40 hover:text-white'}`}><span className={`grid h-8 w-8 place-items-center rounded-xl transition ${active ? 'bg-amber-400/20 text-amber-200 shadow-[0_0_15px_rgba(245,197,66,.3)]' : 'bg-white/[0.03] text-white/60'}`}><Icon className="h-3.5 w-3.5" /></span>{key === 'home' ? 'Asosiy' : key === 'accounts' ? 'Bozor' : key === 'sell' ? 'Sotish' : key === 'orders' ? 'Buyurtma' : 'Profil'}</button>;
   })}</div></nav>;
@@ -1798,7 +1816,10 @@ export default function Home() {
   React.useEffect(() => {
     const webApp = initTelegramWebApp();
     if (!webApp) return;
-    const goBack = () => { if (location !== '/') setLocation('/'); };
+    const goBack = () => {
+      if (typeof window !== 'undefined' && window.history.length > 1) window.history.back();
+      else setLocation('/');
+    };
     if (page.key === 'home') webApp.BackButton?.hide?.();
     else {
       webApp.BackButton?.show?.();
