@@ -895,3 +895,24 @@ body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-off
   }
   .pro-skeleton::after { animation: none; }
 }
+
+/* --- Inferno live-market micro animations --- */
+.rise-in { animation: pubgRise .55s cubic-bezier(.22,1,.36,1) both; }
+.rise-in-1 { animation-delay: .05s; }
+.rise-in-2 { animation-delay: .12s; }
+.rise-in-3 { animation-delay: .19s; }
+.rise-in-4 { animation-delay: .26s; }
+
+/* Narx blokida yumshoq olov pulsi */
+.price-flame { animation: pubgGlow 3.2s ease-in-out infinite; border-radius: .75rem; }
+
+/* Tugmada yaltirash effekti */
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.22) 50%, transparent 65%); transform: translateX(-120%); animation: pubgShine 3.8s ease-in-out infinite; pointer-events: none; }
+
+/* Yangi elementlarda sekin paydo bo'lish */
+.fade-in-soft { animation: intro-fade-in .4s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in, .price-flame, .btn-shine::after, .fade-in-soft { animation: none !important; }
+}
