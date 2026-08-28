@@ -45,7 +45,7 @@ import {
   UserRound,
   WalletCards,
   X,
-  Zap, Trash2, Camera, Bookmark, FolderOpen } from "lucide-react";
+  Zap, Trash2, Camera, Bookmark, FolderOpen, Trophy, ShieldCheck, Crown, ArrowUpFromLine } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { accountShareUrl, authenticateTelegramWebApp, getTelegramPhoneLoginUrl, autoClaimTelegramReferral, getTelegramMiniAppLaunchUrl, getTelegramReferralCode, getTelegramWebApp, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
 import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
@@ -1434,7 +1434,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         </div>
       </div>}
       {/* ===== Pro live hero ===== */}
-      <section className="pro-live pro-clip relative -mx-1 overflow-hidden rounded-3xl border border-amber-400/25 sm:mx-0">
+      <section className="pro-live pro-clip relative -mx-1 overflow-hidden rounded-3xl border border-amber-400/30 shadow-[0_0_40px_rgba(240,185,11,.10)] sm:mx-0">
         {/* Profil banneri qotib turadi — aylanma slayd o'chirildi. */}
         <div className="pro-static-hero" style={{ backgroundImage: `url(${PROFILE_BANNER})` }} />
         <div className="pro-live__grid" />
@@ -1442,81 +1442,70 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         {[8, 26, 44, 62, 80, 92].map((left, index) => (
           <span key={left} className="pro-ember" style={{ left: `${left}%`, animationDelay: `${index * 0.85}s` }} />
         ))}
-        <div className="relative px-3 pb-3 pt-3 sm:px-6 sm:pt-6">
-          {/* Statistika paneli */}
-          <div className="mobile-scroll-row -mx-3 mb-3 items-center gap-0 px-3 sm:mx-0 sm:px-0">
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-300/35 bg-black/60 px-2.5 py-1.5">
-              <WalletCards className="h-3.5 w-3.5 shrink-0 text-amber-200" />
-              <span className="px-gold-text font-display text-[13px] font-black"><AnimatedNumber value={balance} /></span>
-              <span className="text-[9px] font-bold text-white/40">so‘m</span>
-            </span>
-            <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-white/55">E‘lon<b className="text-white">{listingsCount}</b></span>
-            <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-white/55">Savdo<b className="text-white">{salesCount}</b></span>
-            <span className="mx-2 h-5 w-px shrink-0 bg-white/12" />
-            <span className="inline-flex shrink-0 items-center gap-2 text-[11px] font-bold text-white/55">
-              Reyting
-              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
-                <span className="block h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-200" style={{ width: `${Math.min(100, (averageRating / 5) * 100)}%` }} />
-              </span>
-            </span>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="relative shrink-0 pb-3">
+        <div className="relative px-3 pb-4 pt-4 sm:px-6 sm:pt-6">
+          <div className="flex items-start gap-3 sm:gap-5">
+            {/* Avatar — toj + VIP ramka */}
+            <div className="relative shrink-0 pb-4 pt-3">
+              <Crown className="absolute -top-1 left-1/2 h-6 w-6 -translate-x-1/2 fill-amber-300 text-amber-300 drop-shadow-[0_0_10px_rgba(240,185,11,.7)] sm:h-8 sm:w-8" />
               <span className="pro-ring" />
-              <span className="px-frame relative grid h-[68px] w-[68px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/70 bg-black/60 text-amber-200 shadow-[0_0_22px_rgba(245,197,66,.28)] sm:h-24 sm:w-24">
-                {avatarUrl
-                  ? <img loading="lazy" decoding="async" src={avatarUrl} alt={displayName} className="img-live h-full w-full object-cover" />
-                  : <img loading="lazy" decoding="async" src="/assets/pubg-avatar.jpg" alt={displayName} className="img-live h-full w-full object-cover" />}
+              <span className="px-frame relative grid h-[86px] w-[86px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/80 bg-black/60 text-amber-200 shadow-[0_0_28px_rgba(245,197,66,.35)] sm:h-28 sm:w-28">
+                <img loading="lazy" decoding="async" src={avatarUrl || '/assets/pubg-avatar.jpg'} alt={displayName} className="img-live h-full w-full object-cover" />
               </span>
-              <label className="absolute inset-x-0 bottom-0 mx-auto flex w-max cursor-pointer items-center gap-1 rounded-md border border-amber-300/40 bg-black/85 px-2 py-[2px] text-[8px] font-black uppercase tracking-wider text-amber-100 active:scale-95">
-                <Camera className="h-2.5 w-2.5" />{avatarUploading ? '...' : 'Surat'}
+              <span className="absolute inset-x-0 -bottom-0.5 mx-auto w-max rounded-md border border-amber-300/70 bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] px-2.5 py-[2px] text-[9px] font-black uppercase tracking-[0.2em] text-black shadow-[0_0_14px_rgba(240,185,11,.45)]">VIP</span>
+              <label className="absolute -right-1 top-4 grid h-7 w-7 cursor-pointer place-items-center rounded-full border border-amber-300/50 bg-black/85 text-amber-100 active:scale-95">
+                {avatarUploading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
                 <input type="file" accept="image/*" className="sr-only" onChange={event => { const file = event.target.files?.[0]; if (file) pickAvatar(file); event.target.value = ''; }} />
               </label>
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="pubg-live inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-black/45 px-2 py-[3px] text-[9px] font-black uppercase tracking-[0.18em] text-amber-100">
+            <div className="min-w-0 flex-1 pt-1">
+              <span className="pubg-live inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-black/55 px-2.5 py-[4px] text-[9px] font-black uppercase tracking-[0.18em] text-amber-100">
                 <span className="h-1.5 w-1.5 rounded-full bg-red-500" />{badge}
               </span>
-              <h1 className="mt-1.5 flex items-center gap-2 truncate font-display text-xl font-black uppercase italic leading-tight text-white drop-shadow sm:text-3xl">
-                <Sparkles className="h-5 w-5 shrink-0 text-white/80" />
+              <h1 className="mt-2 flex items-center gap-2 truncate font-display text-[26px] font-black uppercase leading-none text-white drop-shadow sm:text-4xl">
                 <span className="truncate">{displayName}</span>
+                <BadgeCheck className="h-5 w-5 shrink-0 fill-[#22c9ee] text-black sm:h-7 sm:w-7" />
               </h1>
-              <p className="mt-1 flex items-center gap-x-2 truncate text-[11px] font-bold text-white/60">
-                <span className="flex items-center gap-1 text-amber-200"><Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />{averageRating.toFixed(1)}</span>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 text-[12px] font-bold text-white/60">
+                <span className="text-white">LVL {Math.max(1, Math.floor(salesCount / 5) + 1)}</span>
                 <span className="text-white/25">•</span>
                 <span>{salesCount} savdo</span>
                 <span className="text-white/25">•</span>
                 <span>{listingsCount} e‘lon</span>
               </p>
               <div className="mt-2 flex items-center gap-2">
-                <span className="shrink-0 rounded-md border border-amber-300/40 bg-amber-400/15 px-2 py-[2px] text-[9px] font-black text-amber-100">LVL {Math.max(1, Math.floor(salesCount / 5) + 1)}</span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                  <span className="block h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-amber-200 transition-all duration-700" style={{ width: `${Math.min(100, ((salesCount % 5) / 5) * 100 + 8)}%` }} />
+                <span className="h-2 w-28 overflow-hidden rounded-full bg-white/12 sm:w-44">
+                  <span className="block h-full rounded-full bg-[linear-gradient(90deg,#f0b90b,#ffe08a)] transition-all duration-700" style={{ width: `${Math.min(100, ((salesCount % 5) / 5) * 100 + 8)}%` }} />
                 </span>
-                <span className="shrink-0 text-[8px] font-bold text-white/40">{5 - (salesCount % 5)} savdo — keyingi daraja</span>
+                <span className="text-[11px] font-bold text-white/60">{(salesCount % 5) * 20 + 20} / 100 XP</span>
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-bold">
+                <span className="flex items-center gap-1.5 text-amber-200"><Star className="h-4 w-4 fill-amber-300 text-amber-300" />{averageRating.toFixed(1)} <span className="text-white/40">({reviews.length}+)</span></span>
+                <span className="flex items-center gap-1.5 text-white/70"><ShieldCheck className="h-4 w-4 text-emerald-400" />Ishonchli sotuvchi</span>
               </div>
             </div>
           </div>
-          <div className="mt-3 space-y-2">
-            <button onClick={() => onNavigate('/sell')} className="pubg-press relative flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] text-[15px] font-black uppercase tracking-wide text-black shadow-[0_0_24px_rgba(240,185,11,.35)] active:scale-95">
+          <div className="mt-4 space-y-2.5">
+            <button onClick={() => onNavigate('/sell')} className="pubg-press relative flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] text-[16px] font-black uppercase tracking-wide text-black shadow-[0_0_28px_rgba(240,185,11,.4)] active:scale-95">
               <span aria-hidden className="pointer-events-none absolute left-1.5 top-1.5 h-3 w-3 border-l-2 border-t-2 border-black/45" />
               <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 h-3 w-3 border-r-2 border-t-2 border-black/45" />
               <span aria-hidden className="pointer-events-none absolute bottom-1.5 left-1.5 h-3 w-3 border-b-2 border-l-2 border-black/45" />
               <span aria-hidden className="pointer-events-none absolute bottom-1.5 right-1.5 h-3 w-3 border-b-2 border-r-2 border-black/45" />
               <ShoppingBag className="h-5 w-5" />+ Akkaunt sotish
             </button>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2.5">
               {([
-                [FileCheck2, 'Buyurtma', () => onNavigate('/orders')],
-                [Clock3, 'Tranzaksiya', () => onNavigate('/transactions')],
-                [Star, 'Sharhlar', () => onNavigate('/reviews')],
-                [Headphones, 'Admin', openAdminChat],
-              ] as const).map(([Icon, label, action]) => (
-                <button key={label} onClick={action} className="pubg-press flex min-h-[74px] flex-col items-center justify-center gap-1.5 rounded-xl border border-amber-300/25 bg-black/55 px-2 text-[10px] font-black uppercase tracking-wide text-white/85 active:scale-95">
-                  <Icon className="h-5 w-5 text-amber-300" />
-                  <span className="flex w-full items-center justify-center gap-1 truncate text-center">{label}<ChevronRight className="h-3 w-3 shrink-0 text-white/35" /></span>
+                [ShoppingBag, 'Buyurtma', String(salesCount), () => onNavigate('/orders')],
+                [Clock3, 'Tranzaksiya', String(transactions.length), () => onNavigate('/transactions')],
+                [Star, 'Sharhlar', String(reviews.length), () => onNavigate('/reviews')],
+                [Crown, 'Admin', '', openAdminChat],
+              ] as const).map(([Icon, label, value, action]) => (
+                <button key={label} onClick={action} className="pubg-press flex min-h-[68px] items-center gap-3 rounded-xl border border-amber-300/25 bg-black/60 px-3 text-left active:scale-95">
+                  <Icon className="h-6 w-6 shrink-0 text-amber-300" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-black uppercase tracking-wide text-white/90">{label}</span>
+                    {value ? <span className="mt-0.5 block text-[12px] font-bold text-amber-300">{value}</span> : null}
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-white/35" />
                 </button>
               ))}
             </div>
@@ -1527,16 +1516,26 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       {/* ===== Wallet ===== */}
       <section className="hud-crate pro-clip relative overflow-hidden rounded-2xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,197,66,.12),rgba(10,11,13,.98))] p-3.5">
         <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-20" />
-        <div className="relative flex flex-col gap-3">
-          <div className="min-w-0">
+        <div className="relative flex flex-col gap-3.5">
+          <div className="flex items-start gap-3">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-amber-300/40 bg-black/60 text-amber-300 shadow-[0_0_20px_rgba(240,185,11,.25)] sm:h-16 sm:w-16">
+              <Trophy className="h-7 w-7 fill-amber-300/20" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-[15px] font-black uppercase tracking-wide text-amber-300 sm:text-lg">Referral cashback</p>
+              <p className="mt-0.5 text-[12px] font-bold text-white/70">Har savdodan 2% qaytadi</p>
+              <p className="mt-1.5 text-[11px] leading-5 text-white/45">Do‘stlaringizni taklif qiling — ular savdo qilganda hamyoningizga 2% cashback tushadi.</p>
+            </div>
+            <div className="shrink-0 border-l border-white/10 pl-3 text-right">
+              <p className="text-[11px] font-bold text-white/50">Jami ishlab topilgan</p>
+              <p className="mt-1 font-display text-[18px] font-black leading-none text-emerald-400 sm:text-2xl"><AnimatedNumber value={balance} /> <span className="font-sans text-[11px] font-bold">so‘m</span></p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button type="button" aria-label="To‘ldirish" title="Kartadan balansni to‘ldirish: summani tanlang va chek rasmini yuboring" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'manual_topup'; setWalletAction(opening ? 'manual_topup' : null); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); toast.info(opening ? 'To‘ldirish formasi ochildi — summani tanlang' : 'To‘ldirish formasi yopildi'); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] px-4 text-[14px] font-black text-black shadow-[0_0_22px_rgba(240,185,11,.35)] transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'To‘ldirish'}</button>
+            <button type="button" aria-label="Yechish" title="Balansdan pul yechish: summa va karta raqamini kiriting" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'withdraw'; setWalletAction(opening ? 'withdraw' : null); setAmount(''); toast.info(opening ? 'Yechish formasi ochildi — summani kiriting' : 'Yechish formasi yopildi'); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-black/55 px-4 text-[14px] font-black text-white/90 transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUpFromLine className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'Yechish'}</button>
+          </div>
           <CashbackCard />
-            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80"><WalletCards className="h-4 w-4" />Hamyon</span>
-            <div className="mt-1 truncate font-display text-[26px] font-black leading-none text-white"><AnimatedNumber value={balance} /> <span className="font-sans text-[11px] font-bold text-white/45">so‘m</span></div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" aria-label="To‘ldirish" title="Kartadan balansni to‘ldirish: summani tanlang va chek rasmini yuboring" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'manual_topup'; setWalletAction(opening ? 'manual_topup' : null); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); toast.info(opening ? 'To‘ldirish formasi ochildi — summani tanlang' : 'To‘ldirish formasi yopildi'); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#22c9ee] px-4 text-[13px] font-black text-black shadow-[0_0_18px_rgba(34,201,238,.35)] transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'To‘ldirish'}</button>
-            <button type="button" aria-label="Yechish" title="Balansdan pul yechish: summa va karta raqamini kiriting" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'withdraw'; setWalletAction(opening ? 'withdraw' : null); setAmount(''); toast.info(opening ? 'Yechish formasi ochildi — summani kiriting' : 'Yechish formasi yopildi'); }} className="pubg-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/40 px-4 text-[13px] font-black text-white/85 transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'Yechish'}</button>
-          </div>
         </div>
         {walletAction === 'manual_topup' && <div className="hud-crate relative mt-4 overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
           <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-10" />
@@ -1641,11 +1640,15 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       <SellerListingsPanel />
 
       {/* ===== Transactions ===== */}
-      <section className="pro-glass pro-clip rounded-2xl p-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Oxirgi moliyaviy harakatlar</p>
-        {transactions.length === 0 ? <p className="mt-3 text-[11px] text-white/40">Hozircha tranzaksiyalar mavjud emas.</p> : <div className="mt-2 divide-y divide-white/[0.07]">{transactions.slice(0, 5).map(transaction => { const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund'; const label = transaction.type === 'topup' ? 'Balans to‘ldirildi' : transaction.type === 'withdrawal' ? 'Yechib olish so‘rovi' : transaction.type === 'seller_payout' ? 'Sotuvchi to‘lovi' : transaction.type === 'order_refund' ? 'Buyurtma qaytarimi' : 'Buyurtma to‘lovi'; return <div key={transaction.id} className="flex items-center justify-between gap-3 py-2.5">
-          <div><p className="text-[12px] font-bold text-white">{label}</p><p className="mt-0.5 text-[10px] text-white/35">{transaction.status === 'completed' ? 'Yakunlangan' : 'Kutilmoqda'}</p></div>
-          <span className={`font-display text-sm font-black ${isCredit ? 'text-emerald-300' : 'text-amber-200'}`}>{isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))}</span>
+      <section className="pro-glass pro-clip rounded-2xl border border-amber-300/20 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-display text-[15px] font-black text-white"><Zap className="h-4 w-4 fill-amber-300 text-amber-300" />Oxirgi harakatlar</p>
+          <button type="button" onClick={() => onNavigate('/transactions')} className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-amber-300/25 bg-black/40 px-3 text-[11px] font-bold text-white/75 active:scale-95">Barchasini ko‘rish<ChevronRight className="h-3.5 w-3.5 text-amber-300" /></button>
+        </div>
+        {transactions.length === 0 ? <p className="mt-3 text-[11px] text-white/40">Hozircha tranzaksiyalar mavjud emas.</p> : <div className="mt-3 space-y-2">{transactions.slice(0, 5).map(transaction => { const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund'; const label = transaction.type === 'topup' ? 'Balans to‘ldirildi' : transaction.type === 'withdrawal' ? 'Yechib olish so‘rovi' : transaction.type === 'seller_payout' ? 'Sotuvchi to‘lovi' : transaction.type === 'order_refund' ? 'Buyurtma qaytarimi' : 'Buyurtma to‘lovi'; return <div key={transaction.id} className="hud-row flex items-center gap-3 rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5">
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${isCredit ? 'bg-emerald-400/12 text-emerald-300' : 'bg-red-500/12 text-red-400'}`}>{isCredit ? <CreditCard className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}</span>
+          <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold text-white">{label}</p><p className="mt-0.5 truncate text-[10px] text-white/35">#{transaction.id} · {transaction.status === 'completed' ? 'Yakunlangan' : 'Kutilmoqda'}</p></div>
+          <span className={`shrink-0 font-display text-[14px] font-black ${isCredit ? 'text-emerald-400' : 'text-red-400'}`}>{isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))} <span className="font-sans text-[10px]">so‘m</span></span>
         </div>; })}</div>}
       </section>
     </main>
