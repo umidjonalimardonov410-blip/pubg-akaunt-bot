@@ -723,7 +723,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
     <main className="space-y-5 pb-2">
       <LiveTicker />
       <Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} />
-      <TrustStrip />
+      <div className="hidden sm:block"><TrustStrip /></div>
       <HypeDeck />
       <TopSellersBoard limit={5} />
       <div className="hidden sm:block"><SellerLeaderboard /></div>
@@ -920,7 +920,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
   const handleBuy = () => { haptic('medium'); setConfirmOpen(true); };
   const confirmBuy = () => { if (buying) return; setBuying(true); setConfirmOpen(true); void applyOptimistic().then(() => createOrder.mutate({ accountId: item.id, promoCode: promo?.code })); };
   if (accountQuery.isLoading && !accountQuery.data) return <DetailSkeleton onBack={onBack} />;
-  return <main className="space-y-3 px-1 pro-sticky-space sm:px-0 lg:pb-6">
+  return <main className="space-y-2 px-1 pro-sticky-space sm:px-0 lg:pb-6">
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
       <button onClick={onBack} className="inline-flex min-w-0 items-center gap-2 text-xs font-bold text-white/45 transition hover:text-white"><ArrowLeft className="h-4 w-4 shrink-0" /><span className="truncate">Orqaga qaytish</span></button>
       <div className="flex shrink-0 items-center gap-2">
@@ -971,30 +971,22 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
     </section>
 
     <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5 text-center"><span className="block text-[10px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-1 block text-base font-black text-white">{value}</span></div>)}
+      <div className="grid grid-cols-4 gap-1.5">
+        {[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-1 py-2 text-center"><span className="block truncate text-[8px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-0.5 block truncate text-xs font-black text-white">{value}</span></div>)}
       </div>
     </section>
 
     <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3">
       <h2 className="font-display text-xs font-black uppercase tracking-wider text-amber-200">Inventar va skinlar</h2>
-      {item.skins.length === 0 ? <p className="mt-2 text-xs text-white/40">Skin ma’lumoti kiritilmagan.</p> : <div className="mt-2 flex flex-wrap gap-1.5">{item.skins.map(skin => <span key={skin} className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-50"><Sparkles className="h-3 w-3 shrink-0 text-amber-200" /><span className="truncate">{skin}</span></span>)}</div>}
+      {item.skins.length === 0 ? <p className="mt-2 text-xs text-white/40">Skin ma’lumoti kiritilmagan.</p> : <div className="mt-2 flex flex-wrap gap-1.5">{item.skins.slice(0, 4).map(skin => <span key={skin} className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-semibold text-amber-50"><Sparkles className="h-3 w-3 shrink-0 text-amber-200" /><span className="truncate">{skin}</span></span>)}{item.skins.length > 4 && <span className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-bold text-white/60">+{item.skins.length - 4} ta</span>}</div>}
     </section>
 
     <SellerTrustCard sellerId={item.sellerId} />
 
-    <div className="grid gap-3 sm:grid-cols-2">
-      <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3">
-        <h2 className="font-display text-xs font-black uppercase tracking-wider text-amber-200">Asosiy ma’lumotlar</h2>
-        <dl className="mt-2 divide-y divide-white/[0.06] text-xs">
-          {[['Daraja', String(item.level)], ['Mintaqa', item.region], ['Reyting', item.rank], ['Asosiy skinlar', item.skins[0] ?? '—']].map(([label, value]) => <div key={label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2"><dt className="truncate text-white/45">{label}</dt><dd className="shrink-0 font-bold text-white">{value}</dd></div>)}
-        </dl>
-      </section>
-      <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3">
-        <h2 className="font-display text-xs font-black uppercase tracking-wider text-amber-200">Batafsil tavsif</h2>
-        <ExpandableText text={item.description} className="mt-2 text-xs leading-6 text-white/55" />
-      </section>
-    </div>
+    <details className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-3">
+      <summary className="cursor-pointer select-none font-display text-xs font-black uppercase tracking-wider text-amber-200">Batafsil tavsif</summary>
+      <ExpandableText text={item.description} className="mt-2 text-xs leading-6 text-white/55" />
+    </details>
 
     <ProDetailPanel accountId={item.id} sellerId={item.sellerId} />
     <TrustStrip />
