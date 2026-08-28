@@ -637,8 +637,8 @@ export function SearchPanel({ onFilters }: { onFilters: (filters: AccountFilters
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-white/35">{label}</span>{children}</label>;
+function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
+  return <label className={`block min-w-0 ${className ?? ''}`}><span className="mb-2 block truncate text-[10px] font-bold uppercase tracking-widest text-white/35">{label}</span>{children}</label>;
 }
 
 function EditField({ label, error, className, children }: { label: string; error?: string; className?: string; children: React.ReactNode }) {
@@ -1178,7 +1178,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           <Field label="Transport soni"><input type="number" value={form.vehicleCount} onChange={setField('vehicleCount')} className="field-input" placeholder="23" /></Field>
           <Field label="Akkaunt ochilgan yil"><input type="number" min="2008" max="2030" value={form.accountCreatedYear} onChange={setField('accountCreatedYear')} className="field-input" placeholder="2024" /></Field>
           <Field label="Narxi (so'm)"><input required type="number" min="0" value={form.price} onChange={setField('price')} className="field-input" placeholder="1000000" /></Field>
-          <Field label="Asosiy skinlar"><input value={form.skins} onChange={setField('skins')} className="field-input" placeholder="M416 Glacier" /></Field>
+          <Field label="Asosiy skinlar" className="col-span-2 md:col-span-1"><input value={form.skins} onChange={setField('skins')} className="field-input" placeholder="M416 Glacier" /></Field>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs font-bold text-white/70"><input type="checkbox" checked={form.hasConquerorHistory} onChange={toggleFlag('hasConquerorHistory')} className="h-4 w-4 accent-amber-400" /><Trophy className="h-4 w-4 text-amber-300" />Conqueror tarixi bor</label>
