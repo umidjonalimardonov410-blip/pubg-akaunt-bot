@@ -806,6 +806,40 @@ function ListListing({ item, onOpen }: { item: Listing; onOpen: (id: number) => 
   </article>;
 }
 
+function SkBar({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-white/[0.06] ${className}`} />;
+}
+
+function DetailSkeleton({ onBack }: { onBack: () => void }) {
+  return <main className="space-y-3 px-1 pro-sticky-space sm:px-0 lg:pb-6" aria-busy="true" aria-live="polite">
+    <span className="sr-only">Akkaunt ma'lumotlari yuklanmoqda</span>
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+      <button onClick={onBack} className="inline-flex min-w-0 items-center gap-2 text-xs font-bold text-white/45"><ArrowLeft className="h-4 w-4 shrink-0" /><span className="truncate">Orqaga qaytish</span></button>
+      <SkBar className="h-10 w-28" />
+    </div>
+    <section className="card-glow overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e1013]">
+      <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
+        <SkBar className="aspect-[4/5] w-full rounded-2xl sm:aspect-[3/4]" />
+        <div className="space-y-3">
+          <SkBar className="h-5 w-40" />
+          <SkBar className="h-8 w-2/3" />
+          <SkBar className="h-4 w-1/2" />
+          <div className="grid grid-cols-2 gap-2"><SkBar className="h-11" /><SkBar className="h-11" /></div>
+          <SkBar className="h-12 w-full" />
+          <div className="grid grid-cols-3 gap-2"><SkBar className="h-10" /><SkBar className="h-10" /><SkBar className="h-10" /></div>
+        </div>
+      </div>
+    </section>
+    <section className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.06]">
+      {Array.from({ length: 6 }).map((_, i) => <div key={i} className="bg-[#0e1013] px-2 py-4"><SkBar className="mx-auto h-3 w-12" /><SkBar className="mx-auto mt-2 h-4 w-10" /></div>)}
+    </section>
+    {[5, 4, 4].map((rows, i) => <section key={i} className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4">
+      <SkBar className="h-4 w-36" />
+      <div className="mt-3 space-y-2">{Array.from({ length: rows }).map((_, r) => <SkBar key={r} className="h-10 w-full" />)}</div>
+    </section>)}
+  </main>;
+}
+
 function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void; onNavigate: (path: string) => void }) {
   const accountQuery = trpc.accounts.getById.useQuery(id, { staleTime: 30_000, refetchOnWindowFocus: false });
   const recordView = trpc.accounts.recordView.useMutation();
@@ -885,6 +919,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
   const openChat = trpc.chat.open.useMutation({ onSuccess: thread => { telegramHaptic('success'); onNavigate(`/chat/${thread?.id}`); }, onError: error => toast.error(error.message) });
   const handleBuy = () => { haptic('medium'); setConfirmOpen(true); };
   const confirmBuy = () => { if (buying) return; setBuying(true); setConfirmOpen(true); void applyOptimistic().then(() => createOrder.mutate({ accountId: item.id, promoCode: promo?.code })); };
+  if (accountQuery.isLoading && !accountQuery.data) return <DetailSkeleton onBack={onBack} />;
   return <main className="space-y-3 px-1 pro-sticky-space sm:px-0 lg:pb-6">
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
       <button onClick={onBack} className="inline-flex min-w-0 items-center gap-2 text-xs font-bold text-white/45 transition hover:text-white"><ArrowLeft className="h-4 w-4 shrink-0" /><span className="truncate">Orqaga qaytish</span></button>
