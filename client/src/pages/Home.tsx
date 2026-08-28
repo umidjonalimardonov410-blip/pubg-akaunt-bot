@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import React from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { getParentPath, isHomePath } from "@/lib/navigation";
@@ -1779,12 +1780,26 @@ function EmptyState({ title, text }: { title: string; text: string }) {
 }
 
 function BottomNav({ current, onNavigate }: { current: PageKey; onNavigate: (path: string) => void }) {
-  const isPro = typeof window !== 'undefined' && (window.location.pathname.includes('pro-tools') || window.location.pathname.includes('pro-market'));
   const items = [['home', '/', Flame], ['accounts', '/accounts', Search], ['sell', '/sell', Plus], ['orders', '/orders', ShoppingBag], ['profile', '/profile', UserRound]] as const;
-  return <nav style={{ transform: 'translateZ(0)' }} className="fixed bottom-0 left-0 right-0 z-40 transform-gpu will-change-transform border-t border-amber-400/15 bg-[#08090b] px-2 pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,.5)] lg:hidden"><div className="mx-auto grid max-w-md grid-cols-5 gap-1">{items.map(([key, path, Icon]) => {
+  const nav = <nav
+    style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      transform: 'translateZ(0)',
+      WebkitTransform: 'translateZ(0)',
+      backfaceVisibility: 'hidden',
+      WebkitBackfaceVisibility: 'hidden',
+    }}
+    className="fixed bottom-0 left-0 right-0 z-40 transform-gpu will-change-transform border-t border-amber-400/15 bg-[#08090b] px-2 pt-2 pb-[calc(.5rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,.5)] lg:hidden"><div className="mx-auto grid max-w-md grid-cols-5 gap-1">{items.map(([key, path, Icon]) => {
     const active = current === key;
     return <button key={key} onClick={() => { telegramHaptic('light'); onNavigate(path); }} className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[9px] font-bold transition active:scale-95 ${active ? 'text-amber-200' : 'text-white/40 hover:text-white'}`}><span className={`grid h-8 w-8 place-items-center rounded-xl transition ${active ? 'bg-amber-400/20 text-amber-200 shadow-[0_0_15px_rgba(245,197,66,.3)]' : 'bg-white/[0.03] text-white/60'}`}><Icon className="h-3.5 w-3.5" /></span>{key === 'home' ? 'Asosiy' : key === 'accounts' ? 'Bozor' : key === 'sell' ? 'Sotish' : key === 'orders' ? 'Buyurtma' : 'Profil'}</button>;
   })}</div></nav>;
+  // Portal: sahifa ichidagi transform/filter/overflow kontekstlar fixed pozitsiyani
+  // buzmasligi uchun navni to'g'ridan-to'g'ri body ga chiqaramiz.
+  if (typeof document === 'undefined') return nav;
+  return createPortal(nav, document.body);
 }
 
 export default function Home() {
