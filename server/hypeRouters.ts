@@ -21,6 +21,8 @@ import {
   AIM_PROMO_TTL_MS,
   AIM_TIERS,
   buildAimPromoCode,
+  isAimPlayedToday,
+  nextAimPlayAt,
   scoreAimHits,
   signAimToken,
   verifyAimToken,
@@ -265,11 +267,13 @@ export const hypeRouter = router({
     const user = await getUserById(ctx.user.id);
     if (!user) throw new TRPCError({ code: "NOT_FOUND" });
     const playedAt = (user as any).aimPlayedAt as Date | null | undefined;
+    const playedToday = isAimPlayedToday(playedAt);
     return {
-      played: Boolean(playedAt),
+      played: playedToday,
       playedAt: playedAt ?? null,
+      nextPlayAt: playedToday ? nextAimPlayAt() : null,
       bestScore: Number((user as any).aimBestScore ?? 0),
-      promoCode: ((user as any).aimPromoCode as string | null) ?? null,
+      promoCode: playedToday ? (((user as any).aimPromoCode as string | null) ?? null) : null,
       durationMs: AIM_DURATION_MS,
       tiers: AIM_TIERS,
     };
@@ -279,8 +283,8 @@ export const hypeRouter = router({
   aimStart: protectedProcedure.mutation(async ({ ctx }) => {
     const user = await getUserById(ctx.user.id);
     if (!user) throw new TRPCError({ code: "NOT_FOUND" });
-    if ((user as any).aimPlayedAt) {
-      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Aim Trainer faqat bir marta o'ynaladi." });
+    if (isAimPlayedToday((user as any).aimPlayedAt)) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Bugun o'ynab bo'ldingiz — ertaga qayta urinib ko'ring." });
     }
     return { token: signAimToken(ctx.user.id), durationMs: AIM_DURATION_MS };
   }),
@@ -293,8 +297,8 @@ export const hypeRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const user = await getUserById(ctx.user.id);
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
-      if ((user as any).aimPlayedAt) {
-        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Aim Trainer faqat bir marta o'ynaladi." });
+      if (isAimPlayedToday((user as any).aimPlayedAt)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Bugun o'ynab bo'ldingiz — ertaga qayta urinib ko'ring." });
       }
       if (!verifyAimToken(input.token, ctx.user.id)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Sessiya eskirgan — o'yinni qaytadan boshlang." });
@@ -317,7 +321,7 @@ export const hypeRouter = router({
         await tx
           .update(users)
           .set({
-            aimBestScore: result.score,
+            aimBestScore: sql`GREATEST(aimBestScore, ${result.score})`,
             aimPlayedAt: now,
             aimPromoCode: promoCode,
             xp: sql`xp + ${result.score * 10}`,
