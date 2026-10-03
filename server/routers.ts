@@ -21,6 +21,7 @@ import { categoriesRouter, faqAdminRouter, mediaModerationRouter, supportRouter,
 import { postSoldAccountToChannel, postNewListingToChannel, shouldPostNewListing } from './telegramChannel';
 import { sendTelegramNotification, setChatLanguage, getTelegramAdminIds, notifyTelegramAdmins, notifyAdminsAboutReport } from "./telegramBot";
 import { notifyPriceDrop } from "./notificationService";
+import { listingAIRouter } from "./listingAssistant";
 import { buildDailySeries, buildStatusBreakdown, buildTopSellers } from "./analytics";
 
 function escapeTelegramHtml(value: string) {
@@ -179,6 +180,7 @@ async function reviewDepositReceiptCore(params: { adminId: number; receiptId: nu
 
 export const appRouter = router({
   system: systemRouter,
+  listingAI: listingAIRouter,
   events: eventsRouter,
   expansion: expansionRouter,
   hype: hypeRouter,

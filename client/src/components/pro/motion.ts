@@ -7,7 +7,6 @@ export const springSoft: Transition = { type: 'spring', stiffness: 220, damping:
 /** Tugma press: 0.96 ga siqiladi. */
 export const pressable = {
   whileTap: { scale: 0.96 },
-  whileHover: { y: -2 },
   transition: spring,
 } as const;
 
@@ -24,7 +23,7 @@ export const listItem: Variants = {
 
 /** Sahifa o'tishi: o'ngdan sirg'alib kiradi, orqaga chapga chiqadi. */
 export const pageVariants: Variants = {
-  initial: (back: boolean) => ({ opacity: 0, x: back ? -28 : 28 }),
-  animate: { opacity: 1, x: 0, transition: spring },
-  exit: (back: boolean) => ({ opacity: 0, x: back ? 28 : -28, transition: { duration: 0.16 } }),
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18, ease: 'easeOut' } },
+  exit: { opacity: 1, transition: { duration: 0 } },
 };

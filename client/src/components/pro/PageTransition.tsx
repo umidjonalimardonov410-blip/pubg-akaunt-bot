@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { pageVariants } from './motion';
 import { prefersReducedMotion } from '@/lib/haptics';
@@ -10,15 +10,16 @@ export default function PageTransition({ children }: { children: React.ReactNode
   const [location] = useLocation();
   const prevRef = React.useRef(location);
   const back = depth(location) < depth(prevRef.current);
-  React.useEffect(() => { prevRef.current = location; }, [location]);
+  React.useEffect(() => {
+    if (prevRef.current !== location) window.scrollTo({ top: 0, behavior: 'auto' });
+    prevRef.current = location;
+  }, [location]);
 
   if (prefersReducedMotion()) return <>{children}</>;
 
   return (
-    <AnimatePresence mode="wait" initial={false} custom={back}>
-      <motion.div key={location} custom={back} variants={pageVariants} initial="initial" animate="animate" exit="exit" className="will-change-transform">
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div key={location} custom={back} variants={pageVariants} initial="initial" animate="animate">
+      {children}
+    </motion.div>
   );
 }

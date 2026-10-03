@@ -17,6 +17,7 @@ vi.mock('@/lib/trpc', () => ({
   trpc: {
     media: { upload: { useMutation: () => ({ mutateAsync: state.upload, isPending: false }) }, presignUpload: { useMutation: () => ({ mutateAsync: state.presign ?? (async () => ({ uploadUrl: 'https://upload.test/put', url: 'https://cdn.test/file.mp4' })), isPending: false }) } },
     accounts: { create: { useMutation: () => ({ mutateAsync: state.create, isPending: false }) } },
+    listingAI: { improve: { useMutation: () => ({ mutateAsync: async () => ({ improvedDescription: '', missingInfo: [], tips: [] }), isPending: false }) } },
   },
 }));
 

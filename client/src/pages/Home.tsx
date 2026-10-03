@@ -67,6 +67,7 @@ import PullToRefresh from "@/components/pro/PullToRefresh";
 import SuccessBurst from "@/components/pro/SuccessBurst";
 import { haptic } from "@/lib/haptics";
 import HypeDeck, { LiveTicker } from "@/components/pro/HypeDeck";
+import ListingAssistant from "@/components/pro/ListingAssistant";
 import ProDetailPanel, { CashbackCard, DealRoomPanel, HoldButton, TopSellersBoard } from "@/components/pro/ProPack";
 import { listContainer, listItem } from "@/components/pro/motion";
 import {
@@ -988,7 +989,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
       <ExpandableText text={item.description} className="mt-2 text-xs leading-6 text-white/55" />
     </details>
 
-    <ProDetailPanel accountId={item.id} sellerId={item.sellerId} />
+    <ProDetailPanel accountId={item.id} sellerId={item.sellerId ?? 0} />
     <TrustStrip />
     <StickyBuyBar price={`${uzNumber(item.price)} so'm`} loading={buying} onBuy={handleBuy} />
     <BottomSheet open={confirmOpen} onClose={() => { if (!buying) setConfirmOpen(false); }} title={purchased ? undefined : 'Kafolatli sotib olish'}>{purchased ? <SuccessBurst title="Buyurtma yaratildi" text="Kafolatli savdo bosqichi boshlandi." /> : <div className="space-y-4 pb-2"><div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3"><img loading="lazy" decoding="async" src={item.image} alt={item.playerName} className="h-14 w-14 rounded-xl object-cover" /><div className="min-w-0"><p className="truncate text-sm font-black text-white">{item.playerName}</p><p className="mt-0.5 text-[11px] text-white/45">LVL {item.level} • {item.region}</p></div><span className="ml-auto shrink-0 text-right font-display text-base font-black text-amber-200">{promo && <span className="mr-2 text-xs font-semibold text-white/35 line-through">{uzNumber(item.price)}</span>}{uzNumber(discountedPrice)}</span></div><div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-white/35">Promo-kod (ixtiyoriy)</label><div className="flex gap-2"><input value={promoInput} onChange={event => { setPromoInput(event.target.value); setPromo(null); }} className="field-input flex-1" placeholder="INFERNO10" /><PrimaryButton variant="soft" disabled={promoChecking || !promoInput.trim()} onClick={applyPromo} className="shrink-0">{promoChecking ? 'Tekshirilmoqda...' : promo ? 'Qabul qilindi ✓' : 'Qo‘llash'}</PrimaryButton></div>{promo && <p className="text-[11px] font-semibold text-emerald-300">Chegirma qo‘llandi — to‘lov: {uzNumber(discountedPrice)} so‘m</p>}</div><p className="text-xs leading-5 text-white/45">To‘lov kafolat (escrow) hisobida saqlanadi. Akkauntni tekshirib tasdiqlaganingizdan so‘ng sotuvchiga o‘tkaziladi.</p><div className="grid grid-cols-2 gap-2"><PrimaryButton variant="ghost" onClick={() => setConfirmOpen(false)} className="w-full">Bekor qilish</PrimaryButton><PrimaryButton onClick={confirmBuy} disabled={buying} className="w-full">{buying ? 'Yuborilmoqda...' : 'Tasdiqlash'}</PrimaryButton></div></div>}</BottomSheet></main>;
@@ -1300,6 +1301,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           <textarea maxLength={1000} value={form.description} onChange={setField('description')} className="field-input min-h-32 resize-y pb-7" placeholder="Akkaunt haqida batafsil ma’lumot yozing..." />
           <span className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-semibold text-white/35">{form.description.length}/1000</span>
         </div>
+        <ListingAssistant text={form.description} files={files} facts={{ level: form.level, region: form.region, kdRatio: form.kdRatio, winRate: form.winRate, ucBalance: form.ucBalance, outfitCount: form.outfitCount, gunSkinCount: form.gunSkinCount, vehicleCount: form.vehicleCount, skins: form.skins, accountCreatedYear: form.accountCreatedYear, price: form.price, hasConquerorHistory: form.hasConquerorHistory, hasXSuit: form.hasXSuit }} onApply={description => setForm(prev => ({ ...prev, description: description.slice(0, 1000) }))} />
       </section>
       <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5">
         <div className="mb-1 flex items-center justify-between gap-2">
@@ -1709,9 +1711,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <button type="button" aria-label="To‘ldirish" title="Kartadan balansni to‘ldirish: summani tanlang va chek rasmini yuboring" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'manual_topup'; setWalletAction(opening ? 'manual_topup' : null); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); toast.info(opening ? 'To‘ldirish formasi ochildi — summani tanlang' : 'To‘ldirish formasi yopildi'); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] px-4 text-[14px] font-black text-black shadow-[0_0_22px_rgba(240,185,11,.35)] transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'To‘ldirish'}</button>
             <button type="button" aria-label="Yechish" title="Balansdan pul yechish: summa va karta raqamini kiriting" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'withdraw'; setWalletAction(opening ? 'withdraw' : null); setAmount(''); toast.info(opening ? 'Yechish formasi ochildi — summani kiriting' : 'Yechish formasi yopildi'); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-black/55 px-4 text-[14px] font-black text-white/90 transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUpFromLine className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'Yechish'}</button>
           </div>
-          <CashbackCard />
-        </div>
-        {walletAction === 'manual_topup' && <div className="hud-crate relative mt-4 overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
+        {walletAction === 'manual_topup' && <div className="hud-crate wallet-pop relative overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
           <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-10" />
           <div className="relative flex items-start justify-between gap-3">
             <div><p className="text-sm font-black text-white">Manual to‘lov</p><p className="mt-1 text-[11px] leading-5 text-white/45">Summani tanlang, kartaga o‘tkazing va chek rasmini yuboring. Balans admin tasdig‘idan keyin qo‘shiladi.</p></div>
@@ -1734,7 +1734,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           </label>
           <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>Chekni adminlarga yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
         </div>}
-        {walletAction === 'withdraw' && <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3.5">
+        {walletAction === 'withdraw' && <div className="wallet-pop rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div><p className="text-sm font-black text-white">Mablag‘ yechib olish</p><p className="mt-1 text-[11px] text-white/45">Minimum 10 000 so‘m; so‘rov admin tomonidan ko‘rib chiqiladi</p></div>
             <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
@@ -1743,6 +1743,8 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <input className="field-input mt-2" value={destination} onChange={event => setDestination(event.target.value)} placeholder="Karta raqami yoki hamyon manzili" />
           <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>So‘rov yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
         </div>}
+          <CashbackCard />
+        </div>
         <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80">Chek holati</span>

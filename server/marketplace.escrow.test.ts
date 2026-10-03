@@ -46,6 +46,10 @@ describe("marketplace escrow flow", () => {
     state.insertValues.mockResolvedValue({ insertId: 77 });
     dbMock.transaction.mockReset();
     dbMock.transaction.mockImplementation(async (callback: (tx: any) => unknown) => callback({
+      select: vi.fn(() => {
+        const chain: any = { from: () => chain, where: () => chain, orderBy: () => chain, limit: async () => [], then: (r: any) => Promise.resolve([]).then(r) };
+        return chain;
+      }),
       update: vi.fn(() => ({
         set: state.updateSet,
       })),

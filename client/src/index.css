@@ -942,3 +942,13 @@ body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-off
 @media (prefers-reduced-motion: reduce) {
   .hype-ticker-track, .xp-bar, .live-dot { animation: none; }
 }
+
+/* ===== Mobile polish: no jumpy taps, inline wallet forms ===== */
+html, body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@keyframes wallet-pop { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+.wallet-pop { animation: wallet-pop .22s cubic-bezier(.2,.8,.2,1) both; box-shadow: 0 0 0 1px rgba(245,197,66,.08), 0 10px 30px -12px rgba(245,197,66,.35); }
+.card-glow { transition: border-color .2s ease, box-shadow .2s ease; }
+.card-glow:active { border-color: rgba(245,197,66,.35); }
+.field-input:focus { outline: none; border-color: rgba(245,197,66,.6) !important; box-shadow: 0 0 0 3px rgba(245,197,66,.15); }
+@media (hover: none) { .hover\:-translate-y-1:hover, .hover\:-translate-y-0\.5:hover { transform: none !important; } }
