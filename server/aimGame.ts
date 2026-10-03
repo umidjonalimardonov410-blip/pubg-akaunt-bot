@@ -108,3 +108,24 @@ export function buildAimPromoCode(userId: number, discountPercent: number, now =
 
 /** Promo amal qilish muddati — 24 soat. */
 export const AIM_PROMO_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Kun chegarasi — Toshkent vaqti (UTC+5). */
+const AIM_DAY_OFFSET_MS = 5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function aimDayIndex(date: Date | number) {
+  return Math.floor((new Date(date).getTime() + AIM_DAY_OFFSET_MS) / DAY_MS);
+}
+
+/** Foydalanuvchi bugun (Toshkent vaqti bilan) o'ynaganmi? */
+export function isAimPlayedToday(playedAt: Date | string | null | undefined, now = Date.now()) {
+  if (!playedAt) return false;
+  const t = new Date(playedAt).getTime();
+  if (!Number.isFinite(t)) return false;
+  return aimDayIndex(t) === aimDayIndex(now);
+}
+
+/** Keyingi o'yin ochiladigan payt — ertangi kun 00:00 (Toshkent). */
+export function nextAimPlayAt(now = Date.now()) {
+  return new Date((aimDayIndex(now) + 1) * DAY_MS - AIM_DAY_OFFSET_MS);
+}
