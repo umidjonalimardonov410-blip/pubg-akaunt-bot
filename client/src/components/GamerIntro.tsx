@@ -46,8 +46,9 @@ const TITLES: Record<string, Copy> = {
 };
 
 const SEGMENTS = 14;
-const HOLD_MS = 1500;
-const LEAVE_MS = 400;
+const HOLD_MS = 4200;
+const COMPLETE_HOLD_MS = 900;
+const LEAVE_MS = 600;
 const SOUND_KEY = "inferno-intro-sound";
 
 function haptic(style: "light" | "medium" | "rigid" = "light") {
@@ -161,7 +162,7 @@ export default function GamerIntro() {
       }, LEAVE_MS);
     };
     finishRef.current = finish;
-    const leaveTimer = window.setTimeout(finish, HOLD_MS);
+    const leaveTimer = window.setTimeout(finish, HOLD_MS + COMPLETE_HOLD_MS);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -190,7 +191,6 @@ export default function GamerIntro() {
     <div
       className={`intro-root ${leaving ? "intro-leaving" : ""}`}
       role="presentation"
-      onClick={() => finishRef.current?.()}
     >
       <div className="intro-bg" />
       <div className="intro-grid" />
