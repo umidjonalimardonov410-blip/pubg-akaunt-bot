@@ -952,3 +952,19 @@ button, a, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-c
 .card-glow:active { border-color: rgba(245,197,66,.35); }
 .field-input:focus { outline: none; border-color: rgba(245,197,66,.6) !important; box-shadow: 0 0 0 3px rgba(245,197,66,.15); }
 @media (hover: none) { .hover\:-translate-y-1:hover, .hover\:-translate-y-0\.5:hover { transform: none !important; } }
+
+/* ===== Telegram Mini App scroll fix: #root o'zi skroll qiladi ===== */
+html, body {
+  height: 100%;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+#root {
+  height: var(--tg-viewport-height, 100dvh);
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
