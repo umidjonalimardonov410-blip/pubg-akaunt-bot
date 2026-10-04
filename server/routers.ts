@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
+import { parseQueryWithAi } from "./aiSearch";
 import { getDb, searchPubgAccounts, getPubgAccountById, getUserById, getUserByOpenId, getSellerAccounts, getOrderById, getUserOrders, getSellerOrders, getSellerReviews, getUserTransactions, getUserNotifications, getOrderReview, getOrderDispute, getAdminDisputes, getAccountSuggestions, getPendingAccounts, getInsertId, getAffectedRows, getFavoriteAccountIds, getFavoriteAccounts, getChatThreadById, getChatMessages, getUserChatThreads, saveUserFilter, getUserSavedFilters, deleteSavedFilter } from "./db";
 import { users, pubgAccounts, orders, reviews as orderReviews, reviewReports, sellerVerifications, transactions, notifications, disputes, favorites, chatThreads, chatMessages, referrals, depositReceipts, securityAudits, phraseOverrides, promoCodes } from "../drizzle/schema";
 import { eq, and, gte, lt, desc, sql, or, isNull } from "drizzle-orm";
@@ -295,11 +296,19 @@ export const appRouter = router({
         minKd: z.number().optional(),
         minWinRate: z.number().optional(),
         sortBy: z.enum(['newest', 'price_asc', 'price_desc', 'level_desc', 'popular']).optional(),
-        limit: z.number().optional().default(20),
+        limit: z.number().int().min(1).max(60).optional().default(20),
         offset: z.number().optional().default(0),
       }))
       .query(async ({ input }) => {
         return await searchPubgAccounts(input);
+      }),
+
+    aiSearch: publicProcedure
+      .input(z.object({ query: z.string().trim().min(2).max(300), limit: z.number().int().min(1).max(48).default(24) }))
+      .mutation(async ({ input }) => {
+        const { filters, usedAi } = await parseQueryWithAi(input.query);
+        const items = await searchPubgAccounts({ ...filters, limit: input.limit, offset: 0 });
+        return { filters, usedAi, items };
       }),
 
     suggestions: publicProcedure

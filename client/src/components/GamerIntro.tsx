@@ -46,8 +46,8 @@ const TITLES: Record<string, Copy> = {
 };
 
 const SEGMENTS = 14;
-const HOLD_MS = 4200;
-const COMPLETE_HOLD_MS = 900;
+const HOLD_MS = 1500;
+const COMPLETE_HOLD_MS = 250;
 const LEAVE_MS = 600;
 const SOUND_KEY = "inferno-intro-sound";
 

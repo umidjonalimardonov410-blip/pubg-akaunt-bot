@@ -1,5 +1,7 @@
 // AUTO-GENERATED UI phrase dictionary (uz -> ru/en). Manba matn = o'zbekcha.
 export const PHRASES: Record<string, { ru: string; en: string }> = {
+  "AI qidiruv": { ru: "AI поиск", en: "AI search" },
+  "Qidirilmoqda...": { ru: "Идёт поиск...", en: "Searching..." },
   "Hozir aksiya yo‘q": { ru: "Сейчас акции нет", en: "No active sale right now" },
   "Balansingiz": { ru: "Ваш баланс", en: "Your balance" },
   "Quti narxi: 50 000 so‘m": { ru: "Цена коробки: 50 000 сум", en: "Box price: 50,000 UZS" },

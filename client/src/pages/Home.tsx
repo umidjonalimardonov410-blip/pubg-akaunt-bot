@@ -763,9 +763,34 @@ function AccountsPage({ onOpen }: { onOpen: (id: number) => void }) {
   const [isSwitching, setIsSwitching] = useState(false);
   const switchTimer = React.useRef<number | null>(null);
   const [filters, setFilters] = useState<AccountFilters>({});
-  const input = useMemo(() => ({ ...filters, limit: 40, offset: 0 }), [filters]);
+  const PAGE = 12;
+  const [pages, setPages] = useState(1);
+  const [extra, setExtra] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResult, setAiResult] = useState<any[] | null>(null);
+  const utils = trpc.useUtils();
+  const aiSearch = trpc.accounts.aiSearch.useMutation();
+  const input = useMemo(() => ({ ...filters, limit: PAGE, offset: 0 }), [filters]);
+  useEffect(() => { setPages(1); setExtra([]); setHasMore(true); }, [input]);
   const accountsQuery = trpc.accounts.search.useQuery(input, { staleTime: 20_000, refetchOnWindowFocus: false });
-  const remoteListings = (accountsQuery.data ?? []).map(normalizeAccount);
+  useEffect(() => { if (accountsQuery.data && accountsQuery.data.length < PAGE) setHasMore(false); }, [accountsQuery.data]);
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = await utils.accounts.search.fetch({ ...filters, limit: PAGE, offset: pages * PAGE });
+      setExtra(prev => [...prev, ...next]);
+      setPages(p => p + 1);
+      if (next.length < PAGE) setHasMore(false);
+    } finally { setLoadingMore(false); }
+  };
+  const runAiSearch = async () => {
+    const q = aiQuery.trim();
+    if (q.length < 2) return;
+    try { const res = await aiSearch.mutateAsync({ query: q }); setAiResult(res.items); } catch { setAiResult([]); }
+  };
+  const remoteListings = (aiResult ?? [...(accountsQuery.data ?? []), ...extra]).map(normalizeAccount);
   const listings = remoteListings;
   const changeView = (nextView: 'grid' | 'list') => {
     if (nextView === view || isSwitching) return;
@@ -782,7 +807,7 @@ function AccountsPage({ onOpen }: { onOpen: (id: number) => void }) {
   useEffect(() => () => {
     if (switchTimer.current !== null) window.clearTimeout(switchTimer.current);
   }, []);
-  return <main className="space-y-4 pb-24 lg:pb-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Inferno market</span><h1 className="mt-1 font-display text-2xl font-black text-white sm:text-3xl">Akkauntlar bozori</h1><p className="mt-1 text-xs text-white/45 sm:text-sm">Daraja, mintaqa, skin va narx bo'yicha kerakli akkauntni toping.</p></div><div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-1" aria-label="Bozor ko‘rinishini tanlang"><button type="button" disabled={isSwitching} onClick={() => changeView('grid')} className={`grid h-9 w-9 place-items-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-wait ${view === 'grid' ? 'bg-amber-400 text-black shadow-[0_0_18px_rgba(245,197,66,.24)]' : 'text-white/45 hover:bg-white/[0.05] hover:text-white'}`} aria-label="3 ta ustunli ko'rinish" aria-pressed={view === 'grid'} title="3 ta ustunli ko'rinish"><Grid2X2 className="h-4 w-4" /></button><button type="button" disabled={isSwitching} onClick={() => changeView('list')} className={`grid h-9 w-9 place-items-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-wait ${view === 'list' ? 'bg-amber-400 text-black shadow-[0_0_18px_rgba(245,197,66,.24)]' : 'text-white/45 hover:bg-white/[0.05] hover:text-white'}`} aria-label="5 qatorli ixcham ko'rinish" aria-pressed={view === 'list'} title="5 qatorli ixcham ko'rinish"><LayoutList className="h-4 w-4" /></button></div></div><SearchPanel onFilters={setFilters} /><PullToRefresh onRefresh={() => accountsQuery.refetch()} refreshing={accountsQuery.isFetching && !accountsQuery.isLoading} skeleton={view === 'grid' ? <ListingGridSkeleton count={9} /> : <ListRowSkeleton count={6} />}>{accountsQuery.isLoading ? (view === 'grid' ? <ListingGridSkeleton count={9} /> : <ListRowSkeleton count={6} />) : listings.length === 0 ? <EmptyState title="Akkaunt topilmadi" text="Filtrlarni o'zgartirib ko'ring yoki keyinroq qaytib ko'ring." /> : <AnimatePresence mode="popLayout"><motion.div variants={listContainer} initial="hidden" animate="show" aria-busy={isSwitching} className={marketplaceLayoutClass(view, isSwitching)}>{listings.map(item => <motion.div layout key={item.id} variants={listItem} exit={{ opacity: 0, scale: .96 }}>{view === 'grid' ? <ListingCard item={item} onOpen={onOpen} /> : <ListListing item={item} onOpen={onOpen} />}</motion.div>)}</motion.div></AnimatePresence>}</PullToRefresh></main>;
+  return <main className="space-y-4 pb-24 lg:pb-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Inferno market</span><h1 className="mt-1 font-display text-2xl font-black text-white sm:text-3xl">Akkauntlar bozori</h1><p className="mt-1 text-xs text-white/45 sm:text-sm">Daraja, mintaqa, skin va narx bo'yicha kerakli akkauntni toping.</p></div><div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-1" aria-label="Bozor ko‘rinishini tanlang"><button type="button" disabled={isSwitching} onClick={() => changeView('grid')} className={`grid h-9 w-9 place-items-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-wait ${view === 'grid' ? 'bg-amber-400 text-black shadow-[0_0_18px_rgba(245,197,66,.24)]' : 'text-white/45 hover:bg-white/[0.05] hover:text-white'}`} aria-label="3 ta ustunli ko'rinish" aria-pressed={view === 'grid'} title="3 ta ustunli ko'rinish"><Grid2X2 className="h-4 w-4" /></button><button type="button" disabled={isSwitching} onClick={() => changeView('list')} className={`grid h-9 w-9 place-items-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-wait ${view === 'list' ? 'bg-amber-400 text-black shadow-[0_0_18px_rgba(245,197,66,.24)]' : 'text-white/45 hover:bg-white/[0.05] hover:text-white'}`} aria-label="5 qatorli ixcham ko'rinish" aria-pressed={view === 'list'} title="5 qatorli ixcham ko'rinish"><LayoutList className="h-4 w-4" /></button></div></div><form onSubmit={event => { event.preventDefault(); void runAiSearch(); }} className="flex gap-2 rounded-2xl border border-amber-400/20 bg-[#0e1013] p-2"><input value={aiQuery} onChange={event => { setAiQuery(event.target.value); if (!event.target.value) setAiResult(null); }} className="field-input min-w-0 flex-1" placeholder="Masalan: Glacier bor, 2 mln gacha, KRJP" aria-label="AI qidiruv" /><PrimaryButton type="submit" disabled={aiSearch.isPending || aiQuery.trim().length < 2} className="shrink-0">{aiSearch.isPending ? 'Qidirilmoqda...' : 'AI qidiruv'}</PrimaryButton>{aiResult && <PrimaryButton type="button" variant="ghost" onClick={() => { setAiResult(null); setAiQuery(''); }} className="shrink-0">Tozalash</PrimaryButton>}</form><SearchPanel onFilters={setFilters} /><PullToRefresh onRefresh={() => accountsQuery.refetch()} refreshing={accountsQuery.isFetching && !accountsQuery.isLoading} skeleton={view === 'grid' ? <ListingGridSkeleton count={9} /> : <ListRowSkeleton count={6} />}>{accountsQuery.isLoading ? (view === 'grid' ? <ListingGridSkeleton count={9} /> : <ListRowSkeleton count={6} />) : listings.length === 0 ? <EmptyState title="Akkaunt topilmadi" text="Filtrlarni o'zgartirib ko'ring yoki keyinroq qaytib ko'ring." /> : <AnimatePresence mode="popLayout"><motion.div variants={listContainer} initial="hidden" animate="show" aria-busy={isSwitching} className={marketplaceLayoutClass(view, isSwitching)}>{listings.map(item => <motion.div layout key={item.id} variants={listItem} exit={{ opacity: 0, scale: .96 }}>{view === 'grid' ? <ListingCard item={item} onOpen={onOpen} /> : <ListListing item={item} onOpen={onOpen} />}</motion.div>)}</motion.div></AnimatePresence>}{!aiResult && hasMore && listings.length > 0 && !accountsQuery.isLoading && <div className="flex justify-center pt-4"><PrimaryButton variant="soft" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Yuklanmoqda...' : 'Yana ko‘rsatish'}</PrimaryButton></div>}</PullToRefresh></main>;
 }
 
 function CompactInfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -848,7 +873,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
     if (accountQuery.data?.id) recordView.mutate({ accountId: accountQuery.data.id });
   }, [accountQuery.data?.id]);
   const item: Listing = accountQuery.data ? normalizeAccount(accountQuery.data) : ({ id, playerName: 'Akkaunt yuklanmoqda...', level: 0, rank: '—', price: 0, region: '—', kd: '0', winRate: '0%', matches: '0', skins: [], image: CARD_IMAGE, tag: 'YUKLANMOQDA', description: 'Ma’lumot yuklanmoqda yoki e’lon o‘chirilgan.' } as Listing);
-  const gallery: string[] = item.galleryUrls?.length ? item.galleryUrls : [item.image, CARD_IMAGE, PORTRAIT_IMAGE, HERO_IMAGE];
+  const gallery: string[] = item.galleryUrls?.length ? item.galleryUrls : [item.image];
   const [activeImage, setActiveImage] = useState(gallery[0] ?? item.image);
   const mediaItems: MediaItem[] = React.useMemo(() => {
     const list: MediaItem[] = gallery.map(url => ({ type: 'image' as const, url, alt: item.playerName }));

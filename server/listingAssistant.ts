@@ -28,7 +28,7 @@ function buildPrompt(lang: keyof typeof LANG_NAME, text: string, facts: Record<s
 }
 
 /** Streams the Responses API (SSE) and returns the final text. */
-async function callGateway(apiKey: string, prompt: string, images: string[]): Promise<string> {
+export async function callGateway(apiKey: string, prompt: string, images: string[]): Promise<string> {
   const content: any[] = [{ type: "input_text", text: prompt }];
   for (const url of images) content.push({ type: "input_image", image_url: url });
 
