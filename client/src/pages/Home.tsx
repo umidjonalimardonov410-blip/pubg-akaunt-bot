@@ -67,7 +67,6 @@ import PullToRefresh from "@/components/pro/PullToRefresh";
 import SuccessBurst from "@/components/pro/SuccessBurst";
 import { haptic } from "@/lib/haptics";
 import HypeDeck, { LiveTicker } from "@/components/pro/HypeDeck";
-import ListingAssistant from "@/components/pro/ListingAssistant";
 import ProDetailPanel, { CashbackCard, DealRoomPanel, HoldButton, TopSellersBoard } from "@/components/pro/ProPack";
 import { listContainer, listItem } from "@/components/pro/motion";
 import {
@@ -1341,7 +1340,6 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           <textarea maxLength={1000} value={form.description} onChange={setField('description')} className="field-input min-h-32 resize-y pb-7" placeholder="Akkaunt haqida batafsil ma’lumot yozing..." />
           <span className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-semibold text-white/35">{form.description.length}/1000</span>
         </div>
-        <ListingAssistant text={form.description} files={files} facts={{ level: form.level, region: form.region, kdRatio: form.kdRatio, winRate: form.winRate, ucBalance: form.ucBalance, outfitCount: form.outfitCount, gunSkinCount: form.gunSkinCount, vehicleCount: form.vehicleCount, skins: form.skins, accountCreatedYear: form.accountCreatedYear, price: form.price, hasConquerorHistory: form.hasConquerorHistory, hasXSuit: form.hasXSuit }} onApply={description => setForm(prev => ({ ...prev, description: description.slice(0, 1000) }))} />
       </section>
       <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5">
         <div className="mb-1 flex items-center justify-between gap-2">
@@ -1661,13 +1659,13 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         {[8, 26, 44, 62, 80, 92].map((left, index) => (
           <span key={left} className="pro-ember" style={{ left: `${left}%`, animationDelay: `${index * 0.85}s` }} />
         ))}
-        <div className="relative px-3 pb-4 pt-4 sm:px-6 sm:pt-6">
+        <div className="relative px-3 pb-3 pt-3 sm:px-5 sm:pt-4">
           <div className="flex items-start gap-3 sm:gap-5">
             {/* Avatar — toj + VIP ramka */}
-            <div className="relative shrink-0 pb-4 pt-3">
-              <Crown className="absolute -top-1 left-1/2 h-6 w-6 -translate-x-1/2 fill-amber-300 text-amber-300 drop-shadow-[0_0_10px_rgba(240,185,11,.7)] sm:h-8 sm:w-8" />
+            <div className="relative shrink-0 pb-3 pt-2">
+              <Crown className="absolute -top-1 left-1/2 h-5 w-5 -translate-x-1/2 fill-amber-300 text-amber-300 drop-shadow-[0_0_10px_rgba(240,185,11,.7)] sm:h-6 sm:w-6" />
               <span className="pro-ring" />
-              <span className="px-frame relative grid h-[86px] w-[86px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/80 bg-black/60 text-amber-200 shadow-[0_0_28px_rgba(245,197,66,.35)] sm:h-28 sm:w-28">
+              <span className="px-frame relative grid h-[64px] w-[64px] place-items-center overflow-hidden rounded-full border-[3px] border-amber-300/80 bg-black/60 text-amber-200 shadow-[0_0_28px_rgba(245,197,66,.35)] sm:h-20 sm:w-20">
                 <img loading="lazy" decoding="async" src={avatarUrl || '/assets/pubg-avatar.jpg'} alt={displayName} className="img-live h-full w-full object-cover" />
               </span>
               <span className="absolute inset-x-0 -bottom-0.5 mx-auto w-max rounded-md border border-amber-300/70 bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] px-2.5 py-[2px] text-[9px] font-black uppercase tracking-[0.2em] text-black shadow-[0_0_14px_rgba(240,185,11,.45)]">VIP</span>
@@ -1704,7 +1702,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             </div>
           </div>
           <div className="mt-4 space-y-2.5">
-            <button onClick={() => onNavigate('/sell')} className="pubg-press relative flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] text-[16px] font-black uppercase tracking-wide text-black shadow-[0_0_28px_rgba(240,185,11,.4)] active:scale-95">
+            <button onClick={() => onNavigate('/sell')} className="pubg-press relative flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] text-[16px] font-black uppercase tracking-wide text-black shadow-[0_0_28px_rgba(240,185,11,.4)] active:scale-95">
               <span aria-hidden className="pointer-events-none absolute left-1.5 top-1.5 h-3 w-3 border-l-2 border-t-2 border-black/45" />
               <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 h-3 w-3 border-r-2 border-t-2 border-black/45" />
               <span aria-hidden className="pointer-events-none absolute bottom-1.5 left-1.5 h-3 w-3 border-b-2 border-l-2 border-black/45" />
@@ -1718,7 +1716,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
                 [Star, 'Sharhlar', String(reviews.length), () => onNavigate('/reviews')],
                 [Crown, 'Admin', '', openAdminChat],
               ] as const).map(([Icon, label, value, action]) => (
-                <button key={label} onClick={action} className="pubg-press flex min-h-[68px] items-center gap-3 rounded-xl border border-amber-300/25 bg-black/60 px-3 text-left active:scale-95">
+                <button key={label} onClick={action} className="pubg-press flex min-h-[54px] items-center gap-2.5 rounded-xl border border-amber-300/25 bg-black/60 px-3 text-left active:scale-95">
                   <Icon className="h-6 w-6 shrink-0 text-amber-300" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12px] font-black uppercase tracking-wide text-white/90">{label}</span>
@@ -1859,18 +1857,17 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
 
       <SellerListingsPanel />
 
-      {/* ===== Transactions ===== */}
-      <section className="pro-glass pro-clip rounded-2xl border border-amber-300/20 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-2 font-display text-[15px] font-black text-white"><Zap className="h-4 w-4 fill-amber-300 text-amber-300" />Oxirgi harakatlar</p>
-          <button type="button" onClick={() => onNavigate('/transactions')} className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-amber-300/25 bg-black/40 px-3 text-[11px] font-bold text-white/75 active:scale-95">Barchasini ko‘rish<ChevronRight className="h-3.5 w-3.5 text-amber-300" /></button>
-        </div>
-        {transactions.length === 0 ? <p className="mt-3 text-[11px] text-white/40">Hozircha tranzaksiyalar mavjud emas.</p> : <div className="mt-3 space-y-2">{transactions.slice(0, 5).map(transaction => { const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund'; const label = transaction.type === 'topup' ? 'Balans to‘ldirildi' : transaction.type === 'withdrawal' ? 'Yechib olish so‘rovi' : transaction.type === 'seller_payout' ? 'Sotuvchi to‘lovi' : transaction.type === 'order_refund' ? 'Buyurtma qaytarimi' : 'Buyurtma to‘lovi'; return <div key={transaction.id} className="hud-row flex items-center gap-3 rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2.5">
-          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${isCredit ? 'bg-emerald-400/12 text-emerald-300' : 'bg-red-500/12 text-red-400'}`}>{isCredit ? <CreditCard className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}</span>
-          <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold text-white">{label}</p><p className="mt-0.5 truncate text-[10px] text-white/35">#{transaction.id} · {transaction.status === 'completed' ? 'Yakunlangan' : 'Kutilmoqda'}</p></div>
-          <span className={`shrink-0 font-display text-[14px] font-black ${isCredit ? 'text-emerald-400' : 'text-red-400'}`}>{isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))} <span className="font-sans text-[10px]">so‘m</span></span>
-        </div>; })}</div>}
-      </section>
+      {/* ===== Transactions — alohida sahifaga o'tish ===== */}
+      <button type="button" onClick={() => onNavigate('/transactions')} className="pubg-press pro-glass pro-clip flex w-full items-center justify-between gap-3 rounded-2xl border border-amber-300/20 p-3.5 text-left active:scale-[.99]">
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400/10 text-amber-300"><Zap className="h-4 w-4 fill-amber-300" /></span>
+          <span className="min-w-0">
+            <span className="block text-[13px] font-black text-white">Oxirgi harakatlar</span>
+            <span className="mt-0.5 block text-[10px] text-white/40">{transactions.length} ta tranzaksiya · barchasini ko‘rish</span>
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-amber-300" />
+      </button>
     </main>
   );
 }
