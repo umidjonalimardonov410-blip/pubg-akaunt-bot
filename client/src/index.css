@@ -574,8 +574,8 @@ img { transition: transform .45s ease, filter .45s ease; }
 }
 
 /* Sahifa almashinuvidagi gamer kirish effekti */
-.page-enter { animation: page-enter 420ms cubic-bezier(.16,1,.3,1) both; }
-@keyframes page-enter { from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.985); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+.page-enter { animation: page-enter 180ms ease-out both; }
+@keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
   .intro-root, .intro-grid, .intro-scan, .intro-hex-ring, .intro-hex-core, .intro-title, .page-enter,
@@ -947,7 +947,7 @@ body.i18n-picking *:hover { outline: 2px dashed hsl(var(--primary)); outline-off
 html, body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 button, a, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 @keyframes wallet-pop { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
-.wallet-pop { animation: wallet-pop .22s cubic-bezier(.2,.8,.2,1) both; box-shadow: 0 0 0 1px rgba(245,197,66,.08), 0 10px 30px -12px rgba(245,197,66,.35); }
+.wallet-pop { animation: wallet-pop .18s ease-out both; }
 .card-glow { transition: border-color .2s ease, box-shadow .2s ease; }
 .card-glow:active { border-color: rgba(245,197,66,.35); }
 .field-input:focus { outline: none; border-color: rgba(245,197,66,.6) !important; box-shadow: 0 0 0 3px rgba(245,197,66,.15); }
