@@ -291,6 +291,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
     onNavigate(getParentPath(headerLocation));
   };
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = React.useRef<HTMLElement>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { t } = useI18n();
   /** Bitta vaqtda faqat bitta ochiluvchi menyu turishi uchun. */
@@ -300,6 +301,20 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
     window.addEventListener('app:close-popovers', close);
     return () => window.removeEventListener('app:close-popovers', close);
   }, []);
+  useEffect(() => {
+    setMenuOpen(false);
+    setNotificationsOpen(false);
+  }, [headerLocation]);
+  useEffect(() => {
+    if (!menuOpen && !notificationsOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) { setMenuOpen(false); setNotificationsOpen(false); }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenuOpen(false); setNotificationsOpen(false); } };
+    document.addEventListener('pointerdown', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => { document.removeEventListener('pointerdown', closeOnOutside); document.removeEventListener('keydown', closeOnEscape); };
+  }, [menuOpen, notificationsOpen]);
   const { isAuthenticated } = useAuth();
   const unreadQuery = trpc.notifications.getUnread.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -317,9 +332,7 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
   };
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(14,16,19,.92),rgba(8,9,11,.88))] backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,.04)_inset,0_14px_40px_-24px_rgba(0,0,0,.9)]">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-32 bg-[radial-gradient(60%_100%_at_18%_100%,rgba(245,197,66,.13),transparent_70%)]" />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,197,66,.35),transparent)]" />
+    <header ref={menuRef} className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-[#101417]/95 backdrop-blur-lg">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-3 sm:h-[72px] sm:px-4 lg:px-8">
         <div className="flex items-center gap-3 sm:gap-10">
           {!isHomePage && (
@@ -334,9 +347,9 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
           )}
           <span className="sm:hidden"><Brand compact /></span>
           <span className="hidden sm:inline-flex"><Brand /></span>
-          <nav className="hidden items-center gap-6 text-sm font-semibold text-white/55 lg:flex">
-            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.referral', '/referral'], ['nav.flash', '/flash'], ['nav.mystery', '/mystery'], ['nav.rules', '/rules'], ['nav.support', '/support']].map(([label, path]) => (
-              <button key={path} onClick={() => onNavigate(path)} className="transition hover:text-white">{t(label)}</button>
+          <nav aria-label="Asosiy bo‘limlar" className="hidden items-center gap-1 text-sm font-semibold lg:flex">
+            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders']].map(([label, path]) => (
+              <button key={path} type="button" aria-current={headerLocation === path ? 'page' : undefined} onClick={() => onNavigate(path)} className={`rounded-md px-3 py-2 transition ${headerLocation === path ? 'bg-amber-400/15 text-amber-200' : 'text-white/65 hover:bg-white/[0.06] hover:text-white'}`}>{t(label)}</button>
             ))}
           </nav>
         </div>
@@ -385,17 +398,19 @@ function AppHeader({ onNavigate }: { onNavigate: (path: string) => void }) {
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-400/15 text-amber-200"><UserRound className="h-4 w-4" /></span>
             <span><span className="block text-[10px] font-bold uppercase tracking-wider text-white/45">Kabinet</span><span className="block text-xs font-bold text-white">Mening profilim</span></span>
           </button>
-          <button onClick={() => { if (!menuOpen) closeOtherPopovers(); setMenuOpen(!menuOpen); }} className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.04] text-white/65 ring-1 ring-inset ring-white/10 transition duration-200 hover:bg-white/[0.07] hover:text-amber-100 hover:ring-amber-400/35 active:scale-[.96] lg:hidden" aria-label="Menyu"><Menu className="h-5 w-5" /></button>
+          <button type="button" onClick={() => { if (!menuOpen) closeOtherPopovers(); setMenuOpen(!menuOpen); }} className="grid h-10 w-10 place-items-center rounded-md border border-white/10 text-white/80 transition hover:bg-white/10" aria-label={menuOpen ? 'Menyuni yopish' : 'Menyu'} aria-expanded={menuOpen}>{menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
         </div>
       </div>
       {menuOpen && (
-        <div className="border-t border-white/10 bg-[#0b0d10] px-4 py-3 lg:hidden">
-          <div className="mx-auto grid max-w-[1440px] grid-cols-2 gap-1">
-            {[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders'], ['nav.transactions', '/transactions'], ['nav.referral', '/referral'], ['nav.flash', '/flash'], ['nav.mystery', '/mystery'], ['nav.rules', '/rules'], ['nav.profile', '/profile'], ['nav.support', '/support']].map(([label, path]) => (
-              <button key={path} onClick={() => { setMenuOpen(false); onNavigate(path); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-semibold text-white/65 hover:bg-white/[0.04] hover:text-white">{t(label)}</button>
-            ))}
-          </div>
-        </div>
+        <nav aria-label="Barcha bo‘limlar" className="absolute right-3 top-full mt-2 max-h-[min(75vh,640px)] w-[min(92vw,360px)] overflow-y-auto rounded-md border border-white/15 bg-[#161c1d] p-2 shadow-2xl sm:right-6">
+          {[[['nav.market', '/accounts'], ['nav.saved', '/saved'], ['nav.sell', '/sell'], ['nav.orders', '/orders']], [['nav.transactions', '/transactions'], ['nav.profile', '/profile']], [['nav.referral', '/referral'], ['nav.flash', '/flash'], ['nav.mystery', '/mystery']], [['nav.rules', '/rules'], ['nav.support', '/support']]].map((group, index) => (
+            <div key={index} className={index ? 'border-t border-white/10 pt-2 mt-2' : ''}>
+              {group.map(([label, path]) => (
+                <button key={path} type="button" aria-current={headerLocation === path ? 'page' : undefined} onClick={() => { setMenuOpen(false); onNavigate(path); }} className={`flex min-h-11 w-full items-center justify-between rounded px-3 py-2 text-left text-sm font-semibold transition ${headerLocation === path ? 'bg-amber-400/15 text-amber-200' : 'text-white/70 hover:bg-white/[0.06] hover:text-white'}`}>{t(label)}<ChevronRight className="h-4 w-4 opacity-50" /></button>
+              ))}
+            </div>
+          ))}
+        </nav>
       )}
     </header>
   );
@@ -1585,6 +1600,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
     if (walletAction === 'manual_topup') {
       if (!selectedTopupAmount) { toast.error('Avval summani tanlang'); return; }
       if (!receiptFile) { toast.error('To‘lov chekini rasm qilib yuklang'); return; }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(receiptFile.type)) { toast.error('Faqat JPG, PNG yoki WEBP rasm yuklang'); return; }
       if (receiptFile.size > 8 * 1024 * 1024) { toast.error('Chek hajmi 8 MB dan oshmasin'); return; }
       try {
         const base64 = await new Promise<string>((resolve, reject) => {
@@ -1601,9 +1617,11 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       } catch (error) { toast.error(error instanceof Error ? error.message : 'Chekni yuborishda xatolik yuz berdi'); }
       return;
     }
-    const numericAmount = Math.floor(Number(amount.replace(/\\s/g, '')));
+    const numericAmount = Math.floor(Number(amount.replace(/\s/g, '')));
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) { toast.error('To‘g‘ri summa kiriting'); return; }
     if (walletAction === 'withdraw') {
+      if (numericAmount < 10000) { toast.error('Eng kam yechish summasi 10 000 so‘m'); return; }
+      if (numericAmount > balance) { toast.error('Balansingizda mablag‘ yetarli emas'); return; }
       if (destination.trim().length < 4) { toast.error('Karta yoki hamyon ma’lumotini kiriting'); return; }
       withdraw.mutate({ amount: numericAmount, destination: destination.trim() });
     }
@@ -1733,13 +1751,13 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            <button type="button" aria-label="To‘ldirish" title="Kartadan balansni to‘ldirish: summani tanlang va chek rasmini yuboring" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'manual_topup'; setWalletAction(opening ? 'manual_topup' : null); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); toast.info(opening ? 'To‘ldirish formasi ochildi — summani tanlang' : 'To‘ldirish formasi yopildi'); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] px-4 text-[14px] font-black text-black shadow-[0_0_22px_rgba(240,185,11,.35)] transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'To‘ldirish'}</button>
-            <button type="button" aria-label="Yechish" title="Balansdan pul yechish: summa va karta raqamini kiriting" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'withdraw'; setWalletAction(opening ? 'withdraw' : null); setAmount(''); toast.info(opening ? 'Yechish formasi ochildi — summani kiriting' : 'Yechish formasi yopildi'); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-black/55 px-4 text-[14px] font-black text-white/90 transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUpFromLine className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'Yechish'}</button>
+            <button type="button" aria-label="To‘ldirish" title="Kartadan balansni to‘ldirish: summani tanlang va chek rasmini yuboring" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'manual_topup'; setWalletAction(opening ? 'manual_topup' : null); setAmount(''); setSelectedTopupAmount(null); setReceiptFile(null); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,#f0b90b,#ffe08a_55%,#f0b90b)] px-4 text-[14px] font-black text-black shadow-[0_0_22px_rgba(240,185,11,.35)] transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'To‘ldirish'}</button>
+            <button type="button" aria-label="Yechish" title="Balansdan pul yechish: summa va karta raqamini kiriting" aria-busy={walletBusy} disabled={walletBusy} onClick={() => { telegramHaptic('light'); const opening = walletAction !== 'withdraw'; setWalletAction(opening ? 'withdraw' : null); setAmount(''); }} className="pubg-press inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-black/55 px-4 text-[14px] font-black text-white/90 transition active:scale-95 disabled:opacity-60">{walletBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUpFromLine className="h-4 w-4" />}{walletBusy ? 'Kutilmoqda...' : 'Yechish'}</button>
           </div>
         {walletAction === 'manual_topup' && <div className="hud-crate wallet-pop relative overflow-hidden rounded-2xl border border-amber-300/30 bg-black/45 p-3.5">
           <span aria-hidden className="hud-stripes pointer-events-none absolute inset-0 opacity-10" />
           <div className="relative flex items-start justify-between gap-3">
-            <div><p className="text-sm font-black text-white">Manual to‘lov</p><p className="mt-1 text-[11px] leading-5 text-white/45">Summani tanlang, kartaga o‘tkazing va chek rasmini yuboring. Balans admin tasdig‘idan keyin qo‘shiladi.</p></div>
+            <div><p className="text-sm font-black text-white">Balansni to‘ldirish</p><p className="mt-1 text-xs leading-5 text-white/65">1. Summani tanlang · 2. Kartaga o‘tkazing · 3. Chekni yuboring. Balans tasdiqdan keyin qo‘shiladi.</p></div>
             <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2">{(topupInstructionsQuery.data?.amounts ?? [10000, 20000, 50000]).map(option => <button key={option} type="button" onClick={() => setSelectedTopupAmount(Number(option))} className={`rounded-xl border px-1 py-3 text-[11px] font-black transition ${selectedTopupAmount === option ? 'border-amber-300 bg-amber-400/20 text-amber-50' : 'border-white/10 bg-white/[0.03] text-white/60'}`}>{uzNumber(option)}</button>)}</div>
@@ -1755,7 +1773,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <Upload className="h-5 w-5 text-amber-200" />
             <span className="mt-2 text-xs font-bold text-white">{receiptFile ? receiptFile.name : '📸 To‘lov chekini tanlang'}</span>
             <span className="mt-1 text-[10px] text-white/35">JPG, PNG yoki WEBP · maksimum 8 MB</span>
-            <input type="file" accept="image/*" className="sr-only" onChange={event => setReceiptFile(event.target.files?.[0] ?? null)} />
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => setReceiptFile(event.target.files?.[0] ?? null)} />
           </label>
           <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>Chekni adminlarga yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
         </div>}
@@ -1764,8 +1782,9 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <div><p className="text-sm font-black text-white">Mablag‘ yechib olish</p><p className="mt-1 text-[11px] text-white/45">Minimum 10 000 so‘m; so‘rov admin tomonidan ko‘rib chiqiladi</p></div>
             <button onClick={() => setWalletAction(null)} className="shrink-0 text-[11px] font-bold text-white/40">Yopish</button>
           </div>
-          <input className="field-input mt-3" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value)} placeholder="Summa, masalan 100000" />
-          <input className="field-input mt-2" value={destination} onChange={event => setDestination(event.target.value)} placeholder="Karta raqami yoki hamyon manzili" />
+          <label className="mt-3 block text-xs font-semibold text-white/70">Summa (so‘m)<input className="field-input mt-1 w-full" type="number" min="10000" max={balance} inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value)} placeholder="Masalan: 100 000" /></label>
+          <p className="mt-1 text-xs text-white/50">Mavjud: {uzNumber(balance)} so‘m</p>
+          <label className="mt-3 block text-xs font-semibold text-white/70">Qabul qiluvchi karta yoki hamyon<input className="field-input mt-1 w-full" autoComplete="off" value={destination} onChange={event => setDestination(event.target.value)} placeholder="Karta raqami yoki hamyon manzili" /></label>
           <PrimaryButton className="mt-3 w-full" disabled={walletBusy} onClick={submitWalletAction}>{walletBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Yuborilmoqda...</> : <>So‘rov yuborish<ArrowRight className="h-4 w-4" /></>}</PrimaryButton>
         </div>}
           <CashbackCard />
@@ -1775,7 +1794,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <span className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80">Chek holati</span>
             <button type="button" disabled={receiptsQuery.isFetching} onClick={() => { telegramHaptic('light'); receiptsQuery.refetch(); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-[#22c9ee]/35 bg-[#22c9ee]/10 px-3 text-[11px] font-black text-[#22c9ee] transition active:scale-95 disabled:opacity-60">{receiptsQuery.isFetching ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}Yangilash</button>
           </div>
-          {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali manual top-up so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className={`hud-row flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${receipt.status === 'approved' ? 'border-emerald-400/30 bg-emerald-400/[0.06]' : receipt.status === 'rejected' ? 'border-red-500/30 bg-red-500/[0.06]' : 'border-amber-300/30 bg-amber-400/[0.06]'}`}>
+          {receiptsQuery.isLoading ? <div className="mt-2 flex items-center gap-2 text-[11px] font-bold text-white/55"><LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...</div> : (receiptsQuery.data ?? []).length === 0 ? <p className="mt-2 text-[11px] text-white/35">Hali to‘ldirish so‘rovi yo‘q.</p> : <div className="mt-2 space-y-2">{(receiptsQuery.data ?? []).slice(0, 3).map(receipt => <div key={receipt.id} className={`hud-row flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${receipt.status === 'approved' ? 'border-emerald-400/30 bg-emerald-400/[0.06]' : receipt.status === 'rejected' ? 'border-red-500/30 bg-red-500/[0.06]' : 'border-amber-300/30 bg-amber-400/[0.06]'}`}>
             <div><p className="text-[13px] font-black text-white">#{receipt.id} · {uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Clock3 className="h-3 w-3" />{new Date(receipt.createdAt).toLocaleString()}</p></div>
             <div className="shrink-0 text-right"><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? '✅ Balansga tushdi' : receipt.status === 'rejected' ? '❌ Tushmadi' : '⏳ Tekshirilmoqda'}</StatusPill>{(receipt as any).reviewNote && <p className="mt-1 max-w-[150px] text-[10px] leading-4 text-white/40">Sabab: {(receipt as any).reviewNote}</p>}</div>
           </div>)}</div>}
@@ -2043,5 +2062,5 @@ export default function Home() {
     return () => webApp.BackButton?.offClick?.(goBack);
   }, [location, page.key, setLocation]);
   const content = page.key === 'home' ? <HomePage onNavigate={navigate} /> : page.key === 'accounts' ? <AccountsPage onOpen={id => navigate(`/account/${id}`)} /> : page.key === 'details' ? <DetailPage id={page.id ?? 1} onBack={() => navigate('/accounts')} onNavigate={navigate} /> : page.key === 'sell' ? <SellPage onNavigate={navigate} /> : page.key === 'orders' ? <OrdersPage onNavigate={navigate} /> : page.key === 'escrow' ? <EscrowPage id={page.id ?? 1} onBack={() => navigate('/orders')} /> : page.key === 'saved' ? <SavedPage onNavigate={navigate} /> : page.key === 'chats' ? <ChatInboxPage onNavigate={navigate} /> : page.key === 'notifications' ? <NotificationsPage onNavigate={navigate} /> : page.key === 'chat' ? <ChatPage id={page.id ?? 1} onBack={() => navigate('/')} /> : page.key === 'profile' ? <ProfilePage onNavigate={navigate} /> : page.key === 'transactions' ? <TransactionsPage onNavigate={navigate} /> : page.key === 'reviews' ? <ReviewsPage onNavigate={navigate} /> : page.key === 'support' ? <SupportFaqPage /> : page.key === 'admin' ? <div className="space-y-8"><AdminPage /><AdminAnalyticsPanel /><AdminPanelPage /><AdminPhrasesPanel /></div> : page.key === 'rules' ? <RulesPage /> : page.key === 'flash' ? <FlashSalePage /> : page.key === 'mystery' ? <MysteryBoxPage /> : <ReferralPage />;
-  return <div className="relative min-h-screen bg-[#08090b] text-white"><BattleBackdrop /><div className="relative z-10"><AppHeader onNavigate={navigate} /><div aria-hidden className="h-16 sm:h-[72px]" />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div key={`${page.key}-${page.id ?? 0}`} className="page-enter">{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div></div>;
+  return <div className="relative min-h-screen bg-[#08090b] text-white"><BattleBackdrop /><div className="relative z-10"><AppHeader onNavigate={navigate} /><div aria-hidden className="h-16 sm:h-[72px]" />{needsTelegramLogin && <section className="mx-auto mt-3 max-w-[1440px] px-3 sm:px-6 lg:px-8"><div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"><div><p className="text-xs font-black text-amber-100">Telegram orqali kirish kerak</p><p className="mt-1 text-[11px] leading-4 text-white/45">Sotish, buyurtmalar va profil bo‘limlari Telegram Mini App ichida ishlaydi.</p></div><button onClick={() => { const url = getTelegramMiniAppLaunchUrl(); const webApp = getTelegramWebApp(); if (webApp?.openTelegramLink) webApp.openTelegramLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-[0_0_18px_rgba(245,197,66,.22)]">Telegramni ochish</button></div></section>}<div className="relative overflow-hidden"><div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-amber-400/[0.045] blur-3xl" /><div className="relative z-10 mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12"><div>{content}</div></div></div><BottomNav current={page.key} onNavigate={navigate} /></div></div>;
 }
