@@ -49,9 +49,8 @@ export function initTelegramWebApp() {
   webApp.expand?.();
   webApp.setHeaderColor?.('#08090b');
   webApp.setBackgroundColor?.('#08090b');
-  // Telegram mini-app'da pastki menyu sakrab ketmasligi uchun:
-  // vertikal swipe bilan yopilishni o'chiramiz va viewport balandligini CSS o'zgaruvchiga yozamiz.
-  (webApp as any).disableVerticalSwipes?.();
+  // Vertikal swipe'lar yoqilgan bo'lishi kerak — aks holda sahifa tepaga/pastga surilmaydi.
+  (webApp as any).enableVerticalSwipes?.();
   const syncViewport = () => {
     const height = (webApp as any).viewportStableHeight ?? (webApp as any).viewportHeight;
     if (typeof height === 'number' && height > 0) {
