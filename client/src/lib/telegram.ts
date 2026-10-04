@@ -49,10 +49,10 @@ export function initTelegramWebApp() {
   webApp.expand?.();
   webApp.setHeaderColor?.('#08090b');
   webApp.setBackgroundColor?.('#08090b');
-  // Vertikal swipe'lar yoqilgan bo'lishi kerak — aks holda sahifa tepaga/pastga surilmaydi.
-  (webApp as any).enableVerticalSwipes?.();
+  // Sahifa #root ichida skroll qiladi; Telegram swipe-yopish skrollga xalaqit bermasligi uchun o'chiriladi.
+  (webApp as any).disableVerticalSwipes?.();
   const syncViewport = () => {
-    const height = (webApp as any).viewportStableHeight ?? (webApp as any).viewportHeight;
+    const height = (webApp as any).viewportHeight ?? (webApp as any).viewportStableHeight;
     if (typeof height === 'number' && height > 0) {
       document.documentElement.style.setProperty('--tg-viewport-height', `${height}px`);
     }
