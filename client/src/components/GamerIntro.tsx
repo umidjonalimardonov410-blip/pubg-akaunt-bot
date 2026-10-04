@@ -46,8 +46,8 @@ const TITLES: Record<string, Copy> = {
 };
 
 const SEGMENTS = 14;
-const HOLD_MS = 1500;
-const COMPLETE_HOLD_MS = 250;
+const HOLD_MS = 4200;
+const COMPLETE_HOLD_MS = 900;
 const LEAVE_MS = 600;
 const SOUND_KEY = "inferno-intro-sound";
 
@@ -111,7 +111,7 @@ export default function GamerIntro() {
   const [visible, setVisible] = useState(() => {
     if (typeof window === "undefined") return false;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
-    return window.sessionStorage.getItem("inferno-intro") !== "done";
+    return window.localStorage.getItem("inferno-intro-seen") !== "done";
   });
   const [leaving, setLeaving] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -138,6 +138,8 @@ export default function GamerIntro() {
 
   useEffect(() => {
     if (!visible) return;
+    // Remember as soon as it starts so route reloads never replay the overlay.
+    window.localStorage.setItem("inferno-intro-seen", "done");
     const start = performance.now();
     let raf = 0;
     const step = (now: number) => {
@@ -155,6 +157,7 @@ export default function GamerIntro() {
     const finish = () => {
       if (leaving) return;
       haptic("rigid");
+      setProgress(100);
       setLeaving(true);
       doneTimer = window.setTimeout(() => {
         window.sessionStorage.setItem("inferno-intro", "done");
@@ -169,7 +172,6 @@ export default function GamerIntro() {
       window.clearTimeout(leaveTimer);
       window.clearTimeout(midHaptic);
       window.clearTimeout(doneTimer);
-      window.clearTimeout(midHaptic);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
