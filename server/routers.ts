@@ -1424,6 +1424,59 @@ export const appRouter = router({
 
   // Admin: Disputes & Management
   admin: router({
+    banUser: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), reason: z.string().trim().min(1).max(500) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const targetUsers = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+        const target = targetUsers[0];
+        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Foydalanuvchi topilmadi' });
+        let prefs: Record<string, any> = {};
+        try { if (target.alertPreferences) prefs = JSON.parse(target.alertPreferences); } catch (_) {}
+        prefs.isBanned = true;
+        prefs.banReason = input.reason;
+        prefs.bannedAt = new Date().toISOString();
+        await db.update(users).set({ alertPreferences: JSON.stringify(prefs) }).where(eq(users.id, input.userId));
+        return { success: true, userId: input.userId, reason: input.reason };
+      }),
+
+    unbanUser: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const targetUsers = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+        const target = targetUsers[0];
+        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Foydalanuvchi topilmadi' });
+        let prefs: Record<string, any> = {};
+        try { if (target.alertPreferences) prefs = JSON.parse(target.alertPreferences); } catch (_) {}
+        prefs.isBanned = false;
+        delete prefs.banReason;
+        delete prefs.bannedAt;
+        await db.update(users).set({ alertPreferences: JSON.stringify(prefs) }).where(eq(users.id, input.userId));
+        return { success: true, userId: input.userId };
+      }),
+
+    getUsersList: protectedProcedure
+      .input(z.object({ limit: z.number().int().default(50) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        return await db.select({
+          id: users.id,
+          name: users.name,
+          openId: users.openId,
+          role: users.role,
+          walletBalance: users.walletBalance,
+          alertPreferences: users.alertPreferences,
+          createdAt: users.createdAt,
+        }).from(users).orderBy(desc(users.createdAt)).limit(input?.limit ?? 50);
+      }),
+
     getSellerVerificationQueue: protectedProcedure
       .input(z.object({ status: z.enum(['all', 'pending', 'approved', 'rejected']).default('pending') }).optional())
       .query(async ({ ctx, input }) => {

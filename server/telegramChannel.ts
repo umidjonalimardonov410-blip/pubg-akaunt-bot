@@ -417,3 +417,36 @@ export async function postDailyDigestToChannel(text: string) {
   });
   return sent.ok ? { ok: true as const } : { ok: false as const, reason: 'failed' as const };
 }
+
+
+export async function postApprovedListingToChannel(account: {
+  id: number;
+  title?: string | null;
+  level?: number | null;
+  price: number | string;
+  images?: string | null;
+  royalPass?: string | null;
+}) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return { ok: false as const, reason: 'no_token' as const };
+  const title = account.title || 'PUBG Mobile Akkaunt';
+  const price = typeof account.price === 'number' ? account.price.toLocaleString('uz-UZ') : account.price;
+  const caption = [
+    '🔥 <b>YANGI AKKAUNT SOTUVDA!</b>',
+    '━━━━━━━━━━━━━━━━━━',
+    ,
+    account.level ?  : '',
+    account.royalPass ?  : '',
+    ,
+    '━━━━━━━━━━━━━━━━━━',
+    '🛡 <i>Savdo to‘liq bot kafilligi (Escrow) ostida!</i>',
+    '👉 <b>Sotib olish uchun botga kiring:</b> @' + (process.env.TELEGRAM_BOT_USERNAME || 'bot')
+  ].filter(Boolean).join('
+');
+
+  return await channelApiRequest('sendMessage', {
+    chat_id: getChannelChatId(),
+    text: caption,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  });
+}

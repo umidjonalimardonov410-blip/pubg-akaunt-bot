@@ -1530,6 +1530,55 @@ export function SellerListingsPanel() {
 
 function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { user, isAuthenticated } = useAuth();
+
+  // Bloklangan foydalanuvchi tekshiruvi
+  const isUserBanned = React.useMemo(() => {
+    if (!user || !user.alertPreferences) return false;
+    try {
+      const parsed = JSON.parse(user.alertPreferences);
+      return Boolean(parsed.isBanned);
+    } catch (_) {
+      return false;
+    }
+  }, [user]);
+
+  const banReason = React.useMemo(() => {
+    if (!user || !user.alertPreferences) return '';
+    try {
+      const parsed = JSON.parse(user.alertPreferences);
+      return parsed.banReason || 'Qoidabuzarlik sababli';
+    } catch (_) {
+      return '';
+    }
+  }, [user]);
+
+  if (isUserBanned) {
+    return (
+      <main className="min-h-screen bg-[#0d0f12] text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-full max-w-md rounded-3xl border border-red-500/40 bg-red-950/20 p-8 backdrop-blur-xl shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/20 border border-red-500/30 text-3xl">
+            🚫
+          </div>
+          <h1 className="mt-6 text-2xl font-black text-red-100">Sizning akkauntingiz bloklangan</h1>
+          <p className="mt-3 text-sm text-red-200/70">
+            Sabab: <span className="font-semibold text-white">{banReason}</span>
+          </p>
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/60">
+            Qoidalar buzilganligi sababli bot va ilovadan foydalanish cheklandi. Blokdan chiqarish yoki qayta ko‘rib chiqish uchun adminga murojaat qiling:
+          </div>
+          <a
+            href="https://t.me/XotiraBuzilgan"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-red-900/30 transition hover:brightness-110 active:scale-95"
+          >
+            💬 Admin bilan bog‘lanish (@XotiraBuzilgan)
+          </a>
+        </div>
+      </main>
+    );
+  }
+
   const balanceQuery = trpc.wallet.getBalance.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
   const transactionsQuery = trpc.wallet.getTransactions.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });
   const listingsQuery = trpc.accounts.getSellerAccounts.useQuery(undefined, { enabled: isAuthenticated, staleTime: 15_000, refetchOnWindowFocus: false });

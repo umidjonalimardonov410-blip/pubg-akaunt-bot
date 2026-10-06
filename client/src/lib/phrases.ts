@@ -1,5 +1,13 @@
 // AUTO-GENERATED UI phrase dictionary (uz -> ru/en). Manba matn = o'zbekcha.
 export const PHRASES: Record<string, { ru: string; en: string }> = {
+  "Sizning akkauntingiz bloklangan": { ru: "Ваш аккаунт заблокирован", en: "Your account has been suspended" },
+  "Qoidabuzarlik sababli": { ru: "По причине нарушения правил", en: "Due to policy violation" },
+  "Qoidalar buzilganligi sababli bot va ilovadan foydalanish cheklandi. Blokdan chiqarish yoki qayta ko‘rib chiqish uchun adminga murojaat qiling:": { ru: "Из-за нарушения правил использование бота и приложения ограничено. Свяжитесь с администратором для разблокировки:", en: "Access restricted due to rule violation. Contact admin for unban or review:" },
+  "Admin bilan bog‘lanish (@XotiraBuzilgan)": { ru: "Связаться с админом (@XotiraBuzilgan)", en: "Contact Admin (@XotiraBuzilgan)" },
+  "Foydalanuvchilarni boshqarish": { ru: "Управление пользователями", en: "User Management" },
+  "Bloklash": { ru: "Заблокировать", en: "Ban" },
+  "Blokdan ochish": { ru: "Разблокировать", en: "Unban" },
+  "Kunlik va Oylik moliya": { ru: "Дневные и месячные финансы", en: "Daily & Monthly Finance" },
   "Asosiy bo‘limlar": { ru: "Основные разделы", en: "Main sections" },
   "Menyuni yopish": { ru: "Закрыть меню", en: "Close menu" },
   "Barcha bo‘limlar": { ru: "Все разделы", en: "All sections" },
