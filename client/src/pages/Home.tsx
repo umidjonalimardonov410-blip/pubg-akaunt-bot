@@ -1035,9 +1035,9 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
 }
 
 export const SELLER_MEDIA_MAX_FILES = 12;
-export const SELLER_MEDIA_MAX_BYTES = 200 * 1024 * 1024;
+export const SELLER_MEDIA_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB
 export const SELLER_DIRECT_UPLOAD_MAX_BYTES = 40 * 1024 * 1024;
-export const SELLER_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+export const SELLER_VIDEO_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB
 export const SELLER_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'] as const;
 
 export type SellerFormState = {
@@ -1112,8 +1112,8 @@ export function buildSellerAccountPayload(form: SellerFormState, uploaded: Array
 
 export function validateSellerMediaFiles(files: Array<Pick<File, 'type' | 'size'>>): string | null {
   if (files.length > SELLER_MEDIA_MAX_FILES) return `Ko‘pi bilan ${SELLER_MEDIA_MAX_FILES} ta rasm yoki video tanlash mumkin.`;
-  if (files.some(file => file.type.startsWith('image/') && file.size > SELLER_MEDIA_MAX_BYTES)) return 'Har bir rasm 200 MB dan kichik bo‘lishi kerak.';
-  if (files.some(file => file.type.startsWith('video/') && file.size > SELLER_VIDEO_MAX_BYTES)) return 'Video 200 MB dan kichik bo‘lishi kerak.';
+  if (files.some(file => file.type.startsWith('image/') && file.size > SELLER_MEDIA_MAX_BYTES)) return 'Har bir rasm 1 GB dan kichik bo‘lishi kerak.';
+  if (files.some(file => file.type.startsWith('video/') && file.size > SELLER_VIDEO_MAX_BYTES)) return 'Video 1 GB dan kichik bo‘lishi kerak.';
   if (files.some(file => !file.type.startsWith('image/') && !SELLER_MEDIA_TYPES.includes(file.type as typeof SELLER_MEDIA_TYPES[number]))) return 'Faqat rasm (JPG, PNG, WEBP, HEIC) yoki video (MP4, MOV, WEBM) fayllari qabul qilinadi.';
   return null;
 }
@@ -1127,7 +1127,7 @@ export function SellerUploadProgress({ completed, total }: { completed: number; 
   return <div role="status" aria-live="polite" className="mt-3 rounded-xl border border-amber-300/25 bg-amber-400/[0.07] p-3"><div className="flex items-center justify-between gap-3 text-xs font-bold text-amber-50"><span className="flex items-center gap-2"><span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber-100/30 border-t-amber-100" />{sellerUploadProgressLabel(completed, total)}</span><span>{total ? `${percent}%` : '...'}</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-amber-200 transition-[width] duration-300" style={{ width: `${percent}%` }} /></div><p className="mt-2 text-[11px] text-white/45">Oynani yopmang — fayllar xavfsiz S3 xotirasiga yuborilmoqda.</p></div>;
 }
 
-export function SellerMediaPreview({ file }: { file: File }) {
+export function SellerMediaPreview({ file, onRemove }: { file: File; onRemove?: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   React.useEffect(() => {
     let objectUrl: string | null = null;
@@ -1144,14 +1144,29 @@ export function SellerMediaPreview({ file }: { file: File }) {
     };
   }, [file]);
 
-  return <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
-    <div className="relative aspect-video bg-black/40">
+  return <div className="group relative overflow-hidden rounded-xl border border-white/[0.12] bg-white/[0.03] transition hover:border-amber-400/40">
+    <div className="relative aspect-video bg-black/50">
       {previewUrl && file.type.startsWith('image/') ? <img loading="lazy" decoding="async" src={previewUrl} alt={file.name} className="h-full w-full img-live object-cover" /> : previewUrl && file.type.startsWith('video/') ? <video src={previewUrl} aria-label={file.name} muted playsInline className="h-full w-full img-live object-cover" /> : <div className="grid h-full place-items-center text-[10px] font-bold text-white/35">PREVIEW TAYYORLANMOQDA</div>}
-      <span className="absolute left-2 top-2 rounded-md bg-black/65 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/75">{file.type.startsWith('video/') ? 'Video' : 'Rasm'}</span>
+      <span className="absolute left-2 top-2 rounded-md bg-black/75 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-200">{file.type.startsWith('video/') ? '🎬 Video' : '📸 Rasm'}</span>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={event => {
+            event.preventDefault();
+            event.stopPropagation();
+            onRemove();
+          }}
+          aria-label="Faylni o‘chirish"
+          title="Faylni o‘chirish"
+          className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-red-600/90 text-white shadow-[0_0_12px_rgba(220,38,38,0.5)] transition hover:bg-red-500 active:scale-95"
+        >
+          <X className="h-4 w-4 stroke-[2.5]" />
+        </button>
+      )}
     </div>
     <div className="flex items-center justify-between gap-2 px-2.5 py-2 text-[10px]">
-      <span className="min-w-0 truncate font-bold text-white/75">{file.name}</span>
-      <span className="shrink-0 text-white/35">{file.size >= 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`}</span>
+      <span className="min-w-0 truncate font-bold text-white/85">{file.name}</span>
+      <span className="shrink-0 font-semibold text-amber-200/70">{file.size >= 1024 * 1024 * 1024 ? `${(file.size / (1024 * 1024 * 1024)).toFixed(2)} GB` : file.size >= 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`}</span>
     </div>
   </div>;
 }
@@ -1350,13 +1365,22 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
         <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/30 bg-amber-400/[0.04] px-5 text-center transition hover:bg-amber-400/[0.08]">
           <Upload className="h-6 w-6 text-amber-200" />
           <span className="mt-3 text-sm font-bold text-white">Rasm yoki video yuklash</span>
-          <span className="mt-1 text-xs text-white/40">PNG, JPG, MP4 formatlari. Maksimal 200MB</span>
+          <span className="mt-1 text-xs text-amber-200/80 font-semibold">PNG, JPG, MP4 formatlari · Maksimal 1 GB</span>
           <input type="file" multiple accept="image/*,video/*" onChange={handleFiles} className="hidden" />
         </label>
         {mediaError && <p role="alert" className="mt-2 rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{mediaError}</p>}
         {uploading && <SellerUploadProgress completed={uploadProgress.completed} total={uploadProgress.total} />}
         {uploading && videoPercent > 0 && videoPercent < 100 && <div className="mt-2 rounded-xl border border-blood-400/30 bg-blood-500/[0.08] p-3"><div className="flex items-center justify-between text-xs font-bold text-white"><span>Video yuklanmoqda</span><span className="text-amber-200">{videoPercent}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-blood-500 to-amber-300 transition-[width] duration-200" style={{ width: `${videoPercent}%` }} /></div></div>}
-        {files.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{files.map(file => <SellerMediaPreview key={`${file.name}-${file.size}`} file={file} />)}</div>}
+        {files.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{files.map((file, idx) => (
+            <SellerMediaPreview
+              key={`${file.name}-${file.size}-${idx}`}
+              file={file}
+              onRemove={() => {
+                setFiles(prev => prev.filter((_, i) => i !== idx));
+                toast.info(`${file.name} olib tashlandi`);
+              }}
+            />
+          ))}</div>}
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <PrimaryButton variant="ghost" onClick={() => onNavigate('/accounts')}><ArrowLeft className="h-4 w-4" />Bekor qilish</PrimaryButton>
           <PrimaryButton type="submit" disabled={uploading || createMutation.isPending} className="btn-shine">{uploading ? 'Media yuklanmoqda...' : createMutation.isPending ? 'E’lon saqlanmoqda...' : <><TicketCheck className="h-4 w-4" />Bozorga joylash</>}</PrimaryButton>
@@ -1947,6 +1971,8 @@ export function TransactionsPage({ onNavigate }: { onNavigate: (path: string) =>
   const notificationsQuery = trpc.notifications.getAll.useQuery(undefined, { enabled: isAuthenticated, staleTime: 10_000, refetchOnWindowFocus: false });
   const markAsRead = trpc.notifications.markAsRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
   const [tab, setTab] = useState<'tx' | 'receipts' | 'notes'>('tx');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
 
   if (!isAuthenticated) return <TelegramLoginGate title="Tranzaksiyalarni ko‘rish uchun Telegram orqali kiring" description="Balans to‘ldirish, yechib olish, payout va barcha moliyaviy harakatlar faqat Telegram profilingizga ulanadi." />;
 
@@ -1955,10 +1981,189 @@ export function TransactionsPage({ onNavigate }: { onNavigate: (path: string) =>
   const notifications = notificationsQuery.data ?? [];
   const receiptByTransaction = new Map(receipts.filter(receipt => receipt.transactionId).map(receipt => [receipt.transactionId as number, receipt]));
   const isLoading = transactionsQuery.isLoading || receiptsQuery.isLoading || notificationsQuery.isLoading;
-  const dateLabel = (value: Date | string) => new Date(value).toLocaleString('uz-UZ', { dateStyle: 'medium', timeStyle: 'short' });
-  const tabs = [{ id: 'tx' as const, label: 'Tranzaksiyalar', count: transactions.length }, { id: 'receipts' as const, label: 'Cheklar', count: receipts.length }, { id: 'notes' as const, label: 'Xabarlar', count: notifications.filter(item => !item.isRead).length }];
+  const dateLabel = (value: Date | string) => new Date(value).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' });
+  const tabs = [
+    { id: 'tx' as const, label: 'Tranzaksiyalar', count: transactions.length },
+    { id: 'receipts' as const, label: 'Cheklar', count: receipts.length },
+    { id: 'notes' as const, label: 'Xabarlar', count: notifications.filter(item => !item.isRead).length }
+  ];
 
-  return <main className="space-y-4 pb-24 sm:space-y-6 lg:pb-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Moliyaviy markaz</span><h1 className="mt-2 font-display text-2xl sm:text-3xl font-black text-white">Tranzaksiyalar tarixi</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">Balans to‘ldirish, yechib olish, payout va boshqa moliyaviy harakatlaringizni bir joyda kuzating.</p></div><div className="flex gap-2"><PrimaryButton variant="ghost" onClick={() => transactionsQuery.refetch()} disabled={isLoading}><LoaderCircle className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />Yangilash</PrimaryButton><PrimaryButton onClick={() => onNavigate('/profile')}><WalletCards className="h-4 w-4" />Hamyon</PrimaryButton></div></div>{isLoading ? <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center gap-3 text-sm font-bold text-white"><LoaderCircle className="h-5 w-5 animate-spin text-amber-200" />Ma’lumotlar yuklanmoqda...</div><div className="mt-5 space-y-3">{[1, 2, 3].map(item => <div key={item} className="h-16 animate-pulse rounded-xl bg-white/[0.04]" />)}</div></section> : <><div className="sticky top-0 z-10 grid grid-cols-3 gap-1 rounded-2xl border border-white/[0.08] bg-[#16191c] p-1">{tabs.map(item => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-bold transition ${tab === item.id ? 'bg-amber-400 text-[#101214]' : 'text-white/55'}`}>{item.label}{item.count > 0 && <span className={`rounded-full px-1.5 text-[10px] ${tab === item.id ? 'bg-black/20' : 'bg-white/10'}`}>{item.count}</span>}</button>)}</div>{tab === 'tx' && <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Hisobot</span><h2 className="mt-2 font-display text-xl font-black text-white">Barcha tranzaksiyalar</h2></div><StatusPill tone={transactions.length ? 'green' : 'muted'}>{transactions.length} ta</StatusPill></div>{transactions.length === 0 ? <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center"><Clock3 className="mx-auto h-7 w-7 text-white/20" /><p className="mt-3 text-sm font-bold text-white/60">Hali tranzaksiya yo‘q</p><p className="mt-1 text-xs text-white/35">Hamyon orqali balans to‘ldirsangiz yoki yechib olsangiz, tarix shu yerda paydo bo‘ladi.</p></div> : <div className="mt-4 divide-y divide-white/[0.07]">{transactions.map(transaction => { const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund' || transaction.type === 'referral_reward'; const receipt = receiptByTransaction.get(transaction.id); return <article key={transaction.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-start gap-3"><span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isCredit ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-200'}`}>{isCredit ? <ArrowRight className="h-4 w-4 rotate-[-45deg]" /> : <ArrowRight className="h-4 w-4 rotate-[45deg]" />}</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black text-white">{transactionHistoryLabel(transaction.type)}</p><StatusPill tone={transactionHistoryStatusTone(transaction.status)}>{transactionHistoryStatusLabel(transaction.status)}</StatusPill></div><p className="mt-1 truncate text-xs text-white/40">{transaction.description || `Tranzaksiya #${transaction.id}`}</p><p className="mt-1 text-[10px] text-white/30">{dateLabel(transaction.createdAt)}{receipt ? ` · Chek #${receipt.id}` : ''}</p></div></div><p className={`shrink-0 text-right font-display text-base font-black ${isCredit ? 'text-emerald-300' : 'text-amber-200'}`}>{isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))} so‘m</p></article>; })}</div>}</section>}{tab === 'receipts' && <section className="rounded-2xl border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,158,11,.08),rgba(14,16,19,.96))] p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Chek monitoringi</span><h2 className="mt-2 font-display text-xl font-black text-white">Top-up holatlari</h2></div><button type="button" onClick={() => receiptsQuery.refetch()} className="text-xs font-bold text-amber-200">Yangilash</button></div>{receipts.length === 0 ? <p className="mt-4 text-sm text-white/40">Hali yuborilgan chek yo‘q.</p> : <div className="mt-4 grid gap-3 sm:grid-cols-2">{receipts.map(receipt => <div key={receipt.id} className="rounded-xl border border-white/[0.08] bg-black/15 p-4"><div className="flex items-center justify-between gap-2"><p className="text-sm font-black text-white">Chek #{receipt.id}</p><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? 'Tasdiqlandi' : receipt.status === 'rejected' ? 'Rad etildi' : 'Kutilmoqda'}</StatusPill></div><p className="mt-3 font-display text-lg font-black text-white">{uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-1 text-[11px] text-white/35">Yuborildi: {dateLabel(receipt.createdAt)}</p>{receipt.status === 'pending' && <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-amber-200"><LoaderCircle className="h-3.5 w-3.5 animate-spin" />Admin tekshiruvi kutilmoqda</div>}{receipt.reviewNote && <p className="mt-3 rounded-lg bg-white/[0.04] px-3 py-2 text-xs leading-5 text-white/55">Admin izohi: {receipt.reviewNote}</p>}</div>)}</div>}</section>}{tab === 'notes' && <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Xabarlar</span><h2 className="mt-2 font-display text-xl font-black text-white">Bildirishnomalar</h2></div><StatusPill tone={notifications.some(item => !item.isRead) ? 'gold' : 'muted'}>{notifications.filter(item => !item.isRead).length} ta yangi</StatusPill></div>{notifications.length === 0 ? <p className="mt-4 text-sm text-white/40">Hali bildirishnomalar yo‘q.</p> : <div className="mt-4 space-y-2">{notifications.map(notification => <button key={notification.id} type="button" onClick={() => !notification.isRead && markAsRead.mutate(notification.id)} className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition ${notification.isRead ? 'border-white/[0.07] bg-white/[0.02]' : 'border-amber-300/20 bg-amber-400/[0.06]'}`}><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-400/10 text-amber-200"><Bell className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-white">{notification.title}</span>{!notification.isRead && <StatusPill tone="gold">Yangi</StatusPill>}</span><span className="mt-1 block text-xs leading-5 text-white/50">{notification.message}</span><span className="mt-1 block text-[10px] text-white/25">{dateLabel(notification.createdAt)}</span></span></button>)}</div>}</section>}</>}</main>;
+  const totalPages = Math.max(1, Math.ceil((tab === 'tx' ? transactions.length : tab === 'receipts' ? receipts.length : notifications.length) / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedTransactions = transactions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedReceipts = receipts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedNotes = notifications.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  return (
+    <main className="space-y-3 pb-20 sm:space-y-4 lg:pb-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">Moliyaviy hisobot</span>
+          <h1 className="mt-0.5 font-display text-xl sm:text-2xl font-black text-white">Tranzaksiyalar tarixi</h1>
+        </div>
+        <div className="flex gap-2">
+          <PrimaryButton variant="ghost" onClick={() => transactionsQuery.refetch()} disabled={isLoading} className="text-xs py-1.5 h-9">
+            <LoaderCircle className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />Yangilash
+          </PrimaryButton>
+          <PrimaryButton onClick={() => onNavigate('/profile')} className="text-xs py-1.5 h-9">
+            <WalletCards className="h-3.5 w-3.5" />Hamyon
+          </PrimaryButton>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <section className="card-glow rounded-xl border border-white/[0.08] bg-[#16191c] p-4 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-white">
+            <LoaderCircle className="h-4 w-4 animate-spin text-amber-200" />Yuklanmoqda...
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className="sticky top-0 z-10 grid grid-cols-3 gap-1 rounded-xl border border-white/[0.08] bg-[#16191c]/95 backdrop-blur p-1">
+            {tabs.map(item => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => { setTab(item.id); setPage(1); }}
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-black transition ${tab === item.id ? 'bg-amber-400 text-black shadow-sm' : 'text-white/60 hover:text-white'}`}
+              >
+                {item.label}
+                {item.count > 0 && (
+                  <span className={`rounded-full px-1.5 text-[9px] font-bold ${tab === item.id ? 'bg-black/20 text-black' : 'bg-white/10 text-white/70'}`}>
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'tx' && (
+            <section className="rounded-xl border border-white/[0.08] bg-[#16191c] p-3">
+              <div className="mb-2 flex items-center justify-between border-b border-white/[0.06] pb-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-200">Barcha amallar ({transactions.length})</span>
+                <span className="text-[10px] text-white/40">Sahifa {currentPage} / {totalPages}</span>
+              </div>
+              {transactions.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Clock3 className="mx-auto h-6 w-6 text-white/20" />
+                  <p className="mt-2 text-xs font-bold text-white/60">Tranzaksiyalar mavjud emas</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {paginatedTransactions.map(transaction => {
+                    const isCredit = transaction.type === 'topup' || transaction.type === 'seller_payout' || transaction.type === 'order_refund' || transaction.type === 'referral_reward';
+                    const receipt = receiptByTransaction.get(transaction.id);
+                    return (
+                      <article key={transaction.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.04] bg-white/[0.02] px-2.5 py-2 transition hover:border-amber-400/20">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-black ${isCredit ? 'bg-emerald-400/15 text-emerald-300' : 'bg-amber-400/15 text-amber-300'}`}>
+                            {isCredit ? '+' : '-'}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-xs font-black text-white">{transactionHistoryLabel(transaction.type)}</p>
+                              <span className={`rounded px-1 text-[9px] font-bold ${transaction.status === 'completed' ? 'bg-emerald-400/15 text-emerald-300' : transaction.status === 'pending' ? 'bg-amber-400/15 text-amber-300' : 'bg-white/10 text-white/40'}`}>
+                                {transactionHistoryStatusLabel(transaction.status)}
+                              </span>
+                            </div>
+                            <p className="truncate text-[10px] text-white/40">{dateLabel(transaction.createdAt)}{receipt ? ` · Chek #${receipt.id}` : ''}</p>
+                          </div>
+                        </div>
+                        <p className={`shrink-0 font-display text-xs font-black ${isCredit ? 'text-emerald-300' : 'text-amber-200'}`}>
+                          {isCredit ? '+' : '-'}{uzNumber(Number(transaction.amount))} so‘m
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {tab === 'receipts' && (
+            <section className="rounded-xl border border-white/[0.08] bg-[#16191c] p-3">
+              <div className="mb-2 flex items-center justify-between border-b border-white/[0.06] pb-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-200">Top-up cheklari ({receipts.length})</span>
+                <span className="text-[10px] text-white/40">Sahifa {currentPage} / {totalPages}</span>
+              </div>
+              {receipts.length === 0 ? (
+                <p className="py-6 text-center text-xs text-white/40">Hali chek yuborilmagan.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {paginatedReceipts.map(receipt => (
+                    <div key={receipt.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.04] bg-white/[0.02] px-2.5 py-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-white">Chek #{receipt.id}</span>
+                          <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${receipt.status === 'approved' ? 'bg-emerald-400/15 text-emerald-300' : receipt.status === 'rejected' ? 'bg-red-400/15 text-red-300' : 'bg-amber-400/15 text-amber-300'}`}>
+                            {receipt.status === 'approved' ? 'Tasdiqlandi' : receipt.status === 'rejected' ? 'Rad etildi' : 'Kutilmoqda'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/35">{dateLabel(receipt.createdAt)}</p>
+                      </div>
+                      <p className="shrink-0 font-display text-xs font-black text-amber-200">{uzNumber(Number(receipt.amount))} so‘m</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {tab === 'notes' && (
+            <section className="rounded-xl border border-white/[0.08] bg-[#16191c] p-3">
+              <div className="mb-2 flex items-center justify-between border-b border-white/[0.06] pb-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-200">Xabarnomalar</span>
+                <span className="text-[10px] text-white/40">Sahifa {currentPage} / {totalPages}</span>
+              </div>
+              {notifications.length === 0 ? (
+                <p className="py-6 text-center text-xs text-white/40">Yangi xabar yo‘q.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {paginatedNotes.map(notification => (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={() => !notification.isRead && markAsRead.mutate(notification.id)}
+                      className={`flex w-full items-start gap-2.5 rounded-lg border p-2 text-left transition ${notification.isRead ? 'border-white/[0.04] bg-white/[0.01]' : 'border-amber-300/30 bg-amber-400/[0.08]'}`}
+                    >
+                      <Bell className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white">{notification.title}</p>
+                        <p className="mt-0.5 text-[11px] leading-4 text-white/60">{notification.message}</p>
+                        <span className="mt-1 block text-[9px] text-white/30">{dateLabel(notification.createdAt)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-bold text-white/70 disabled:opacity-30 active:scale-95"
+              >
+                ◀ Oldingi
+              </button>
+              <span className="text-xs font-bold text-amber-200">{currentPage} / {totalPages}</span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-bold text-white/70 disabled:opacity-30 active:scale-95"
+              >
+                Keyingi ▶
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </main>
+  );
 }
 
 function SupportPage({ onNavigate }: { onNavigate: (path: string) => void }) {

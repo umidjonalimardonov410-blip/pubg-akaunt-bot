@@ -553,7 +553,7 @@ export const appRouter = router({
       .input(z.object({
         fileName: z.string().min(1).max(180),
         contentType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"]),
-        size: z.number().int().positive().max(200 * 1024 * 1024),
+        size: z.number().int().positive().max(1024 * 1024 * 1024), // 1 GB gacha media
       }))
       .mutation(async ({ ctx, input }) => {
         const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");

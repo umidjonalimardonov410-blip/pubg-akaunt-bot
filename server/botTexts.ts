@@ -164,7 +164,7 @@ const uz: Texts = {
   mainMenu: 'Asosiy menyu:',
   adminTitle: '👨‍💼 ADMIN BILAN ALOQA',
   adminBody: 'Savdo, to‘lov yoki nizo bo‘yicha savollar uchun to‘g‘ridan-to‘g‘ri adminimizga yozing: {admin}\n\n⚠️ Login va parolni hech kimga yubormang. Admin hech qachon parol so‘ramaydi.',
-  chooseSection: '👇 Asosiy menyu — qolgan bo‘limlar <b>⚙️ Boshqa bo‘limlar</b> ichida:',
+  chooseSection: '⚡️ <b>Kerakli bo‘limni tanlang:</b>\n👑 <b>Admin:</b> @XotiraBuzilgan',
   walletTitle: '💳 BALANSNI TO‘LDIRISH',
   walletIntro: '1️⃣ Summani tanlang\n2️⃣ To‘lov usulini tanlang\n3️⃣ Chek rasmini shu chatga yuboring\n\nAdmin tasdiqlagach balans avtomatik qo‘shiladi.',
   walletChooseAmount: '💰 Summani tanlang:',
