@@ -347,12 +347,8 @@ function buildMainKeyboard(lang: BotLang = 'uz', isAdmin = false) {
   return {
     keyboard: [
       [appButton],
-      [webAppButton(aimButtonText(lang), '/')],
-      [{ text: texts.menuMarket }, { text: texts.menuSell }],
-      [{ text: texts.menuWallet }, { text: texts.menuListings }],
-      [{ text: texts.menuRules }, { text: texts.menuReferral }],
-      [{ text: texts.menuSupport }, { text: texts.menuLanguage }],
-      [{ text: texts.menuAdmin }],
+      [{ text: texts.menuMarket }, { text: texts.menuWallet }],
+      [{ text: texts.menuSell }, { text: texts.menuMore }],
       ...(isAdmin ? [[{ text: texts.menuPanel }]] : []),
     ],
     resize_keyboard: true,
@@ -389,6 +385,51 @@ async function sendWelcome(chatId: number | string, lang: BotLang, name: string)
         ],
       ],
     },
+  });
+}
+
+
+async function sendMoreMenu(chatId: number | string, lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.menuMore}</b>\n\n${texts.chooseSection}`,
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: texts.menuListings, callback_data: 'show_listings' }, { text: texts.menuOrders, callback_data: 'show_orders' }],
+        [{ text: texts.menuRules, callback_data: 'show_rules' }, { text: texts.menuReferral, callback_data: 'show_referral' }],
+        [{ text: texts.menuSupport, callback_data: 'show_support' }, { text: texts.menuLanguage, callback_data: 'show_language' }],
+        [{ text: texts.menuAdmin, callback_data: 'show_admin' }],
+      ],
+    },
+  });
+}
+
+async function sendListingsInfo(chatId: number | string, lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  return await telegramApiRequest('sendMessage', { chat_id: chatId, text: `<b>${texts.listingsTitle}</b>\n\n${texts.listingsBody}`, parse_mode: 'HTML', reply_markup: buildInlineKeyboard('/profile') });
+}
+
+async function sendOrdersInfo(chatId: number | string, lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  const ordersUrl = getTelegramMiniAppUrl('/orders');
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.ordersTitle}</b>\n\n${texts.ordersBody}`,
+    parse_mode: 'HTML',
+    reply_markup: ordersUrl ? { inline_keyboard: [[{ text: texts.openApp, web_app: { url: ordersUrl } }]] } : buildMainKeyboard(lang),
+  });
+}
+
+async function sendAdminContact(chatId: number | string, lang: BotLang = 'uz') {
+  const texts = botText(lang);
+  return await telegramApiRequest('sendMessage', {
+    chat_id: chatId,
+    text: `<b>${texts.adminTitle}</b>\n\n${texts.adminBody.replace('{admin}', ADMIN_TELEGRAM_LABEL)}`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [[adminContactButton(lang)]] },
   });
 }
 
@@ -1160,6 +1201,30 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const sent = await sendReferral(callbackChatId, lang, callback.from?.id);
       return { handled: true as const, command: 'referral', status: sent.status, sent: sent.ok };
     }
+    if (data === 'show_listings') {
+      const lang = getChatLanguage(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(lang).menuListings);
+      const sent = await sendListingsInfo(callbackChatId, lang);
+      return { handled: true as const, command: 'mylistings', status: sent.status, sent: sent.ok };
+    }
+    if (data === 'show_orders') {
+      const lang = getChatLanguage(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(lang).menuOrders);
+      const sent = await sendOrdersInfo(callbackChatId, lang);
+      return { handled: true as const, command: 'orders', status: sent.status, sent: sent.ok };
+    }
+    if (data === 'show_support') {
+      const lang = getChatLanguage(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(lang).menuSupport);
+      const sent = await sendSupport(callbackChatId, lang);
+      return { handled: true as const, command: 'support', status: sent.status, sent: sent.ok };
+    }
+    if (data === 'show_admin') {
+      const lang = getChatLanguage(callbackChatId);
+      await answerTelegramCallback(callback.id, botText(lang).menuAdmin);
+      const sent = await sendAdminContact(callbackChatId, lang);
+      return { handled: true as const, command: 'contactadmin', status: sent.status, sent: sent.ok };
+    }
     if (data === 'show_language') {
       await answerTelegramCallback(callback.id, '🌐');
       const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: botText(getChatLanguage(callbackChatId)).languageTitle, reply_markup: languageKeyboard() });
@@ -1342,6 +1407,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   if (command === 'wallet' || menuKey === 'menuWallet') {
     const sent = await sendWalletMenu(chatId, lang);
     return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };
+  }
+  if (command === 'more' || menuKey === 'menuMore') {
+    const sent = await sendMoreMenu(chatId, lang);
+    return { handled: true as const, command: 'more', status: sent.status, sent: sent.ok };
   }
   if (command === 'rules' || menuKey === 'menuRules') {
     const sent = await sendRules(chatId, lang);
