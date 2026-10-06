@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -45,7 +45,7 @@ import {
   UserRound,
   WalletCards,
   X,
-  Zap, Trash2, Camera, Bookmark, FolderOpen, Trophy, ShieldCheck, Crown, ArrowUpFromLine } from "lucide-react";
+  Zap, Trash2, Camera, Bookmark, FolderOpen, Trophy, ShieldCheck, Crown, ArrowUpFromLine, ImageOff, RotateCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { accountShareUrl, authenticateTelegramWebApp, getTelegramPhoneLoginUrl, autoClaimTelegramReferral, getTelegramMiniAppLaunchUrl, getTelegramReferralCode, getTelegramWebApp, initTelegramWebApp, shareTelegramText, telegramHaptic } from "@/lib/telegram";
 import { ChatPage, FavoriteButton, ReferralPage, SavedPage } from "@/pages/EnhancedPages";
@@ -439,6 +439,15 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const [imageError, setImageError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+
+  const activeImageUrl = useMemo(() => {
+    if (!item.image) return "";
+    if (retryKey === 0) return item.image;
+    const sep = item.image.includes("?") ? "&" : "?";
+    return `${item.image}${sep}_retry=${retryKey}`;
+  }, [item.image, retryKey]);
 
   const triggerRef = useRef<HTMLImageElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -580,32 +589,61 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
     >
       <div>
         <div className={`relative overflow-hidden rounded-lg sm:rounded-xl bg-[#16181b] aspect-[3/4]`}>
-          <motion.img 
-            ref={triggerRef}
-            layoutId={`acc-image-${item.id}`} 
-            src={item.image} 
-            alt={`${item.playerName} nomli PUBG Mobile akkaunti bosh surati, ${item.level}-daraja, K/D ${item.kd}`} 
-            loading="lazy" 
-            decoding="async"
-            role="button"
-            tabIndex={0}
-            aria-label={`${item.playerName} suratlarini to'liq ekranda ko'rish`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentIndex(0);
-              setFullscreenOpen(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+          {!imageError ? (
+            <motion.img 
+              ref={triggerRef}
+              layoutId={`acc-image-${item.id}`} 
+              src={activeImageUrl} 
+              alt={`${item.playerName} nomli PUBG Mobile akkaunti bosh surati, ${item.level}-daraja, K/D ${item.kd}`} 
+              loading="lazy" 
+              decoding="async"
+              role="button"
+              tabIndex={0}
+              aria-label={`${item.playerName} suratlarini to'liq ekranda ko'rish`}
+              onError={() => setImageError(true)}
+              onClick={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
                 setCurrentIndex(0);
                 setFullscreenOpen(true);
-              }
-            }}
-            className="h-full w-full img-live object-cover object-top motion-safe:transition motion-safe:duration-500 group-hover:scale-105 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" 
-            title="Suratni to'liq ekranda ko'rish"
-          />
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setCurrentIndex(0);
+                  setFullscreenOpen(true);
+                }
+              }}
+              className="h-full w-full img-live object-cover object-top motion-safe:transition motion-safe:duration-500 group-hover:scale-105 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" 
+              title="Suratni to'liq ekranda ko'rish"
+            />
+          ) : (
+            <div 
+              role="alert"
+              data-testid={`listing-card-fallback-${item.id}`}
+              className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-gradient-to-b from-[#181a1e] to-[#0f1113] p-2 text-center select-none"
+            >
+              <ImageOff className="h-6 w-6 text-zinc-500" aria-hidden="true" />
+              <span className="text-[10px] font-medium text-zinc-400 leading-tight">
+                Rasm yuklanmadi
+              </span>
+              <button
+                type="button"
+                data-testid={`listing-card-retry-${item.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setImageError(false);
+                  setRetryKey(k => k + 1);
+                }}
+                className="mt-1 inline-flex items-center gap-1 rounded-md bg-amber-400/10 px-2 py-1 text-[10px] font-medium text-amber-300 hover:bg-amber-400/20 active:scale-95 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+                aria-label="Qayta urinish"
+                title="Qayta urinish"
+              >
+                <RotateCw className="h-3 w-3" />
+                <span>Qayta urinish</span>
+              </button>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
           
@@ -1864,8 +1902,7 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/60">
             Qoidalar buzilganligi sababli bot va ilovadan foydalanish cheklandi. Blokdan chiqarish yoki qayta ko‘rib chiqish uchun adminga murojaat qiling:
           </div>
-          <a
-            <div className="mt-5 text-left rounded-2xl border border-white/10 bg-black/50 p-4">
+          <div className="mt-5 text-left rounded-2xl border border-white/10 bg-black/50 p-4">
             <label className="block text-xs font-semibold text-white/90 mb-1.5">📩 E'tiroz (Apellyatsiya) arizasi:</label>
             <textarea
               id="appeal-text"
@@ -1902,7 +1939,8 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
               Arizani yuborish
             </button>
           </div>
-href="https://t.me/XotiraBuzilgan"
+          <a
+            href="https://t.me/XotiraBuzilgan"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-red-900/30 transition hover:brightness-110 active:scale-95"
@@ -1929,7 +1967,7 @@ href="https://t.me/XotiraBuzilgan"
   const [destination, setDestination] = React.useState('');
   const profileQuery = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000, refetchOnWindowFocus: false });
   const [editingProfile, setEditingProfile] = React.useState(false);
-  const [identityOpen, setIdentityOpen] = React.useState(false);
+  const [identityOpen, setIdentityOpen] = React.useState(true);
   const [profileDraft, setProfileDraft] = React.useState({ name: '', phone: '' });
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: () => { toast.success('Profil yangilandi'); setEditingProfile(false); profileQuery.refetch(); },
@@ -2237,8 +2275,8 @@ href="https://t.me/XotiraBuzilgan"
               <span className="mt-1 block truncate text-[13px] font-black text-white">{displayName}</span>
             </div>
           </div> : <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
-            <EditField label="To‘liq ism"><input className="field-input" value={profileDraft.name} onChange={event => setProfileDraft(previous => ({ ...previous, name: event.target.value }))} placeholder="Ism Familiya" /></EditField>
-            <EditField label="Telefon raqam"><input className="field-input" value={profileDraft.phone} onChange={event => setProfileDraft(previous => ({ ...previous, phone: event.target.value }))} placeholder="+998 90 123 45 67" /></EditField>
+            <EditField label="To‘liq ism"><input name="name" className="field-input" value={profileDraft.name} onChange={event => setProfileDraft(previous => ({ ...previous, name: event.target.value }))} placeholder="Ism Familiya" /></EditField>
+            <EditField label="Telefon raqam"><input name="phone" className="field-input" value={profileDraft.phone} onChange={event => setProfileDraft(previous => ({ ...previous, phone: event.target.value }))} placeholder="+998 90 123 45 67" /></EditField>
             <div className="flex gap-2 sm:col-span-2">
               <PrimaryButton disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ name: profileDraft.name.trim() || undefined, phone: profileDraft.phone.trim() })}>{updateProfile.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Saqlash</PrimaryButton>
               <PrimaryButton variant="ghost" onClick={() => setEditingProfile(false)}>Bekor qilish</PrimaryButton>
