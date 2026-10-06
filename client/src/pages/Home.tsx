@@ -162,7 +162,8 @@ function normalizeAccount(row: any): Listing {
     winRate: `${row.winRate ?? "0"}%`,
     matches: String(row.totalMatches ?? 0),
     skins: featuredSkins,
-    image: row.thumbnailUrl ?? galleryUrls[0] ?? CARD_IMAGE,
+    // Foydalanuvchi yuklagan haqiqiy suratlarni bot rasmlaridan ustun qo'yish
+    image: (galleryUrls.find(u => u && !u.includes("bot-") && !u.includes("placeholder")) || row.thumbnailUrl || galleryUrls[0] || CARD_IMAGE),
     tag: row.isVerified ? "TEKSHIRILGAN" : "YANGI E'LON",
     description: row.description ?? "Sotuvchi batafsil tavsif qoldirmagan.",
     galleryUrls,
@@ -1311,15 +1312,22 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
       {item.skins.length === 0 ? <p className="mt-2 text-xs text-white/40">Skin ma’lumoti kiritilmagan.</p> : <div className="mt-2 flex flex-wrap gap-1.5">{item.skins.slice(0, 4).map(skin => <span key={skin} className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-semibold text-amber-50"><Sparkles className="h-3 w-3 shrink-0 text-amber-200" /><span className="truncate">{skin}</span></span>)}{item.skins.length > 4 && <span className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-bold text-white/60">+{item.skins.length - 4} ta</span>}</div>}
     </section>
 
-    <SellerTrustCard sellerId={item.sellerId} />
-
     <details className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-3">
       <summary className="cursor-pointer select-none font-display text-xs font-black uppercase tracking-wider text-amber-200">Batafsil tavsif</summary>
       <ExpandableText text={item.description} className="mt-2 text-xs leading-6 text-white/55" />
     </details>
 
-    <ProDetailPanel accountId={item.id} sellerId={item.sellerId ?? 0} />
-    <TrustStrip />
+    {/* Sotuvchi reytingi va statistikasi alohida ixcham bo'lim: faqat bosganda ochiladi */}
+    <details className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-3">
+      <summary className="cursor-pointer select-none font-display text-xs font-black uppercase tracking-wider text-amber-200 flex items-center justify-between">
+        <span>👤 Sotuvchi profili va ishonch reytingi</span>
+        <span className="text-[10px] text-amber-400/80 font-normal">Ko'rish ▼</span>
+      </summary>
+      <div className="mt-3 space-y-3">
+        <SellerTrustCard sellerId={item.sellerId} />
+        <ProDetailPanel accountId={item.id} sellerId={item.sellerId ?? 0} />
+      </div>
+    </details>
     <StickyBuyBar price={`${uzNumber(item.price)} so'm`} loading={buying} onBuy={handleBuy} />
     <BottomSheet open={confirmOpen} onClose={() => { if (!buying) setConfirmOpen(false); }} title={purchased ? undefined : 'Kafolatli sotib olish'}>{purchased ? <SuccessBurst title="Buyurtma yaratildi" text="Kafolatli savdo bosqichi boshlandi." /> : <div className="space-y-4 pb-2"><div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3"><img loading="lazy" decoding="async" src={item.image} alt={item.playerName} className="h-14 w-14 rounded-xl object-cover" /><div className="min-w-0"><p className="truncate text-sm font-black text-white">{item.playerName}</p><p className="mt-0.5 text-[11px] text-white/45">LVL {item.level} • {item.region}</p></div><span className="ml-auto shrink-0 text-right font-display text-base font-black text-amber-200">{promo && <span className="mr-2 text-xs font-semibold text-white/35 line-through">{uzNumber(item.price)}</span>}{uzNumber(discountedPrice)}</span></div><div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-white/35">Promo-kod (ixtiyoriy)</label><div className="flex gap-2"><input value={promoInput} onChange={event => { setPromoInput(event.target.value); setPromo(null); }} className="field-input flex-1" placeholder="INFERNO10" /><PrimaryButton variant="soft" disabled={promoChecking || !promoInput.trim()} onClick={applyPromo} className="shrink-0">{promoChecking ? 'Tekshirilmoqda...' : promo ? 'Qabul qilindi ✓' : 'Qo‘llash'}</PrimaryButton></div>{promo && <p className="text-[11px] font-semibold text-emerald-300">Chegirma qo‘llandi — to‘lov: {uzNumber(discountedPrice)} so‘m</p>}</div><p className="text-xs leading-5 text-white/45">To‘lov kafolat (escrow) hisobida saqlanadi. Akkauntni tekshirib tasdiqlaganingizdan so‘ng sotuvchiga o‘tkaziladi.</p><div className="grid grid-cols-2 gap-2"><PrimaryButton variant="ghost" onClick={() => setConfirmOpen(false)} className="w-full">Bekor qilish</PrimaryButton><PrimaryButton onClick={confirmBuy} disabled={buying} className="w-full">{buying ? 'Yuborilmoqda...' : 'Tasdiqlash'}</PrimaryButton></div></div>}</BottomSheet></main>;
 }
