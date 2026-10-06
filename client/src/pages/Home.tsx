@@ -439,10 +439,19 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
+  const triggerRef = useRef<HTMLImageElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
   const images = useMemo(() => {
     const list = [item.image, ...(item.galleryUrls || [])].filter((url): url is string => Boolean(url && url.trim().length > 0));
     return Array.from(new Set(list));
   }, [item.image, item.galleryUrls]);
+
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }, []);
 
   const goToPrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -454,44 +463,97 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
     setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
   };
 
+  // Fokusni dialog ichiga ko'chirish, Tab ushlash (focus trap) va yopilganda qaytarish
   useEffect(() => {
-    if (!fullscreenOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setFullscreenOpen(false);
-      } else if (e.key === 'ArrowLeft') {
-        setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
-      } else if (e.key === 'ArrowRight') {
-        setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+    if (fullscreenOpen) {
+      // Galereya ochilganda fokusni yopish tugmasiga ko'chiramiz
+      const timer = setTimeout(() => {
+        closeBtnRef.current?.focus();
+      }, 50);
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setFullscreenOpen(false);
+          return;
+        }
+
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+          return;
+        }
+
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+          return;
+        }
+
+        // Tab focus trap
+        if (e.key === 'Tab' && dialogRef.current) {
+          const focusableEls = dialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusableEls.length === 0) return;
+
+          const firstEl = focusableEls[0];
+          const lastEl = focusableEls[focusableEls.length - 1];
+
+          if (e.shiftKey) {
+            if (document.activeElement === firstEl) {
+              e.preventDefault();
+              lastEl.focus();
+            }
+          } else {
+            if (document.activeElement === lastEl) {
+              e.preventDefault();
+              firstEl.focus();
+            }
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    } else {
+      // Yopilganda fokusni surat triggeriga qaytaramiz
+      if (triggerRef.current) {
+        triggerRef.current.focus();
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    }
   }, [fullscreenOpen, images.length]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (prefersReducedMotion) return; // reduced-motion da swipe harakati o'chiriladi
     setTouchStartX(e.targetTouches[0].clientX);
     setTouchEndX(null);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (prefersReducedMotion) return;
     setTouchEndX(e.targetTouches[0].clientX);
   };
 
   const handleTouchEnd = () => {
-    if (touchStartX === null || touchEndX === null) return;
+    if (prefersReducedMotion || touchStartX === null || touchEndX === null) return;
     const distance = touchStartX - touchEndX;
     const minSwipeDistance = 45;
     if (distance > minSwipeDistance) {
-      // swipe left -> next
+      // swipe left -> keyingi surat
       setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
     } else if (distance < -minSwipeDistance) {
-      // swipe right -> prev
+      // swipe right -> oldingi surat
       setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
     }
     setTouchStartX(null);
     setTouchEndX(null);
   };
+
+  const sellerStatus = item.verifiedSeller ? "Tasdiqlangan ishonchli sotuvchi" : "Sotuvchi";
 
   return (
     <article
@@ -504,19 +566,20 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
           onOpen(item.id);
         }
       }}
-      aria-label={`PUBG akkaunti: ${item.playerName}, Daraja: ${item.level}, Narxi: ${uzNumber(item.price)} so'm, K/D: ${item.kd}`}
-      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30 active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-2.5'}`}
+      aria-label={`PUBG akkaunti: ${item.playerName}, Daraja: ${item.level}, Narxi: ${uzNumber(item.price)} so'm, K/D: ${item.kd}, ${sellerStatus}`}
+      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 focus:border-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101215] active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-2.5'}`}
     >
       <div>
         <div className={`relative overflow-hidden rounded-xl bg-[#16181b] ${showcase ? 'aspect-[4/5]' : 'aspect-[3/4]'}`}>
           <motion.img 
+            ref={triggerRef}
             layoutId={`acc-image-${item.id}`} 
             src={item.image} 
-            alt={`${item.playerName} akkauntining bosh surati`} 
+            alt={`${item.playerName} nomli PUBG Mobile akkaunti bosh surati, ${item.level}-daraja, K/D ${item.kd}`} 
             loading="lazy" 
             role="button"
             tabIndex={0}
-            aria-label="Suratni to'liq ekranda ko'rish va galereyani ochish"
+            aria-label={`${item.playerName} akkauntining suratlarini to'liq ekranda ko'rish`}
             onClick={(e) => {
               e.stopPropagation();
               setCurrentIndex(0);
@@ -530,7 +593,7 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
                 setFullscreenOpen(true);
               }
             }}
-            className="h-full w-full img-live object-cover object-top transition duration-500 group-hover:scale-105 cursor-zoom-in" 
+            className="h-full w-full img-live object-cover object-top motion-safe:transition motion-safe:duration-500 group-hover:scale-105 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-black" 
             title="Suratni to'liq ekranda ko'rish"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
@@ -560,34 +623,48 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
         <span className="pubg-press grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-400/25 sm:h-9 sm:w-9 sm:rounded-xl text-amber-50 transition group-hover:bg-amber-400 group-hover:text-black"><ArrowRight className="h-4 w-4" /></span>
       </div>
 
-      {/* Fullscreen galereya */}
+      {/* Fullscreen galereya (Dialog va Focus Trap bilan) */}
       {fullscreenOpen && (
         <div 
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
-          aria-label={`${item.playerName} barcha suratlari galereyasi`}
+          aria-labelledby={`gallery-title-${item.id}`}
+          aria-describedby={`gallery-desc-${item.id}`}
           className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 backdrop-blur-md p-3 sm:p-5 text-white select-none"
           onClick={(e) => { e.stopPropagation(); setFullscreenOpen(false); }}
         >
+          {/* Ekran o'qigichlar uchun jonli e'lon (announcement) */}
+          <div 
+            id={`gallery-desc-${item.id}`}
+            className="sr-only" 
+            aria-live="polite" 
+            aria-atomic="true"
+          >
+            {`${item.playerName} akkaunti. Surat ${currentIndex + 1} dan ${images.length}. ${sellerStatus}. Darajasi ${item.level}, narxi ${uzNumber(item.price)} so'm.`}
+          </div>
+
           {/* Header */}
           <div className="flex items-center justify-between py-2 border-b border-white/10" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm sm:text-base truncate max-w-[200px] sm:max-w-md">{item.playerName}</span>
+              <span id={`gallery-title-${item.id}`} className="font-bold text-sm sm:text-base truncate max-w-[200px] sm:max-w-md">
+                {item.playerName} — {sellerStatus}
+              </span>
               {images.length > 1 && (
                 <span 
                   className="rounded-full bg-amber-400/20 text-amber-200 px-2 py-0.5 text-xs font-bold"
-                  aria-live="polite"
-                  aria-atomic="true"
+                  aria-hidden="true"
                 >
                   {currentIndex + 1} / {images.length}
                 </span>
               )}
             </div>
             <button 
+              ref={closeBtnRef}
               type="button"
               onClick={() => setFullscreenOpen(false)}
-              className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition focus:outline-none focus:ring-2 focus:ring-amber-400"
-              aria-label="Galereyani yopish"
+              className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              aria-label="Galereyani yopish (Escape)"
             >
               ✕
             </button>
@@ -605,8 +682,8 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
               <button
                 type="button"
                 onClick={goToPrev}
-                className="absolute left-2 sm:left-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                aria-label="Oldingi surat"
+                className="absolute left-2 sm:left-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                aria-label={`Oldingi suratga o'tish (${currentIndex === 0 ? images.length : currentIndex} dan ${images.length})`}
               >
                 ‹
               </button>
@@ -614,16 +691,18 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
 
             <img 
               src={images[currentIndex] || item.image} 
-              alt={`${item.playerName} surati (${currentIndex + 1} dan ${images.length})`} 
-              className="max-h-[75vh] sm:max-h-[82vh] max-w-full rounded-2xl object-contain shadow-2xl transition duration-200" 
+              alt={`${item.playerName} akkauntining ${currentIndex + 1}-surati (${images.length} tadan). ${sellerStatus}.`} 
+              className={`max-h-[75vh] sm:max-h-[82vh] max-w-full rounded-2xl object-contain shadow-2xl ${
+                prefersReducedMotion ? '' : 'motion-safe:transition motion-safe:duration-200'
+              }`}
             />
 
             {images.length > 1 && (
               <button
                 type="button"
                 onClick={goToNext}
-                className="absolute right-2 sm:right-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                aria-label="Keyingi surat"
+                className="absolute right-2 sm:right-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                aria-label={`Keyingi suratga o'tish (${currentIndex + 2 > images.length ? 1 : currentIndex + 2} dan ${images.length})`}
               >
                 ›
               </button>
@@ -633,7 +712,9 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
           {/* Footer note with keyboard / gesture hints */}
           <div className="flex flex-col items-center gap-1 text-center py-2 border-t border-white/10" onClick={e => e.stopPropagation()}>
             <p className="text-xs text-white/70">
-              {images.length > 1 ? "Chapga/o'ngga suring yoki klaviaturadagi strelkalardan (← / →) foydalaning" : "Suratni yopish uchun Escape yoki ✕ bosing"}
+              {images.length > 1 
+                ? (prefersReducedMotion ? "Suratlarni ko'rish uchun strelka (← / →) yoki tugmalardan foydalaning" : "Chapga/o'ngga suring yoki klaviaturadagi strelkalardan (← / →) foydalaning")
+                : "Suratni yopish uchun Escape yoki ✕ bosing"}
             </p>
             <p className="text-[10px] text-white/40">Yopish uchun ekranning bo'sh joyiga bosing</p>
           </div>
