@@ -1,5 +1,13 @@
 // AUTO-GENERATED UI phrase dictionary (uz -> ru/en). Manba matn = o'zbekcha.
 export const PHRASES: Record<string, { ru: string; en: string }> = {
+  "Tasdiqlangan ishonchli sotuvchi": { ru: "Проверенный надёжный продавец", en: "Verified trusted seller" },
+  "Yopish (Escape)": { ru: "Закрыть (Escape)", en: "Close (Escape)" },
+  "Yopish uchun ekranning bo‘sh joyiga bosing": { ru: "Нажмите в любое место, чтобы закрыть", en: "Tap anywhere to close" },
+  "Nima sababdan blokdan chiqarilishingiz kerakligini batafsil yozing...": { ru: "Подробно опишите причину разблокировки...", en: "Explain in detail why your account should be unblocked..." },
+  "E'tirozingiz muvaffaqiyatli qabul qilindi! Adminlar tez orada ko'rib chiqadi.": { ru: "Ваша апелляция принята! Администратор скоро рассмотрит её.", en: "Your appeal has been submitted! Admins will review it soon." },
+  "Arizangiz allaqachon ko'rib chiqilmoqda yoki xatolik yuz berdi.": { ru: "Ваша заявка уже рассматривается или произошла ошибка.", en: "Your appeal is already under review or an error occurred." },
+  "Daraja talablari:": { ru: "Требования уровня:", en: "Tier requirements:" },
+  "Ma’muriyat tomonidan shaxsi yoki kafolati tekshirilgan va ishonchli deb topilgan.": { ru: "Личность или залог проверены администрацией и признаны надёжными.", en: "Identity or deposit verified by administration and confirmed trusted." },
   "Sizning akkauntingiz bloklangan": { ru: "Ваш аккаунт заблокирован", en: "Your account has been suspended" },
   "Qoidabuzarlik sababli": { ru: "По причине нарушения правил", en: "Due to policy violation" },
   "Qoidalar buzilganligi sababli bot va ilovadan foydalanish cheklandi. Blokdan chiqarish yoki qayta ko‘rib chiqish uchun adminga murojaat qiling:": { ru: "Из-за нарушения правил использование бота и приложения ограничено. Свяжитесь с администратором для разблокировки:", en: "Access restricted due to rule violation. Contact admin for unban or review:" },

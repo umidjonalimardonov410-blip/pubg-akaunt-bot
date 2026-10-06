@@ -22,7 +22,8 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   // Telegram Mini Apps authenticate with signed initData, not the Manus OAuth redirect.
   if (getTelegramWebApp()?.initData) return;
-  startLogin();
+  // startLogin disabled: users use Telegram auth
+  console.warn("Unauthorized session - please open via Telegram bot");
 };
 
 queryClient.getQueryCache().subscribe(event => {
