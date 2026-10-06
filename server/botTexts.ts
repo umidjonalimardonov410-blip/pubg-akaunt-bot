@@ -24,6 +24,7 @@ type Texts = {
   menuRules: string;
   menuSupport: string;
   menuAdmin: string;
+  menuMore: string;
   menuPanel: string;
   panelTitle: string;
   panelBody: string;
@@ -123,6 +124,7 @@ const uz: Texts = {
   menuRules: '📜 Qoidalar',
   menuSupport: '🆘 Yordam',
   menuAdmin: '👨‍💼 Admin',
+  menuMore: '⚙️ Boshqa bo‘limlar',
   menuPanel: '🛡 Admin panel',
   panelTitle: '🛡 ADMIN PANEL',
   panelBody: 'Bot boshqaruvi, akkaunt tasdiqlash va chek nazorati shu yerda. Panel egasi: {panelAdmin}',
@@ -135,9 +137,9 @@ const uz: Texts = {
   placeholder: 'Kerakli bo‘limni tanlang',
   welcomeTitle: '🏆 INFERNO GOLD MARKET',
   welcomeBody:
-    'Assalomu alaykum, {name}!\n\nBu — PUBG Mobile akkauntlari uchun <b>kafolatli savdo maydoni</b>.\n\n' +
-    '💰 <b>Qanday sotib olinadi?</b>\n1️⃣ Balansni to‘ldiring\n2️⃣ Bozordan akkaunt tanlang\n3️⃣ Pul escrow’da muzlatiladi\n4️⃣ Akkauntni tekshirib tasdiqlaysiz\n\n' +
-    '🛡 Har bir e’lon rasm va video bilan tekshiriladi.\n📜 Savdo oldidan <b>Qoidalar</b> bo‘limini o‘qing.',
+    'Assalomu alaykum, {name}! 👋\n\nPUBG Mobile akkauntlarining <b>kafolatli bozori</b>ga xush kelibsiz.\n\n' +
+    '🛡 <b>Nega biz xavfsizmiz?</b>\n▫️ Pul escrow’da saqlanadi — akkauntni tekshirib tasdiqlamaguningizcha sotuvchiga o‘tmaydi\n▫️ Har bir e’lon admin tomonidan rasm va video bilan tekshiriladi\n▫️ Savdo 24/7 nazoratda\n\n' +
+    '🚀 Boshlash uchun pastdagi <b>Mini App</b> tugmasini bosing.',
   openApp: '📱 Mini App’ni ochish',
   rulesTitle: '📜 SAVDO QOIDALARI',
   rulesBody:
@@ -160,7 +162,7 @@ const uz: Texts = {
   mainMenu: 'Asosiy menyu:',
   adminTitle: '👨‍💼 ADMIN BILAN ALOQA',
   adminBody: 'Savdo, to‘lov yoki nizo bo‘yicha savollar uchun to‘g‘ridan-to‘g‘ri adminimizga yozing: {admin}\n\n⚠️ Login va parolni hech kimga yubormang. Admin hech qachon parol so‘ramaydi.',
-  chooseSection: '👇 Quyidagi menyudan kerakli bo‘limni tanlang:',
+  chooseSection: '👇 Asosiy menyu — qolgan bo‘limlar <b>⚙️ Boshqa bo‘limlar</b> ichida:',
   walletTitle: '💳 BALANSNI TO‘LDIRISH',
   walletIntro: '1️⃣ Summani tanlang\n2️⃣ To‘lov usulini tanlang\n3️⃣ Chek rasmini shu chatga yuboring\n\nAdmin tasdiqlagach balans avtomatik qo‘shiladi.',
   walletChooseAmount: '💰 Summani tanlang:',
@@ -231,6 +233,7 @@ const ru: Texts = {
   menuRules: '📜 Правила',
   menuSupport: '🆘 Поддержка',
   menuAdmin: '👨‍💼 Админ',
+  menuMore: '⚙️ Ещё',
   menuPanel: '🛡 Админ панель',
   panelTitle: '🛡 АДМИН ПАНЕЛЬ',
   panelBody: 'Управление ботом, подтверждение аккаунтов и проверка чеков здесь. Владелец панели: {panelAdmin}',
@@ -243,9 +246,9 @@ const ru: Texts = {
   placeholder: 'Выберите раздел',
   welcomeTitle: '🏆 INFERNO GOLD MARKET',
   welcomeBody:
-    'Здравствуйте, {name}!\n\nЭто <b>безопасная площадка</b> для торговли аккаунтами PUBG Mobile.\n\n' +
-    '💰 <b>Как купить?</b>\n1️⃣ Пополните баланс\n2️⃣ Выберите аккаунт\n3️⃣ Деньги замораживаются в escrow\n4️⃣ Проверяете и подтверждаете\n\n' +
-    '🛡 Каждое объявление с фото и видео.\n📜 Перед сделкой прочитайте <b>Правила</b>.',
+    'Здравствуйте, {name}! 👋\n\nДобро пожаловать на <b>гарантированный маркет</b> аккаунтов PUBG Mobile.\n\n' +
+    '🛡 <b>Почему это безопасно?</b>\n▫️ Деньги хранятся в escrow — продавец получит их только после вашего подтверждения\n▫️ Каждое объявление проверяется админом с фото и видео\n▫️ Сделки под контролем 24/7\n\n' +
+    '🚀 Нажмите <b>Mini App</b> ниже, чтобы начать.',
   openApp: '📱 Открыть Mini App',
   rulesTitle: '📜 ПРАВИЛА ТОРГОВЛИ',
   rulesBody:
@@ -267,7 +270,7 @@ const ru: Texts = {
   mainMenu: 'Главное меню:',
   adminTitle: '👨‍💼 СВЯЗЬ С АДМИНОМ',
   adminBody: 'По вопросам сделки, оплаты или спора пишите напрямую админу: {admin}\n\n⚠️ Никогда не отправляйте логин и пароль. Админ никогда их не просит.',
-  chooseSection: '👇 Выберите нужный раздел в меню ниже:',
+  chooseSection: '👇 Главное меню — остальные разделы внутри <b>⚙️ Ещё</b>:',
   walletTitle: '💳 ПОПОЛНЕНИЕ БАЛАНСА',
   walletIntro: '1️⃣ Выберите сумму\n2️⃣ Выберите способ оплаты\n3️⃣ Отправьте фото чека в этот чат\n\nПосле подтверждения админом баланс пополнится автоматически.',
   walletChooseAmount: '💰 Выберите сумму:',
@@ -338,6 +341,7 @@ const en: Texts = {
   menuRules: '📜 Rules',
   menuSupport: '🆘 Support',
   menuAdmin: '👨‍💼 Admin',
+  menuMore: '⚙️ More',
   menuPanel: '🛡 Admin panel',
   panelTitle: '🛡 ADMIN PANEL',
   panelBody: 'Bot control, account approval and receipt review live here. Panel owner: {panelAdmin}',
@@ -350,9 +354,9 @@ const en: Texts = {
   placeholder: 'Choose a section',
   welcomeTitle: '🏆 INFERNO GOLD MARKET',
   welcomeBody:
-    'Hello, {name}!\n\nThis is a <b>secure marketplace</b> for PUBG Mobile accounts.\n\n' +
-    '💰 <b>How to buy?</b>\n1️⃣ Top up your balance\n2️⃣ Pick an account\n3️⃣ Funds are frozen in escrow\n4️⃣ Inspect and confirm\n\n' +
-    '🛡 Every listing has photos and video.\n📜 Read the <b>Rules</b> before trading.',
+    'Hello, {name}! 👋\n\nWelcome to the <b>guaranteed marketplace</b> for PUBG Mobile accounts.\n\n' +
+    '🛡 <b>Why it’s safe:</b>\n▫️ Funds stay in escrow — the seller is paid only after you confirm\n▫️ Every listing is verified by an admin with photos and video\n▫️ Deals monitored 24/7\n\n' +
+    '🚀 Tap <b>Mini App</b> below to get started.',
   openApp: '📱 Open Mini App',
   rulesTitle: '📜 TRADING RULES',
   rulesBody:
@@ -374,7 +378,7 @@ const en: Texts = {
   mainMenu: 'Main menu:',
   adminTitle: '👨‍💼 CONTACT ADMIN',
   adminBody: 'For deal, payment or dispute questions message our admin directly: {admin}\n\n⚠️ Never share your login or password. The admin never asks for them.',
-  chooseSection: '👇 Pick a section from the menu below:',
+  chooseSection: '👇 Main menu — everything else is inside <b>⚙️ More</b>:',
   walletTitle: '💳 TOP UP BALANCE',
   walletIntro: '1️⃣ Choose an amount\n2️⃣ Choose a payment method\n3️⃣ Send the receipt photo here\n\nYour balance is credited once an admin approves it.',
   walletChooseAmount: '💰 Choose an amount:',
