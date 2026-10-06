@@ -463,10 +463,8 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
     setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
   };
 
-  // Fokusni dialog ichiga ko'chirish, Tab ushlash (focus trap) va yopilganda qaytarish
   useEffect(() => {
     if (fullscreenOpen) {
-      // Galereya ochilganda fokusni yopish tugmasiga ko'chiramiz
       const timer = setTimeout(() => {
         closeBtnRef.current?.focus();
       }, 50);
@@ -490,7 +488,6 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
           return;
         }
 
-        // Tab focus trap
         if (e.key === 'Tab' && dialogRef.current) {
           const focusableEls = dialogRef.current.querySelectorAll<HTMLElement>(
             'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -520,7 +517,6 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
         window.removeEventListener('keydown', handleKeyDown);
       };
     } else {
-      // Yopilganda fokusni surat triggeriga qaytaramiz
       if (triggerRef.current) {
         triggerRef.current.focus();
       }
@@ -528,7 +524,7 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
   }, [fullscreenOpen, images.length]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (prefersReducedMotion) return; // reduced-motion da swipe harakati o'chiriladi
+    if (prefersReducedMotion) return;
     setTouchStartX(e.targetTouches[0].clientX);
     setTouchEndX(null);
   };
@@ -541,12 +537,10 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
   const handleTouchEnd = () => {
     if (prefersReducedMotion || touchStartX === null || touchEndX === null) return;
     const distance = touchStartX - touchEndX;
-    const minSwipeDistance = 45;
+    const minSwipeDistance = 35;
     if (distance > minSwipeDistance) {
-      // swipe left -> keyingi surat
       setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
     } else if (distance < -minSwipeDistance) {
-      // swipe right -> oldingi surat
       setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
     }
     setTouchStartX(null);
@@ -567,10 +561,12 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
         }
       }}
       aria-label={`PUBG akkaunti: ${item.playerName}, Daraja: ${item.level}, Narxi: ${uzNumber(item.price)} so'm, K/D: ${item.kd}, ${sellerStatus}`}
-      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 focus:border-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101215] active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-2.5'}`}
+      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-xl sm:rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 focus:border-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101215] active:scale-[.98] ${
+        showcase ? 'p-1.5 sm:p-2' : 'p-1.5 sm:p-2.5'
+      }`}
     >
       <div>
-        <div className={`relative overflow-hidden rounded-xl bg-[#16181b] ${showcase ? 'aspect-[4/5]' : 'aspect-[3/4]'}`}>
+        <div className={`relative overflow-hidden rounded-lg sm:rounded-xl bg-[#16181b] aspect-[3/4]`}>
           <motion.img 
             ref={triggerRef}
             layoutId={`acc-image-${item.id}`} 
@@ -579,7 +575,7 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
             loading="lazy" 
             role="button"
             tabIndex={0}
-            aria-label={`${item.playerName} akkauntining suratlarini to'liq ekranda ko'rish`}
+            aria-label={`${item.playerName} suratlarini to'liq ekranda ko'rish`}
             onClick={(e) => {
               e.stopPropagation();
               setCurrentIndex(0);
@@ -593,37 +589,59 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
                 setFullscreenOpen(true);
               }
             }}
-            className="h-full w-full img-live object-cover object-top motion-safe:transition motion-safe:duration-500 group-hover:scale-105 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-black" 
+            className="h-full w-full img-live object-cover object-top motion-safe:transition motion-safe:duration-500 group-hover:scale-105 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" 
             title="Suratni to'liq ekranda ko'rish"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
-          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-[3px] text-[9px] sm:px-1.5 sm:text-[10px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
-          {item.verifiedSeller && (
-            <span 
-              className="absolute left-1.5 top-7 inline-flex items-center gap-1 rounded bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-black leading-none text-black shadow"
-              title="Tasdiqlangan va ishonchli sotuvchi"
-              aria-label="Ishonchli sotuvchi nishoni"
-            >
-              <BadgeCheck className="h-3 w-3" />ISHONCHLI
+          
+          {/* Top badges (Mobile-optimized) */}
+          <div className="absolute left-1 top-1 flex flex-col gap-0.5 items-start pointer-events-none">
+            <span className="rounded bg-black/80 px-1 py-0.5 text-[8px] sm:text-[9px] font-black leading-none tracking-wide text-amber-50 shadow">
+              LVL {item.level}
             </span>
-          )}
-          <div className="absolute right-1.5 top-1.5 z-10" onClick={event => event.stopPropagation()}><FavoriteButton accountId={item.id} compact /></div>
-          <div className="absolute inset-x-2 bottom-1.5 pointer-events-none">
-            <p className="truncate text-[12px] font-black text-white drop-shadow sm:text-sm">{item.playerName}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] font-bold text-white/75 sm:text-[11px]"><span>{item.region}</span><span className="text-amber-200">K/D {item.kd}</span></p>
+            {item.verifiedSeller && (
+              <span 
+                className="inline-flex items-center gap-0.5 rounded bg-emerald-500/90 px-1 py-0.5 text-[7.5px] sm:text-[8.5px] font-black leading-none text-black shadow"
+                title="Ishonchli sotuvchi"
+              >
+                <BadgeCheck className="h-2.5 w-2.5" />
+                <span className="hidden min-[360px]:inline">ISHONCHLI</span>
+              </span>
+            )}
+          </div>
+
+          <div className="absolute right-1 top-1 z-10" onClick={event => event.stopPropagation()}>
+            <FavoriteButton accountId={item.id} compact />
+          </div>
+
+          {/* Bottom info on image */}
+          <div className="absolute inset-x-1.5 bottom-1 pointer-events-none">
+            <p className="truncate text-[11px] sm:text-xs font-black text-white drop-shadow">
+              {item.playerName}
+            </p>
+            <p className="mt-0.5 flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-white/80">
+              <span className="truncate max-w-[60px]">{item.region}</span>
+              <span className="text-amber-300 font-extrabold shrink-0">K/D {item.kd}</span>
+            </p>
           </div>
         </div>
       </div>
-      <div className="mt-1.5 flex items-center justify-between gap-1 border-t border-white/[0.06] pt-1.5">
-        <div className="min-w-0">
-          <span className="block text-[9px] font-bold uppercase tracking-wide text-white/40">Narx</span>
-          <motion.span layoutId={`acc-price-${item.id}`} className="block truncate font-display text-[13px] font-black leading-none text-amber-50 sm:text-[16px]">{uzNumber(item.price)} <span className="text-[8px] sm:text-[9px]">so'm</span></motion.span>
+
+      {/* Card bottom: Price & action */}
+      <div className="mt-1 flex items-center justify-between gap-1 border-t border-white/[0.06] pt-1 sm:pt-1.5">
+        <div className="min-w-0 flex-1">
+          <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-tight text-white/40">Narx</span>
+          <motion.span layoutId={`acc-price-${item.id}`} className="block truncate font-display text-[12px] sm:text-[14px] font-black leading-none text-amber-300">
+            {uzNumber(item.price)} <span className="text-[7.5px] sm:text-[8.5px] font-semibold text-white/60">so'm</span>
+          </motion.span>
         </div>
-        <span className="pubg-press grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-400/25 sm:h-9 sm:w-9 sm:rounded-xl text-amber-50 transition group-hover:bg-amber-400 group-hover:text-black"><ArrowRight className="h-4 w-4" /></span>
+        <span className="pubg-press grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-md bg-amber-400/20 sm:rounded-lg text-amber-300 transition group-hover:bg-amber-400 group-hover:text-black">
+          <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+        </span>
       </div>
 
-      {/* Fullscreen galereya (Dialog va Focus Trap bilan) */}
+      {/* Fullscreen Mobile-Optimized Gallery */}
       {fullscreenOpen && (
         <div 
           ref={dialogRef}
@@ -631,10 +649,9 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
           aria-modal="true"
           aria-labelledby={`gallery-title-${item.id}`}
           aria-describedby={`gallery-desc-${item.id}`}
-          className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 backdrop-blur-md p-3 sm:p-5 text-white select-none"
+          className="fixed inset-0 z-50 flex h-[100dvh] flex-col justify-between bg-black/95 backdrop-blur-md px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-[calc(env(safe-area-inset-bottom)+0.5rem)] text-white select-none"
           onClick={(e) => { e.stopPropagation(); setFullscreenOpen(false); }}
         >
-          {/* Ekran o'qigichlar uchun jonli e'lon (announcement) */}
           <div 
             id={`gallery-desc-${item.id}`}
             className="sr-only" 
@@ -644,15 +661,15 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
             {`${item.playerName} akkaunti. Surat ${currentIndex + 1} dan ${images.length}. ${sellerStatus}. Darajasi ${item.level}, narxi ${uzNumber(item.price)} so'm.`}
           </div>
 
-          {/* Header */}
+          {/* Top Bar */}
           <div className="flex items-center justify-between py-2 border-b border-white/10" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <span id={`gallery-title-${item.id}`} className="font-bold text-sm sm:text-base truncate max-w-[200px] sm:max-w-md">
-                {item.playerName} — {sellerStatus}
+            <div className="flex items-center gap-2 min-w-0">
+              <span id={`gallery-title-${item.id}`} className="font-bold text-xs sm:text-sm truncate max-w-[180px] sm:max-w-xs">
+                {item.playerName}
               </span>
               {images.length > 1 && (
                 <span 
-                  className="rounded-full bg-amber-400/20 text-amber-200 px-2 py-0.5 text-xs font-bold"
+                  className="rounded-full bg-amber-400/20 text-amber-200 px-2 py-0.5 text-[11px] font-bold shrink-0"
                   aria-hidden="true"
                 >
                   {currentIndex + 1} / {images.length}
@@ -663,16 +680,16 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
               ref={closeBtnRef}
               type="button"
               onClick={() => setFullscreenOpen(false)}
-              className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-              aria-label="Galereyani yopish (Escape)"
+              className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              aria-label="Yopish (Escape)"
             >
               ✕
             </button>
           </div>
 
-          {/* Body with image & navigation buttons & touch events for swipe */}
+          {/* Main Photo area with swipe support */}
           <div 
-            className="relative flex-1 flex items-center justify-center p-2 overflow-hidden touch-pan-y"
+            className="relative flex-1 flex items-center justify-center py-2 overflow-hidden touch-pan-y"
             onClick={e => e.stopPropagation()}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -682,8 +699,8 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
               <button
                 type="button"
                 onClick={goToPrev}
-                className="absolute left-2 sm:left-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                aria-label={`Oldingi suratga o'tish (${currentIndex === 0 ? images.length : currentIndex} dan ${images.length})`}
+                className="absolute left-1 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/70 text-white border border-white/20 backdrop-blur-md active:scale-90 transition hover:bg-amber-400 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                aria-label="Oldingi surat"
               >
                 ‹
               </button>
@@ -692,7 +709,7 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
             <img 
               src={images[currentIndex] || item.image} 
               alt={`${item.playerName} akkauntining ${currentIndex + 1}-surati (${images.length} tadan). ${sellerStatus}.`} 
-              className={`max-h-[75vh] sm:max-h-[82vh] max-w-full rounded-2xl object-contain shadow-2xl ${
+              className={`max-h-[68dvh] sm:max-h-[75dvh] max-w-full rounded-xl object-contain shadow-2xl ${
                 prefersReducedMotion ? '' : 'motion-safe:transition motion-safe:duration-200'
               }`}
             />
@@ -701,22 +718,19 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
               <button
                 type="button"
                 onClick={goToNext}
-                className="absolute right-2 sm:right-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                aria-label={`Keyingi suratga o'tish (${currentIndex + 2 > images.length ? 1 : currentIndex + 2} dan ${images.length})`}
+                className="absolute right-1 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/70 text-white border border-white/20 backdrop-blur-md active:scale-90 transition hover:bg-amber-400 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                aria-label="Keyingi surat"
               >
                 ›
               </button>
             )}
           </div>
 
-          {/* Footer note with keyboard / gesture hints */}
-          <div className="flex flex-col items-center gap-1 text-center py-2 border-t border-white/10" onClick={e => e.stopPropagation()}>
-            <p className="text-xs text-white/70">
-              {images.length > 1 
-                ? (prefersReducedMotion ? "Suratlarni ko'rish uchun strelka (← / →) yoki tugmalardan foydalaning" : "Chapga/o'ngga suring yoki klaviaturadagi strelkalardan (← / →) foydalaning")
-                : "Suratni yopish uchun Escape yoki ✕ bosing"}
+          {/* Bottom Bar: Quick guidance for phones */}
+          <div className="flex flex-col items-center gap-0.5 text-center py-1.5 border-t border-white/10" onClick={e => e.stopPropagation()}>
+            <p className="text-[11px] text-white/75">
+              {images.length > 1 ? "Suratlarni almashtirish uchun chapga/o‘ngga suring" : "Yopish uchun ekranning bo‘sh joyiga bosing"}
             </p>
-            <p className="text-[10px] text-white/40">Yopish uchun ekranning bo'sh joyiga bosing</p>
           </div>
         </div>
       )}
