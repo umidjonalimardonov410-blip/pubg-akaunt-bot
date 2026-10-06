@@ -441,7 +441,7 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
     >
       <div>
         <div className={`relative overflow-hidden rounded-xl bg-[#16181b] ${showcase ? 'aspect-[4/5]' : 'aspect-[3/4]'}`}>
-          <motion.img layoutId={`acc-image-${item.id}`} src={item.image} alt={item.playerName} loading="lazy" className="h-full w-full img-live object-cover transition duration-500 group-hover:scale-105" />
+          <motion.img layoutId={`acc-image-${item.id}`} src={item.image} alt={item.playerName} loading="lazy" className="h-full w-full img-live object-cover object-top transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
           <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-[3px] text-[9px] sm:px-1.5 sm:text-[10px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
@@ -755,7 +755,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {featured.map(item => <ListingCard key={item.id} item={item} onOpen={id => onNavigate(`/account/${id}`)} showcase />)}
             </div>
             <button onClick={() => onNavigate('/accounts')} className="pubg-press mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-300 text-sm font-black text-black active:scale-[.98]">
