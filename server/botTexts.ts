@@ -26,6 +26,7 @@ type Texts = {
   menuAdmin: string;
   menuMore: string;
   menuPanel: string;
+  menuRefresh: string;
   panelTitle: string;
   panelBody: string;
   panelBotControl: string;
@@ -114,17 +115,18 @@ type Texts = {
 };
 
 const uz: Texts = {
-  menuMarket: '🛒 Bozor',
-  menuSell: '➕ Sotish',
+  menuMarket: '🔵 Bozor',
+  menuSell: '🟢 Sotish',
   menuOrders: '📦 Buyurtmalarim',
   menuProfile: '👤 Profilim',
   menuListings: '🧾 E’lonlarim',
-  menuWallet: '💳 Balans',
+  menuWallet: '🟡 Balans',
   menuReferral: '👥 Referal',
   menuRules: '📜 Qoidalar',
   menuSupport: '🆘 Yordam',
   menuAdmin: '👨‍💼 Admin',
   menuMore: '⚙️ Boshqa bo‘limlar',
+  menuRefresh: '🔄 Yangilash',
   menuPanel: '🛡 Admin panel',
   panelTitle: '🛡 ADMIN PANEL',
   panelBody: 'Bot boshqaruvi, akkaunt tasdiqlash va chek nazorati shu yerda. Panel egasi: {panelAdmin}',
@@ -228,12 +230,13 @@ const ru: Texts = {
   menuOrders: '📦 Мои сделки',
   menuProfile: '👤 Профиль',
   menuListings: '🧾 Объявления',
-  menuWallet: '💳 Баланс',
+  menuWallet: '🟡 Баланс',
   menuReferral: '👥 Рефералы',
   menuRules: '📜 Правила',
   menuSupport: '🆘 Поддержка',
   menuAdmin: '👨‍💼 Админ',
   menuMore: '⚙️ Ещё',
+  menuRefresh: '🔄 Обновить',
   menuPanel: '🛡 Админ панель',
   panelTitle: '🛡 АДМИН ПАНЕЛЬ',
   panelBody: 'Управление ботом, подтверждение аккаунтов и проверка чеков здесь. Владелец панели: {panelAdmin}',
@@ -342,6 +345,7 @@ const en: Texts = {
   menuSupport: '🆘 Support',
   menuAdmin: '👨‍💼 Admin',
   menuMore: '⚙️ More',
+  menuRefresh: '🔄 Refresh',
   menuPanel: '🛡 Admin panel',
   panelTitle: '🛡 ADMIN PANEL',
   panelBody: 'Bot control, account approval and receipt review live here. Panel owner: {panelAdmin}',
