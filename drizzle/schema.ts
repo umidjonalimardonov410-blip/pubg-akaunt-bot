@@ -741,3 +741,18 @@ export const mysteryBoxOpens = mysqlTable("mystery_box_opens", {
 
 export type MysteryBoxOpen = typeof mysteryBoxOpens.$inferSelect;
 export type InsertMysteryBoxOpen = typeof mysteryBoxOpens.$inferInsert;
+
+
+export const blockAppeals = mysqlTable("block_appeals", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  telegramId: varchar("telegramId", { length: 64 }),
+  username: varchar("username", { length: 128 }),
+  reason: text("reason").notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "rejected"]).default("pending").notNull(),
+  adminNotes: text("adminNotes"),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});

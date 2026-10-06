@@ -1424,6 +1424,40 @@ export const appRouter = router({
 
   // Admin: Disputes & Management
   admin: router({
+    submitBlockAppeal: protectedProcedure
+      .input(z.object({ reason: z.string().trim().min(5).max(1000) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB error' });
+        
+        const existing = await db.select().from(blockAppeals)
+          .where(and(eq(blockAppeals.userId, ctx.user.id), eq(blockAppeals.status, 'pending')))
+          .limit(1);
+        if (existing.length > 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Arizangiz ko‘rib chiqilmoqda' });
+        }
+
+        const [created] = await db.insert(blockAppeals).values({
+          userId: ctx.user.id,
+          telegramId: ctx.user.telegramId || null,
+          username: ctx.user.username || null,
+          reason: input.reason,
+          status: 'pending',
+        });
+        return { success: true, id: created.insertId };
+      }),
+
+    getMyAppeal: protectedProcedure
+      .query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) return null;
+        const [appeal] = await db.select().from(blockAppeals)
+          .where(eq(blockAppeals.userId, ctx.user.id))
+          .orderBy(desc(blockAppeals.createdAt))
+          .limit(1);
+        return appeal || null;
+      }),
+
     banUser: protectedProcedure
       .input(z.object({ userId: z.number().int().positive(), reason: z.string().trim().min(1).max(500) }))
       .mutation(async ({ ctx, input }) => {
@@ -1439,7 +1473,142 @@ export const appRouter = router({
         prefs.banReason = input.reason;
         prefs.bannedAt = new Date().toISOString();
         await db.update(users).set({ alertPreferences: JSON.stringify(prefs) }).where(eq(users.id, input.userId));
+        await db.insert(adminAuditLogs).values({
+          adminId: ctx.user.id,
+          action: 'ban_user',
+          targetType: 'user',
+          targetId: input.userId,
+          details: JSON.stringify({ reason: input.reason, adminId: ctx.user.id, timestamp: new Date().toISOString() }),
+        });
         return { success: true, userId: input.userId, reason: input.reason };
+      }),
+
+    getBlockAppeals: protectedProcedure
+      .input(z.object({ status: z.enum(['pending', 'accepted', 'rejected', 'all']).default('all') }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) return [];
+        let query = db.select().from(blockAppeals);
+        if (input?.status && input.status !== 'all') {
+          query = query.where(eq(blockAppeals.status, input.status));
+        }
+        return await query.orderBy(desc(blockAppeals.createdAt)).limit(100);
+      }),
+
+    reviewBlockAppeal: protectedProcedure
+      .input(z.object({
+        appealId: z.number().int().positive(),
+        action: z.enum(['accept', 'reject']),
+        notes: z.string().trim().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const [appeal] = await db.select().from(blockAppeals).where(eq(blockAppeals.id, input.appealId)).limit(1);
+        if (!appeal) throw new TRPCError({ code: 'NOT_FOUND', message: 'Ariza topilmadi' });
+
+        const newStatus = input.action === 'accept' ? 'accepted' : 'rejected';
+        await db.update(blockAppeals).set({
+          status: newStatus,
+          adminNotes: input.notes || null,
+          reviewedBy: ctx.user.id,
+          reviewedAt: new Date(),
+        }).where(eq(blockAppeals.id, input.appealId));
+
+        if (input.action === 'accept') {
+          const [u] = await db.select().from(users).where(eq(users.id, appeal.userId)).limit(1);
+          let prefs = {};
+          try { prefs = u?.alertPreferences ? JSON.parse(u.alertPreferences) : {}; } catch (_) {}
+          prefs.isBanned = false;
+          prefs.unbannedAt = new Date().toISOString();
+          delete prefs.banReason;
+
+          await db.update(users).set({ alertPreferences: JSON.stringify(prefs) }).where(eq(users.id, appeal.userId));
+
+          await db.insert(adminAuditLogs).values({
+            adminId: ctx.user.id,
+            action: 'appeal_accepted_unban',
+            targetType: 'user',
+            targetId: appeal.userId,
+            details: JSON.stringify({ appealId: appeal.id, note: input.notes, adminId: ctx.user.id, timestamp: new Date().toISOString() }),
+          });
+        } else {
+          await db.insert(adminAuditLogs).values({
+            adminId: ctx.user.id,
+            action: 'appeal_rejected',
+            targetType: 'user',
+            targetId: appeal.userId,
+            details: JSON.stringify({ appealId: appeal.id, note: input.notes, adminId: ctx.user.id, timestamp: new Date().toISOString() }),
+          });
+        }
+
+        return { success: true, status: newStatus };
+      }),
+
+    getAuditLogs: protectedProcedure
+      .input(z.object({ limit: z.number().int().default(50) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) return [];
+        return await db.select().from(adminAuditLogs).orderBy(desc(adminAuditLogs.createdAt)).limit(input?.limit || 50);
+      }),
+
+    getFinancialReports: protectedProcedure
+      .input(z.object({
+        period: z.enum(['daily', 'monthly', 'all']).default('daily'),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        const db = await getDb();
+        if (!db) return { turnover: 0, commission: 0, topups: 0, payouts: 0, chart: [] };
+
+        const allOrders = await db.select().from(orders).where(eq(orders.status, 'completed')).orderBy(desc(orders.createdAt)).limit(500);
+        const allTx = await db.select().from(transactions).where(eq(transactions.status, 'completed')).orderBy(desc(transactions.createdAt)).limit(500);
+
+        let totalTurnover = 0;
+        allOrders.forEach(o => {
+          totalTurnover += parseFloat(o.price || '0');
+        });
+
+        const totalCommission = totalTurnover * 0.05;
+
+        let totalTopups = 0;
+        let totalPayouts = 0;
+        allTx.forEach(t => {
+          const val = parseFloat(t.amount || '0');
+          if (t.type === 'topup') totalTopups += val;
+          if (t.type === 'withdrawal' || t.type === 'seller_payout') totalPayouts += val;
+        });
+
+        const dateMap = {};
+        allOrders.forEach(o => {
+          const d = new Date(o.createdAt);
+          const key = input?.period === 'monthly'
+            ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+            : d.toISOString().split('T')[0];
+          if (!dateMap[key]) {
+            dateMap[key] = { date: key, turnover: 0, commission: 0, count: 0 };
+          }
+          const p = parseFloat(o.price || '0');
+          dateMap[key].turnover += p;
+          dateMap[key].commission += (p * 0.05);
+          dateMap[key].count += 1;
+        });
+
+        const chart = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        return {
+          turnover: totalTurnover,
+          commission: totalCommission,
+          topups: totalTopups,
+          payouts: totalPayouts,
+          ordersCount: allOrders.length,
+          chart,
+        };
       }),
 
     unbanUser: protectedProcedure
@@ -1457,6 +1626,13 @@ export const appRouter = router({
         delete prefs.banReason;
         delete prefs.bannedAt;
         await db.update(users).set({ alertPreferences: JSON.stringify(prefs) }).where(eq(users.id, input.userId));
+        await db.insert(adminAuditLogs).values({
+          adminId: ctx.user.id,
+          action: 'unban_user',
+          targetType: 'user',
+          targetId: input.userId,
+          details: JSON.stringify({ reason: 'Admin tomonidan blokdan chiqarildi', adminId: ctx.user.id, timestamp: new Date().toISOString() }),
+        });
         return { success: true, userId: input.userId };
       }),
 

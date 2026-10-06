@@ -1567,7 +1567,44 @@ function ProfilePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             Qoidalar buzilganligi sababli bot va ilovadan foydalanish cheklandi. Blokdan chiqarish yoki qayta ko‘rib chiqish uchun adminga murojaat qiling:
           </div>
           <a
-            href="https://t.me/XotiraBuzilgan"
+            <div className="mt-5 text-left rounded-2xl border border-white/10 bg-black/50 p-4">
+            <label className="block text-xs font-semibold text-white/90 mb-1.5">📩 E'tiroz (Apellyatsiya) arizasi:</label>
+            <textarea
+              id="appeal-text"
+              rows={3}
+              placeholder="Nima sababdan blokdan chiqarilishingiz kerakligini batafsil yozing..."
+              className="w-full rounded-xl border border-white/10 bg-black/60 p-2.5 text-xs text-white placeholder-white/30 focus:border-red-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                const el = document.getElementById('appeal-text') as HTMLTextAreaElement;
+                if (!el || !el.value.trim()) {
+                  alert("Iltimos, e'tiroz sababini yozing!");
+                  return;
+                }
+                try {
+                  const res = await fetch('/api/trpc/submitBlockAppeal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: el.value.trim() })
+                  });
+                  if (res.ok) {
+                    alert("E'tirozingiz muvaffaqiyatli qabul qilindi! Adminlar tez orada ko'rib chiqadi.");
+                    el.value = '';
+                  } else {
+                    alert("Arizangiz allaqachon ko'rib chiqilmoqda yoki xatolik yuz berdi.");
+                  }
+                } catch(e) {
+                  alert("Tarmoq xatosi yuz berdi.");
+                }
+              }}
+              className="mt-2.5 w-full rounded-xl bg-gradient-to-r from-red-600 to-rose-600 py-2.5 text-xs font-bold text-white shadow transition hover:brightness-110 active:scale-95"
+            >
+              Arizani yuborish
+            </button>
+          </div>
+href="https://t.me/XotiraBuzilgan"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-red-900/30 transition hover:brightness-110 active:scale-95"
