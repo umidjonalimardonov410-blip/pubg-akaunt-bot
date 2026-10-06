@@ -349,6 +349,7 @@ function buildMainKeyboard(lang: BotLang = 'uz', isAdmin = false) {
       [appButton],
       [{ text: texts.menuMarket }, { text: texts.menuWallet }],
       [{ text: texts.menuSell }, { text: texts.menuMore }],
+      [{ text: texts.menuContact, request_contact: true }, { text: texts.menuRefresh }],
       ...(isAdmin ? [[{ text: texts.menuPanel }]] : []),
     ],
     resize_keyboard: true,
@@ -1362,6 +1363,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     }
 
     const loginToken = createTelegramLoginToken({ telegramId, name: displayName, phone: contact.phone_number });
+    await notifyTelegramAdmins(`📱 <b>Yangi raqam qoldirildi</b>\n\n👤 Ism: <b>${escapeTelegramHtml(displayName)}</b>\n📞 Nomer: <code>${escapeTelegramHtml(contact.phone_number || '—')}</code>\n🆔 Telegram ID: <code>${telegramId}</code>`);
     const loginUrl = loginToken ? getTelegramMiniAppUrl(`/profile?tglogin=${encodeURIComponent(loginToken)}`) : getTelegramMiniAppUrl('/profile');
     const sent = await telegramApiRequest('sendMessage', {
       chat_id: chatId,
@@ -1407,6 +1409,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   if (command === 'wallet' || menuKey === 'menuWallet') {
     const sent = await sendWalletMenu(chatId, lang);
     return { handled: true as const, command: 'wallet', status: sent.status, sent: sent.ok };
+  }
+  if (menuKey === 'menuRefresh') {
+    const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang, isAdminUser) });
+    return { handled: true as const, command: 'refresh', status: sent.status, sent: sent.ok };
   }
   if (command === 'more' || menuKey === 'menuMore') {
     const sent = await sendMoreMenu(chatId, lang);
@@ -1559,7 +1566,8 @@ export async function registerTelegramBot() {
   for (const scope of [undefined, { type: "all_private_chats" }, { type: "all_group_chats" }, { type: "default" }]) {
     await telegramApiRequest("deleteMyCommands", scope ? { scope } : {});
   }
-  const publicCommands = TELEGRAM_BOT_COMMANDS.filter(item => !item.adminOnly)
+  // Oddiy foydalanuvchilarga faqat /start ko'rinadi; qolgan buyruqlar faqat adminlarda.
+  const publicCommands = TELEGRAM_BOT_COMMANDS.filter(item => item.command === 'start')
     .map(item => ({ command: item.command, description: item.description }));
   const commands = await telegramApiRequest("setMyCommands", {
     commands: publicCommands,
@@ -1568,7 +1576,7 @@ export async function registerTelegramBot() {
 
   // Adminlar uchun qo'shimcha buyruqlar (faqat admin chatlarida ko'rinadi).
   const adminCommands = [
-    ...publicCommands,
+    ...TELEGRAM_BOT_COMMANDS.filter(item => !item.adminOnly).map(item => ({ command: item.command, description: item.description })),
     { command: "listings", description: "Tasdiqlash kutayotgan e'lonlar" },
     { command: "admin", description: "Admin nazorati" },
     { command: "broadcast", description: "Hammaga xabar yuborish" },
