@@ -435,32 +435,118 @@ function TrustStrip() {
 
 function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen: (id: number) => void; showcase?: boolean }) {
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const images = useMemo(() => {
+    const list = [item.image, ...(item.galleryUrls || [])].filter((url): url is string => Boolean(url && url.trim().length > 0));
+    return Array.from(new Set(list));
+  }, [item.image, item.galleryUrls]);
+
+  const goToPrev = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+  };
+
+  const goToNext = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+  };
+
+  useEffect(() => {
+    if (!fullscreenOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFullscreenOpen(false);
+      } else if (e.key === 'ArrowLeft') {
+        setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+      } else if (e.key === 'ArrowRight') {
+        setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreenOpen, images.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 45;
+    if (distance > minSwipeDistance) {
+      // swipe left -> next
+      setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+    } else if (distance < -minSwipeDistance) {
+      // swipe right -> prev
+      setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
 
   return (
     <article
+      tabIndex={0}
+      role="button"
       onClick={() => onOpen(item.id)}
-      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-2.5'}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(item.id);
+        }
+      }}
+      aria-label={`PUBG akkaunti: ${item.playerName}, Daraja: ${item.level}, Narxi: ${uzNumber(item.price)} so'm, K/D: ${item.kd}`}
+      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30 active:scale-[.99] ${showcase ? 'p-2' : 'p-2 sm:p-2.5'}`}
     >
       <div>
         <div className={`relative overflow-hidden rounded-xl bg-[#16181b] ${showcase ? 'aspect-[4/5]' : 'aspect-[3/4]'}`}>
           <motion.img 
             layoutId={`acc-image-${item.id}`} 
             src={item.image} 
-            alt={item.playerName} 
+            alt={`${item.playerName} akkauntining bosh surati`} 
             loading="lazy" 
+            role="button"
+            tabIndex={0}
+            aria-label="Suratni to'liq ekranda ko'rish va galereyani ochish"
             onClick={(e) => {
               e.stopPropagation();
+              setCurrentIndex(0);
               setFullscreenOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                e.preventDefault();
+                setCurrentIndex(0);
+                setFullscreenOpen(true);
+              }
             }}
             className="h-full w-full img-live object-cover object-top transition duration-500 group-hover:scale-105 cursor-zoom-in" 
             title="Suratni to'liq ekranda ko'rish"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
           <div className="inferno-scan pointer-events-none absolute inset-0" />
           <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-[3px] text-[9px] sm:px-1.5 sm:text-[10px] font-black leading-none tracking-wide text-amber-50 shadow">LVL {item.level}</span>
-          {item.verifiedSeller && <span className="absolute left-1.5 top-7 inline-flex items-center gap-1 rounded bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-black leading-none text-black shadow"><BadgeCheck className="h-3 w-3" />ISHONCHLI</span>}
+          {item.verifiedSeller && (
+            <span 
+              className="absolute left-1.5 top-7 inline-flex items-center gap-1 rounded bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-black leading-none text-black shadow"
+              title="Tasdiqlangan va ishonchli sotuvchi"
+              aria-label="Ishonchli sotuvchi nishoni"
+            >
+              <BadgeCheck className="h-3 w-3" />ISHONCHLI
+            </span>
+          )}
           <div className="absolute right-1.5 top-1.5 z-10" onClick={event => event.stopPropagation()}><FavoriteButton accountId={item.id} compact /></div>
-          <div className="absolute inset-x-2 bottom-1.5">
+          <div className="absolute inset-x-2 bottom-1.5 pointer-events-none">
             <p className="truncate text-[12px] font-black text-white drop-shadow sm:text-sm">{item.playerName}</p>
             <p className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] font-bold text-white/75 sm:text-[11px]"><span>{item.region}</span><span className="text-amber-200">K/D {item.kd}</span></p>
           </div>
@@ -477,26 +563,80 @@ function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen
       {/* Fullscreen galereya */}
       {fullscreenOpen && (
         <div 
-          className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-md p-4 text-white"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${item.playerName} barcha suratlari galereyasi`}
+          className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 backdrop-blur-md p-3 sm:p-5 text-white select-none"
           onClick={(e) => { e.stopPropagation(); setFullscreenOpen(false); }}
         >
-          <div className="flex items-center justify-between py-2 border-b border-white/10">
-            <span className="font-bold text-sm">{item.playerName} — Barcha suratlar</span>
+          {/* Header */}
+          <div className="flex items-center justify-between py-2 border-b border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm sm:text-base truncate max-w-[200px] sm:max-w-md">{item.playerName}</span>
+              {images.length > 1 && (
+                <span 
+                  className="rounded-full bg-amber-400/20 text-amber-200 px-2 py-0.5 text-xs font-bold"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {currentIndex + 1} / {images.length}
+                </span>
+              )}
+            </div>
             <button 
+              type="button"
               onClick={() => setFullscreenOpen(false)}
-              className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+              className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition focus:outline-none focus:ring-2 focus:ring-amber-400"
+              aria-label="Galereyani yopish"
             >
               ✕
             </button>
           </div>
-          <div className="flex-1 flex items-center justify-center p-2 overflow-auto">
+
+          {/* Body with image & navigation buttons & touch events for swipe */}
+          <div 
+            className="relative flex-1 flex items-center justify-center p-2 overflow-hidden touch-pan-y"
+            onClick={e => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {images.length > 1 && (
+              <button
+                type="button"
+                onClick={goToPrev}
+                className="absolute left-2 sm:left-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                aria-label="Oldingi surat"
+              >
+                ‹
+              </button>
+            )}
+
             <img 
-              src={item.image} 
-              alt={item.playerName} 
-              className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl" 
+              src={images[currentIndex] || item.image} 
+              alt={`${item.playerName} surati (${currentIndex + 1} dan ${images.length})`} 
+              className="max-h-[75vh] sm:max-h-[82vh] max-w-full rounded-2xl object-contain shadow-2xl transition duration-200" 
             />
+
+            {images.length > 1 && (
+              <button
+                type="button"
+                onClick={goToNext}
+                className="absolute right-2 sm:right-4 z-10 grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-full bg-black/60 text-white/90 border border-white/15 backdrop-blur-sm transition hover:bg-amber-400 hover:text-black hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                aria-label="Keyingi surat"
+              >
+                ›
+              </button>
+            )}
           </div>
-          <p className="text-center text-xs text-white/60 pb-2">Rasmni yopish uchun ekranning istalgan joyiga bosing</p>
+
+          {/* Footer note with keyboard / gesture hints */}
+          <div className="flex flex-col items-center gap-1 text-center py-2 border-t border-white/10" onClick={e => e.stopPropagation()}>
+            <p className="text-xs text-white/70">
+              {images.length > 1 ? "Chapga/o'ngga suring yoki klaviaturadagi strelkalardan (← / →) foydalaning" : "Suratni yopish uchun Escape yoki ✕ bosing"}
+            </p>
+            <p className="text-[10px] text-white/40">Yopish uchun ekranning bo'sh joyiga bosing</p>
+          </div>
         </div>
       )}
 

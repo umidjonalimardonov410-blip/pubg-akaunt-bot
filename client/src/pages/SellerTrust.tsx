@@ -27,12 +27,93 @@ export function TrustStars({ rating }: { rating: number }) {
 }
 
 export function TrustBadge({ totalSales, rating, verified }: { totalSales: number; rating: number; verified?: boolean }) {
+  const [showInfo, setShowInfo] = useState(false);
   const tier = resolveTrustTier(totalSales, rating);
+
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider ${tier.className}`}>
-      {verified ? <BadgeCheck className="h-3.5 w-3.5" /> : <Flame className="h-3.5 w-3.5" />}
-      {tier.label}
-    </span>
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowInfo(true);
+        }}
+        aria-haspopup="dialog"
+        aria-expanded={showInfo}
+        aria-label={`Sotuvchi ishonch darajasi: ${tier.label}. Batafsil bilish uchun bosing.`}
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400/50 cursor-pointer ${tier.className}`}
+      >
+        {verified ? <BadgeCheck className="h-3.5 w-3.5" /> : <Flame className="h-3.5 w-3.5" />}
+        <span>{tier.label}</span>
+      </button>
+
+      {showInfo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="trust-badge-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowInfo(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setShowInfo(false);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#121418] p-5 shadow-2xl text-white"
+            onClick={(e) => e.stopPropagation()}
+            tabIndex={-1}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-xl bg-amber-400/10 text-amber-300">
+                  {verified ? <BadgeCheck className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                </span>
+                <h3 id="trust-badge-title" className="font-bold text-sm">
+                  {tier.label}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInfo(false)}
+                className="rounded-full p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                aria-label="Yopish"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs leading-relaxed text-white/80">
+              <div className="rounded-xl bg-white/[0.04] p-3 border border-white/5">
+                <span className="block font-bold text-amber-300 mb-1">Daraja talablari:</span>
+                <p>{tier.hint}</p>
+              </div>
+
+              {verified && (
+                <div className="rounded-xl bg-emerald-500/10 p-3 border border-emerald-500/20 text-emerald-300">
+                  <span className="block font-bold mb-0.5">Tasdiqlangan sotuvchi</span>
+                  <p className="text-[11px] text-emerald-200/80">Ma’muriyat tomonidan shaxsi yoki kafolati tekshirilgan va ishonchli deb topilgan.</p>
+                </div>
+              )}
+
+              <p className="text-[11px] text-white/50">
+                Savdolar va sharhlar asosida avtomatik hisoblanadi. Barcha bitimlar kafolatlangan xavfsiz to‘lov tizimi (Escrow) orqali amalga oshiriladi.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowInfo(false)}
+              className="mt-4 w-full rounded-xl bg-amber-400 py-2 text-center text-xs font-bold text-black hover:bg-amber-300"
+            >
+              Tushundim
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
