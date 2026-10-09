@@ -1579,7 +1579,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           throw new Error(`"${original.name}" formatini brauzer o'qiy olmadi. Iltimos, rasmni JPG yoki PNG ko'rinishida saqlab qayta urinib ko'ring.`);
         }
         if (file.size > SELLER_DIRECT_UPLOAD_MAX_BYTES) {
-          // Katta fayllar (200 MB gacha video) to‘g‘ridan-to‘g‘ri S3 ga yuboriladi.
+          // Katta fayllar (1 GB gacha video) to‘g‘ridan-to‘g‘ri S3 ga yuboriladi.
           const presigned = await presignMutation.mutateAsync({ fileName: file.name, contentType: file.type as 'video/mp4' | 'video/webm' | 'video/quicktime' | 'image/jpeg' | 'image/png' | 'image/webp', size: file.size });
           setVideoPercent(0);
           const putFile = () => new Promise<void>((resolve, reject) => {
