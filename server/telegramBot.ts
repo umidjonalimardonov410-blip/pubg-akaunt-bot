@@ -1157,7 +1157,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const welcome = await sendWelcome(callbackChatId, cbLang, callback.from?.id ? `#${callback.from.id}` : 'do‘stim');
       await telegramApiRequest('sendMessage', {
         chat_id: callbackChatId,
-        text: botText(cbLang).chooseSection,
+        text: botText(cbLang).chooseSection, parse_mode: 'HTML',
         reply_markup: buildMainKeyboard(cbLang, isTelegramAdmin(callback.from?.id)),
       });
       return { handled: true as const, command: 'check_sub', status: welcome.status, sent: welcome.ok, subscribed: true };
@@ -1187,7 +1187,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         try { await upsertUser({ openId: `telegram:${telegramId}`, languageCode: lang }); } catch (error) { console.warn('[Telegram Bot] language save failed', error); }
       }
       await answerTelegramCallback(callback.id, botText(lang).languageSaved);
-      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: `${botText(lang).languageSaved}\n\n${botText(lang).chooseSection}`, reply_markup: buildMainKeyboard(lang) });
+      const sent = await telegramApiRequest('sendMessage', { chat_id: callbackChatId, text: `${botText(lang).languageSaved}\n\n${botText(lang).chooseSection}`, parse_mode: 'HTML', reply_markup: buildMainKeyboard(lang) });
       return { handled: true as const, command: 'set_lang', status: sent.status, sent: sent.ok, lang };
     }
     if (data === 'show_rules') {
@@ -1398,7 +1398,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
 
   if (command === 'start' || command === '') {
     const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
-    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang, isAdminUser) });
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, parse_mode: 'HTML', reply_markup: buildMainKeyboard(lang, isAdminUser) });
     return { handled: true as const, command: 'start', status: sent.status, sent: sent.ok };
   }
 
@@ -1412,7 +1412,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   }
   if (menuKey === 'menuRefresh') {
     const sent = await sendWelcome(chatId, lang, message.from?.id ? `#${message.from.id}` : 'do‘stim');
-    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, reply_markup: buildMainKeyboard(lang, isAdminUser) });
+    await telegramApiRequest('sendMessage', { chat_id: chatId, text: texts.chooseSection, parse_mode: 'HTML', reply_markup: buildMainKeyboard(lang, isAdminUser) });
     return { handled: true as const, command: 'refresh', status: sent.status, sent: sent.ok };
   }
   if (command === 'more' || menuKey === 'menuMore') {
