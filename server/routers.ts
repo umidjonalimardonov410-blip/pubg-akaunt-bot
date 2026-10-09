@@ -548,7 +548,7 @@ export const appRouter = router({
         return await storagePut(`users/${ctx.user.id}/accounts/${safeName}`, bytes, input.contentType);
       }),
 
-    // Large media (video up to 200 MB): browser PUTs straight to S3 with a presigned URL.
+    // Large media (video up to 1 GB): browser PUTs straight to S3 with a presigned URL.
     presignUpload: protectedProcedure
       .input(z.object({
         fileName: z.string().min(1).max(180),
