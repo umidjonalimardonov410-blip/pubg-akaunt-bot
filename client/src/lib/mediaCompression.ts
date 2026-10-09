@@ -2,7 +2,7 @@
  * Brauzerda rasmni siqish (kutubxonasiz, canvas orqali).
  * Videolar siqilmaydi — ular presigned URL orqali to'g'ridan-to'g'ri yuboriladi.
  */
-export const MEDIA_MAX_BYTES = 200 * 1024 * 1024;
+export const MEDIA_MAX_BYTES = 1024 * 1024 * 1024;
 export const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif', 'image/bmp'] as const;
 export const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const;
 export const ACCEPTED_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES] as readonly string[];
@@ -27,7 +27,7 @@ export function validateMediaFile(file: Pick<File, 'type' | 'size' | 'name'>): s
     return `"${file.name}" formati qo'llab-quvvatlanmaydi. Faqat JPG, PNG, WEBP, MP4, WEBM, MOV.`;
   }
   if (file.size > MEDIA_MAX_BYTES) {
-    return `"${file.name}" hajmi ${formatBytes(file.size)} — 200 MB chegarasidan katta.`;
+    return `"${file.name}" hajmi ${formatBytes(file.size)} — 1 GB chegarasidan katta.`;
   }
   if (file.size === 0) return `"${file.name}" bo'sh fayl.`;
   return null;
