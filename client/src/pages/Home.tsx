@@ -149,7 +149,8 @@ export function ExpandableText({ text, className = '' }: { text: string; classNa
 }
 
 function normalizeAccount(row: any): Listing {
-  const galleryUrls = Array.isArray(row.galleryUrls) ? row.galleryUrls : [];
+  const isBotImage = (u: unknown) => typeof u !== 'string' || !u.trim() || /bot-|placeholder|pubg-card-|default/i.test(u);
+  const galleryUrls = (Array.isArray(row.galleryUrls) ? row.galleryUrls : []).filter((u: unknown) => !isBotImage(u));
   const featuredSkins = Array.isArray(row.featuredSkins) ? row.featuredSkins : [];
   return {
     id: Number(row.id),
@@ -163,7 +164,7 @@ function normalizeAccount(row: any): Listing {
     matches: String(row.totalMatches ?? 0),
     skins: featuredSkins,
     // Foydalanuvchi yuklagan haqiqiy suratlarni bot rasmlaridan ustun qo'yish
-    image: (galleryUrls.find(u => u && !u.includes("bot-") && !u.includes("placeholder")) || row.thumbnailUrl || galleryUrls[0] || CARD_IMAGE),
+    image: (galleryUrls[0] || (!isBotImage(row.thumbnailUrl) ? row.thumbnailUrl : undefined) || CARD_IMAGE),
     tag: row.isVerified ? "TEKSHIRILGAN" : "YANGI E'LON",
     description: row.description ?? "Sotuvchi batafsil tavsif qoldirmagan.",
     galleryUrls,
@@ -1187,7 +1188,7 @@ function DetailSkeleton({ onBack }: { onBack: () => void }) {
       <SkBar className="h-10 w-28" />
     </div>
     <section className="card-glow overflow-hidden rounded-2xl border border-white/[0.08] bg-[#16191c]">
-      <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
+      <div className="grid gap-4 p-3">
         <SkBar className="aspect-[4/5] w-full rounded-2xl sm:aspect-[3/4]" />
         <div className="space-y-3">
           <SkBar className="h-5 w-40" />
@@ -1302,7 +1303,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
       <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
         <div className="relative overflow-hidden rounded-2xl bg-black">
           <button type="button" onClick={() => setViewerIndex(Math.max(0, gallery.indexOf(activeImage)))} className="group block w-full text-left" aria-label="Galereyani katta ko‘rish">
-            <motion.img layoutId={`acc-image-${item.id}`} src={activeImage} alt={item.playerName} className="aspect-[4/5] w-full img-live object-cover transition duration-300 group-active:scale-[.99] sm:aspect-[3/4]" />
+            <motion.img layoutId={`acc-image-${item.id}`} src={activeImage} alt={item.playerName} className="max-h-[78vh] min-h-[320px] w-full img-live object-contain bg-black transition duration-300 group-active:scale-[.99]" />
           </button>
           <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 text-[10px] font-bold text-white/85 backdrop-blur">ID: #{item.id}<Copy className="h-3 w-3 text-amber-200" /></span>
           <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 text-[10px] font-bold text-white/85 backdrop-blur"><Grid2X2 className="h-3 w-3 text-amber-200" />1/{gallery.length}</span>
