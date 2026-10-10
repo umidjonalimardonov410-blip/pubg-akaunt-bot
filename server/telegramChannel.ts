@@ -433,15 +433,14 @@ export async function postApprovedListingToChannel(account: {
   const caption = [
     '🔥 <b>YANGI AKKAUNT SOTUVDA!</b>',
     '━━━━━━━━━━━━━━━━━━',
-    ,
-    account.level ?  : '',
-    account.royalPass ?  : '',
-    ,
+    `🎮 <b>${escapeHtml(title)}</b>`,
+    account.level ? `🏅 Level: <b>${account.level}</b>` : '',
+    account.royalPass ? `👑 Royal Pass: <b>${escapeHtml(String(account.royalPass))}</b>` : '',
+    `💰 Narx: <b>${price}</b>`,
     '━━━━━━━━━━━━━━━━━━',
     '🛡 <i>Savdo to‘liq bot kafilligi (Escrow) ostida!</i>',
-    '👉 <b>Sotib olish uchun botga kiring:</b> @' + (process.env.TELEGRAM_BOT_USERNAME || 'bot')
-  ].filter(Boolean).join('
-');
+    '👉 <b>Sotib olish uchun botga kiring:</b> @' + (process.env.TELEGRAM_BOT_USERNAME || 'bot'),
+  ].filter(Boolean).join('\n');
 
   return await channelApiRequest('sendMessage', {
     chat_id: getChannelChatId(),
