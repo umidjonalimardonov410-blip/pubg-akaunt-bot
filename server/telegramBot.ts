@@ -347,9 +347,8 @@ function buildMainKeyboard(lang: BotLang = 'uz', isAdmin = false) {
   return {
     keyboard: [
       [appButton],
-      [{ text: texts.menuMarket }, { text: texts.menuWallet }],
-      [{ text: texts.menuSell }, { text: texts.menuMore }],
-      [{ text: texts.menuContact, request_contact: true }, { text: texts.menuRefresh }],
+      [{ text: texts.menuMarket }, { text: texts.menuSell }],
+      [{ text: texts.menuWallet }, { text: texts.menuMore }],
       ...(isAdmin ? [[{ text: texts.menuPanel }]] : []),
     ],
     resize_keyboard: true,
@@ -371,7 +370,7 @@ function languageKeyboard() {
 async function sendWelcome(chatId: number | string, lang: BotLang, name: string) {
   const texts = botText(lang);
   const appUrl = getTelegramMiniAppUrl('/');
-  const rowsExtra = appUrl ? [[{ text: texts.openApp, web_app: { url: appUrl } }]] : [];
+  const rowsExtra = appUrl ? [[{ text: texts.openApp, web_app: { url: appUrl }, style: 'success' }]] : [];
   return await telegramApiRequest('sendMessage', {
     chat_id: chatId,
     text: `<b>${texts.welcomeTitle}</b>\n\n${texts.welcomeBody.replace('{name}', escapeTelegramHtml(name))}`,
@@ -384,6 +383,7 @@ async function sendWelcome(chatId: number | string, lang: BotLang, name: string)
           { text: texts.menuWallet, callback_data: 'wallet_menu' },
           { text: texts.menuLanguage, callback_data: 'show_language' },
         ],
+        [{ text: texts.menuSupport, callback_data: 'show_support', style: 'primary' }],
       ],
     },
   });
