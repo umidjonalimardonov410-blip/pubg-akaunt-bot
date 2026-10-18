@@ -25,7 +25,8 @@ export const expansionRouter = router({
       const sellerOrders = await db.select().from(orders).where(eq(orders.sellerId, input.userId));
       const sellerReviews = await db.select().from(reviews).where(eq(reviews.sellerId, input.userId));
       const completed = sellerOrders.filter(order => order.status === "completed");
-      const responseTimes = sellerOrders.length ? Math.max(1, Math.round(100 - Math.min(sellerOrders.length * 2, 35))) : 0;
+      // Reply telemetry is not measured: do not invent seller statistics.
+      const responseTimes = null;
       const rating = sellerReviews.length ? sellerReviews.reduce((sum, row) => sum + Number(row.rating), 0) / sellerReviews.length : Number(seller.sellerRating ?? 0);
       const badge = seller.sellerBadge === "none" ? "Yangi sotuvchi" : seller.sellerBadge === "trusted" ? "Tasdiqlangan sotuvchi" : seller.sellerBadge === "elite" ? "Elite sotuvchi" : "Legendary sotuvchi";
       return {

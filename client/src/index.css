@@ -970,3 +970,10 @@ html, body {
 }
 
 .font-display, h1, h2, h3 { font-weight: 400 !important; letter-spacing: 0.04em; }
+
+.market-account { box-shadow: none; }
+.market-name { font-family: 'Barlow', sans-serif; letter-spacing: 0; }
+.market-photo { touch-action: pan-y; }
+.market-open { min-height: 32px; border-radius: 6px; padding: 4px; font-size: 11px; gap: 4px; box-shadow: none; }
+.market-price { font-variant-numeric: tabular-nums; line-height: 1.35; }
+@media (min-width: 640px) { .market-open { min-height: 40px; font-size: 13px; } }

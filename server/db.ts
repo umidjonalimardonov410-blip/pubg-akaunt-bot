@@ -100,6 +100,18 @@ export function derivedPubgAccountCategory(account: { hasXSuit?: boolean | null;
   return account.hasXSuit ? 'pro' : account.hasConquerorHistory ? 'conqueror' : 'classic';
 }
 
+/** Only display fields from the listing's actual seller; private user fields never leave this join. */
+export function withPublicSeller<T extends { sellerId: number }>(row: T, seller?: { id: number; name: string | null; isVerifiedSeller: boolean }) {
+  return { ...row, sellerName: seller?.id === row.sellerId ? seller.name : null, sellerVerified: seller?.id === row.sellerId && Boolean(seller.isVerifiedSeller) };
+}
+async function attachPublicSellers<T extends { sellerId: number }>(rows: T[]) {
+  const db = await getDb();
+  if (!db || !rows.length) return rows.map(row => withPublicSeller(row));
+  const sellers = await db.select({ id: users.id, name: users.name, isVerifiedSeller: users.isVerifiedSeller }).from(users).where(inArray(users.id, [...new Set(rows.map(row => row.sellerId))]));
+  const byId = new Map(sellers.map(seller => [seller.id, seller]));
+  return rows.map(row => withPublicSeller(row, byId.get(row.sellerId)));
+}
+
 export async function searchPubgAccounts(filters: {
   search?: string;
   minPrice?: number;
@@ -193,7 +205,7 @@ export async function searchPubgAccounts(filters: {
   const sorted = sortPubgAccountRows(filteredRows, filters.sortBy);
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 20;
-  return sorted.slice(offset, offset + limit);
+  return attachPublicSellers(sorted.slice(offset, offset + limit));
 }
 
 /** Marketplace sorting used by the advanced search filters. */
@@ -223,7 +235,7 @@ export async function getPubgAccountById(id: number) {
   if (!db) return undefined;
   
   const result = await db.select().from(pubgAccounts).where(eq(pubgAccounts.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? (await attachPublicSellers(result))[0] : undefined;
 }
 
 export async function getSellerAccounts(sellerId: number) {
@@ -412,7 +424,7 @@ export async function getFavoriteAccounts(userId: number) {
   if (ids.length === 0) return [];
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(pubgAccounts).where(inArray(pubgAccounts.id, ids)).orderBy(desc(pubgAccounts.createdAt));
+  return attachPublicSellers(await db.select().from(pubgAccounts).where(inArray(pubgAccounts.id, ids)).orderBy(desc(pubgAccounts.createdAt)));
 }
 
 export async function getChatThreadById(threadId: number) {

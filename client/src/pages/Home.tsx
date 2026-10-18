@@ -128,11 +128,12 @@ type Listing = {
   accountId?: string;
   sellerId?: number;
   verifiedSeller?: boolean;
+  sellerName?: string;
 };
 
 export function marketplaceLayoutClass(view: 'grid' | 'list', isSwitching: boolean) {
   const motion = isSwitching ? 'translate-y-1 opacity-0' : 'translate-y-0 opacity-100';
-  const layout = view === 'grid' ? 'grid gap-2.5 grid-cols-3 sm:gap-3 sm:grid-cols-3 lg:grid-cols-4' : 'space-y-3';
+  const layout = view === 'grid' ? 'grid gap-2.5 grid-cols-3 sm:gap-3 sm:grid-cols-3 lg:grid-cols-3' : 'space-y-3';
   return `transform-gpu transition-[opacity,transform] duration-300 ease-out ${motion} ${layout}`;
 }
 
@@ -148,9 +149,12 @@ export function ExpandableText({ text, className = '' }: { text: string; classNa
   );
 }
 
-function normalizeAccount(row: any): Listing {
-  const isBotImage = (u: unknown) => typeof u !== 'string' || !u.trim() || /bot-|placeholder|pubg-card-|default/i.test(u);
-  const galleryUrls = (Array.isArray(row.galleryUrls) ? row.galleryUrls : []).filter((u: unknown) => !isBotImage(u));
+export function normalizeAccount(row: any): Listing {
+  const isImage = (u: unknown): u is string => typeof u === 'string' && Boolean(u.trim()) && !/^javascript:|^data:text\//i.test(u);
+  let rawGallery = row.galleryUrls;
+  if (typeof rawGallery === 'string') { try { rawGallery = JSON.parse(rawGallery); } catch { rawGallery = []; } }
+  const galleryUrls: string[] = Array.from(new Set((Array.isArray(rawGallery) ? rawGallery : []).filter(isImage).map((u: string) => u.trim())));
+  if (isImage(row.thumbnailUrl) && !galleryUrls.includes(row.thumbnailUrl.trim())) galleryUrls.unshift(row.thumbnailUrl.trim());
   const featuredSkins = Array.isArray(row.featuredSkins) ? row.featuredSkins : [];
   return {
     id: Number(row.id),
@@ -164,7 +168,7 @@ function normalizeAccount(row: any): Listing {
     matches: String(row.totalMatches ?? 0),
     skins: featuredSkins,
     // Foydalanuvchi yuklagan haqiqiy suratlarni bot rasmlaridan ustun qo'yish
-    image: (galleryUrls[0] || (!isBotImage(row.thumbnailUrl) ? row.thumbnailUrl : undefined) || CARD_IMAGE),
+    image: galleryUrls[0] || '',
     tag: row.isVerified ? "TEKSHIRILGAN" : "YANGI E'LON",
     description: row.description ?? "Sotuvchi batafsil tavsif qoldirmagan.",
     galleryUrls,
@@ -172,6 +176,7 @@ function normalizeAccount(row: any): Listing {
     accountId: row.accountId ?? undefined,
     sellerId: row.sellerId ? Number(row.sellerId) : undefined,
     verifiedSeller: Boolean(row.sellerVerified ?? row.isVerifiedSeller),
+    sellerName: row.sellerName || undefined,
   };
 }
 
@@ -435,363 +440,40 @@ function TrustStrip() {
   );
 }
 
-function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen: (id: number) => void; showcase?: boolean }) {
-  const [fullscreenOpen, setFullscreenOpen] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [touchEndX, setTouchEndX] = useState<number | null>(null);
-  const [imageError, setImageError] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
-
-  const activeImageUrl = useMemo(() => {
-    if (!item.image) return "";
-    if (retryKey === 0) return item.image;
-    const sep = item.image.includes("?") ? "&" : "?";
-    return `${item.image}${sep}_retry=${retryKey}`;
-  }, [item.image, retryKey]);
-
-  const triggerRef = useRef<HTMLImageElement | null>(null);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
-
-  const images = useMemo(() => {
-    const list = [item.image, ...(item.galleryUrls || [])].filter((url): url is string => Boolean(url && url.trim().length > 0));
-    return Array.from(new Set(list));
-  }, [item.image, item.galleryUrls]);
-
-  // Mobil internetda galereya tez ishlashi uchun keyingi va oldingi suratlarni oldindan keshga olish (preloading)
-  useEffect(() => {
-    if (images.length > 1 && fullscreenOpen) {
-      const nextIdx = (currentIndex + 1) % images.length;
-      const prevIdx = (currentIndex - 1 + images.length) % images.length;
-      const preloadNext = new Image();
-      preloadNext.src = images[nextIdx];
-      const preloadPrev = new Image();
-      preloadPrev.src = images[prevIdx];
-    }
-  }, [currentIndex, images, fullscreenOpen]);
-
-  const prefersReducedMotion = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  }, []);
-
-  const goToPrev = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
-  };
-
-  const goToNext = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
-  };
-
-  useEffect(() => {
-    if (fullscreenOpen) {
-      const timer = setTimeout(() => {
-        closeBtnRef.current?.focus();
-      }, 50);
-
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setFullscreenOpen(false);
-          return;
-        }
-
-        if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
-          return;
-        }
-
-        if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
-          return;
-        }
-
-        if (e.key === 'Tab' && dialogRef.current) {
-          const focusableEls = dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          );
-          if (focusableEls.length === 0) return;
-
-          const firstEl = focusableEls[0];
-          const lastEl = focusableEls[focusableEls.length - 1];
-
-          if (e.shiftKey) {
-            if (document.activeElement === firstEl) {
-              e.preventDefault();
-              lastEl.focus();
-            }
-          } else {
-            if (document.activeElement === lastEl) {
-              e.preventDefault();
-              firstEl.focus();
-            }
-          }
-        }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('keydown', handleKeyDown);
-      };
-    } else {
-      if (triggerRef.current) {
-        triggerRef.current.focus();
-      }
-    }
-  }, [fullscreenOpen, images.length]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (prefersReducedMotion) return;
-    setTouchStartX(e.targetTouches[0].clientX);
-    setTouchEndX(null);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (prefersReducedMotion) return;
-    setTouchEndX(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (prefersReducedMotion || touchStartX === null || touchEndX === null) return;
-    const distance = touchStartX - touchEndX;
-    const minSwipeDistance = 35;
-    if (distance > minSwipeDistance) {
-      setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
-    } else if (distance < -minSwipeDistance) {
-      setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
-    }
-    setTouchStartX(null);
-    setTouchEndX(null);
-  };
-
-  const sellerStatus = item.verifiedSeller ? "Tasdiqlangan ishonchli sotuvchi" : "Sotuvchi";
-
-  return (
-    <article
-      tabIndex={0}
-      role="button"
-      onClick={() => onOpen(item.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen(item.id);
-        }
-      }}
-      aria-label={`PUBG akkaunti: ${item.playerName}, Daraja: ${item.level}, Narxi: ${uzNumber(item.price)} so'm, K/D: ${item.kd}, ${sellerStatus}`}
-      className={`pubg-card rise-in group flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-xl sm:rounded-2xl border border-white/[0.09] bg-[#101215] shadow-md transition duration-200 hover:border-amber-400/40 focus:border-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101215] active:scale-[.98] ${
-        showcase ? 'p-1.5 sm:p-2' : 'p-1.5 sm:p-2.5'
-      }`}
-    >
-      <div>
-        <div className={`relative overflow-hidden rounded-lg sm:rounded-xl bg-[#16181b] aspect-[3/4]`}>
-          {!imageError ? (
-            <motion.img 
-              ref={triggerRef}
-              layoutId={`acc-image-${item.id}`} 
-              src={activeImageUrl} 
-              alt={`${item.playerName} nomli PUBG Mobile akkaunti bosh surati, ${item.level}-daraja, K/D ${item.kd}`} 
-              loading="lazy" 
-              decoding="async"
-              role="button"
-              tabIndex={0}
-              aria-label={`${item.playerName} suratlarini to'liq ekranda ko'rish`}
-              onError={() => setImageError(true)}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentIndex(0);
-                setFullscreenOpen(true);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setCurrentIndex(0);
-                  setFullscreenOpen(true);
-                }
-              }}
-              className="h-full w-full img-live object-cover object-top motion-safe:transition motion-safe:duration-500 group-hover:scale-105 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" 
-              title="Suratni to'liq ekranda ko'rish"
-            />
-          ) : (
-            <div 
-              role="alert"
-              data-testid={`listing-card-fallback-${item.id}`}
-              className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-gradient-to-b from-[#181a1e] to-[#0f1113] p-2 text-center select-none"
-            >
-              <ImageOff className="h-6 w-6 text-zinc-500" aria-hidden="true" />
-              <span className="text-[10px] font-medium text-zinc-400 leading-tight">
-                Rasm yuklanmadi
-              </span>
-              <button
-                type="button"
-                data-testid={`listing-card-retry-${item.id}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setImageError(false);
-                  setRetryKey(k => k + 1);
-                }}
-                className="mt-1 inline-flex items-center gap-1 rounded-md bg-amber-400/10 px-2 py-1 text-[10px] font-medium text-amber-300 hover:bg-amber-400/20 active:scale-95 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
-                aria-label="Qayta urinish"
-                title="Qayta urinish"
-              >
-                <RotateCw className="h-3 w-3" />
-                <span>Qayta urinish</span>
-              </button>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-          <div className="inferno-scan pointer-events-none absolute inset-0" />
-          
-          {/* Top badges (Mobile-optimized) */}
-          <div className="absolute left-1 top-1 flex flex-col gap-0.5 items-start pointer-events-none">
-            <span className="rounded bg-black/80 px-1 py-0.5 text-[8px] sm:text-[9px] font-black leading-none tracking-wide text-amber-50 shadow">
-              LVL {item.level}
-            </span>
-            {item.verifiedSeller && (
-              <span 
-                className="inline-flex items-center gap-0.5 rounded bg-emerald-500/90 px-1 py-0.5 text-[7.5px] sm:text-[8.5px] font-black leading-none text-black shadow"
-                title="Ishonchli sotuvchi"
-              >
-                <BadgeCheck className="h-2.5 w-2.5" />
-                <span className="hidden min-[360px]:inline">ISHONCHLI</span>
-              </span>
-            )}
-          </div>
-
-          <div className="absolute right-1 top-1 z-10" onClick={event => event.stopPropagation()}>
-            <FavoriteButton accountId={item.id} compact />
-          </div>
-
-          {/* Bottom info on image */}
-          <div className="absolute inset-x-1.5 bottom-1 pointer-events-none">
-            <p className="truncate text-[11px] sm:text-xs font-black text-white drop-shadow">
-              {item.playerName}
-            </p>
-            <p className="mt-0.5 flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-white/80">
-              <span className="truncate max-w-[60px]">{item.region}</span>
-              <span className="text-amber-300 font-extrabold shrink-0">K/D {item.kd}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Card bottom: Price & action */}
-      <div className="mt-1 flex items-center justify-between gap-1 border-t border-white/[0.06] pt-1 sm:pt-1.5">
-        <div className="min-w-0 flex-1">
-          <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-tight text-white/40">Narx</span>
-          <motion.span layoutId={`acc-price-${item.id}`} className="block truncate font-display text-[12px] sm:text-[14px] font-black leading-none text-amber-300">
-            {uzNumber(item.price)} <span className="text-[7.5px] sm:text-[8.5px] font-semibold text-white/60">so'm</span>
-          </motion.span>
-        </div>
-        <span className="pubg-press grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-md bg-amber-400/20 sm:rounded-lg text-amber-300 transition group-hover:bg-amber-400 group-hover:text-black">
-          <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-        </span>
-      </div>
-
-      {/* Fullscreen Mobile & Landscape-Optimized Gallery */}
-      {fullscreenOpen && (
-        <div 
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={`gallery-title-${item.id}`}
-          aria-describedby={`gallery-desc-${item.id}`}
-          className="fixed inset-0 z-50 flex h-[100dvh] flex-col justify-between bg-black/95 backdrop-blur-md px-3 pt-[calc(env(safe-area-inset-top)+0.25rem)] pb-[calc(env(safe-area-inset-bottom)+0.25rem)] text-white select-none landscape:px-6"
-          onClick={(e) => { e.stopPropagation(); setFullscreenOpen(false); }}
-        >
-          <div 
-            id={`gallery-desc-${item.id}`}
-            className="sr-only" 
-            aria-live="polite" 
-            aria-atomic="true"
-          >
-            {`${item.playerName} akkaunti. Surat ${currentIndex + 1} dan ${images.length}. ${sellerStatus}. Darajasi ${item.level}, narxi ${uzNumber(item.price)} so'm.`}
-          </div>
-
-          {/* Top Bar (Ultra compact in landscape) */}
-          <div className="flex items-center justify-between py-1.5 landscape:py-1 border-b border-white/10" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span id={`gallery-title-${item.id}`} className="font-bold text-xs sm:text-sm truncate max-w-[180px] sm:max-w-xs landscape:max-w-md">
-                {item.playerName}
-              </span>
-              {images.length > 1 && (
-                <span 
-                  className="rounded-full bg-amber-400/20 text-amber-200 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold shrink-0"
-                  aria-hidden="true"
-                >
-                  {currentIndex + 1} / {images.length}
-                </span>
-              )}
-            </div>
-            <button 
-              ref={closeBtnRef}
-              type="button"
-              onClick={() => setFullscreenOpen(false)}
-              className="grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              aria-label="Yopish (Escape)"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Main Photo area with swipe & landscape support */}
-          <div 
-            className="relative flex-1 flex items-center justify-center py-1 sm:py-2 overflow-hidden touch-pan-y"
-            onClick={e => e.stopPropagation()}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {images.length > 1 && (
-              <button
-                type="button"
-                onClick={goToPrev}
-                className="absolute left-1 landscape:left-2 z-10 grid h-9 w-9 sm:h-11 sm:w-11 place-items-center rounded-full bg-black/70 text-white border border-white/20 backdrop-blur-md active:scale-90 transition hover:bg-amber-400 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                aria-label="Oldingi surat"
-              >
-                ‹
-              </button>
-            )}
-
-            <img 
-              src={images[currentIndex] || item.image} 
-              alt={`${item.playerName} akkauntining ${currentIndex + 1}-surati (${images.length} tadan). ${sellerStatus}.`} 
-              loading="eager"
-              decoding="async"
-              className={`max-h-[68dvh] sm:max-h-[75dvh] landscape:max-h-[82dvh] max-w-full rounded-xl object-contain shadow-2xl ${
-                prefersReducedMotion ? '' : 'motion-safe:transition motion-safe:duration-200'
-              }`}
-            />
-
-            {images.length > 1 && (
-              <button
-                type="button"
-                onClick={goToNext}
-                className="absolute right-1 landscape:right-2 z-10 grid h-9 w-9 sm:h-11 sm:w-11 place-items-center rounded-full bg-black/70 text-white border border-white/20 backdrop-blur-md active:scale-90 transition hover:bg-amber-400 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                aria-label="Keyingi surat"
-              >
-                ›
-              </button>
-            )}
-          </div>
-
-          {/* Bottom Bar */}
-          <div className="flex flex-col items-center gap-0.5 text-center py-1 landscape:py-0.5 border-t border-white/10" onClick={e => e.stopPropagation()}>
-            <p className="text-[10px] sm:text-[11px] text-white/75">
-              {images.length > 1 ? "Suratlarni almashtirish uchun chapga/o‘ngga suring yoki strelkalardan foydalaning" : "Yopish uchun ekranning bo‘sh joyiga bosing"}
-            </p>
-          </div>
-        </div>
-      )}
-
-    </article>
-  );
+export function ListingCard({ item, onOpen, showcase = false }: { item: Listing; onOpen: (id: number) => void; showcase?: boolean }) {
+  const images = useMemo(() => Array.from(new Set([item.image, ...(item.galleryUrls || [])].filter(Boolean))), [item.image, item.galleryUrls]);
+  const [index, setIndex] = useState(0);
+  const [viewer, setViewer] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
+  const selected = images[index] || '';
+  useEffect(() => { setFailed(false); }, [selected]);
+  const move = (delta: number) => { if (images.length) setIndex(i => (i + delta + images.length) % images.length); };
+  return <article className="market-account relative flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground" data-showcase={showcase}>
+    <div className="market-photo relative aspect-[4/3] overflow-hidden bg-background"
+      onTouchStart={e => { const t = e.touches[0]; if (t) touch.current = { x: t.clientX, y: t.clientY }; swiped.current = false; }}
+      onTouchEnd={e => { const t = e.changedTouches[0]; const start = touch.current; if (t && start && images.length > 1) { const dx = t.clientX - start.x; if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(t.clientY - start.y)) { swiped.current = true; move(dx < 0 ? 1 : -1); } } touch.current = null; }}>
+      <button type="button" className="block h-full w-full" aria-label={`${item.playerName} suratlarini to‘liq ko‘rish`} onClick={() => { if (swiped.current) { swiped.current = false; return; } if (images.length) setViewer(index); }}>
+        {selected && !failed ? <img src={selected} alt={`${item.playerName} — ${index + 1}-surat`} loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-full w-full object-contain" /> : <span className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground"><ImageOff className="h-5 w-5" /><span className="text-[10px]">{selected ? 'Surat yuklanmadi' : 'Surat yo‘q'}</span></span>}
+      </button>
+      {failed && <button type="button" aria-label="Suratni qayta yuklash" className="absolute right-1 top-1 rounded bg-card p-1 text-accent" onClick={() => setFailed(false)}><RotateCw className="h-4 w-4" /></button>}
+      {images.length > 1 && <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-1 py-0.5">
+        <button type="button" aria-label="Oldingi surat" title="Oldingi surat" className="grid h-7 w-7 place-items-center rounded-md bg-card/90 text-card-foreground" onClick={() => move(-1)}><ArrowLeft className="h-3 w-3" /></button>
+        <span className="rounded bg-card/90 px-1.5 text-[10px] text-card-foreground">{index + 1}/{images.length}</span>
+        <button type="button" aria-label="Keyingi surat" title="Keyingi surat" className="grid h-7 w-7 place-items-center rounded-md bg-card/90 text-card-foreground" onClick={() => move(1)}><ArrowRight className="h-3 w-3" /></button>
+      </div>}
+    </div>
+    <div className="absolute right-1 top-1"><FavoriteButton accountId={item.id} compact /></div>
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-1.5 sm:p-3">
+      <h3 className="market-name truncate text-xs font-bold sm:text-base" title={item.playerName}>{item.playerName}</h3>
+      <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground" title={item.sellerName || 'Sotuvchi'}><UserRound className="h-3 w-3 shrink-0" /><span className="truncate">{item.sellerName || 'Sotuvchi'}</span>{item.verifiedSeller && <BadgeCheck className="h-3 w-3 shrink-0 text-accent" />}</div>
+      <dl className="grid grid-cols-2 gap-x-1 gap-y-0.5 border-y border-border py-1 text-[10px] sm:text-xs"><div><dt className="inline text-muted-foreground">LVL </dt><dd className="inline font-bold">{item.level}</dd></div><div><dt className="inline text-muted-foreground">K/D </dt><dd className="inline font-bold">{item.kd}</dd></div><div className="col-span-2 truncate"><dt className="sr-only">Region</dt><dd>{item.region}</dd></div></dl>
+      <p className="market-price mt-auto break-words text-xs font-extrabold text-accent sm:text-base">{uzNumber(item.price)} <span className="text-[9px] font-normal text-muted-foreground">so‘m</span></p>
+      <PrimaryButton onClick={() => onOpen(item.id)} variant="soft" className="market-open w-full">Ko‘rish<ArrowRight className="h-3 w-3 shrink-0" /></PrimaryButton>
+    </div>
+    {viewer !== null && <MediaViewer items={images.map(url => ({ type: 'image', url, alt: item.playerName }))} index={viewer} onIndexChange={setViewer} onClose={() => setViewer(null)} title={item.playerName} />}
+  </article>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -811,6 +493,7 @@ type AccountFilters = {
   hasConquerorHistory?: boolean;
   isOldAccount?: boolean;
   verifiedSeller?: boolean;
+  sellerName?: string;
   mediaAvailable?: boolean;
   category?: 'all' | 'pro' | 'conqueror' | 'classic';
   minKd?: number;
@@ -1085,7 +768,7 @@ function FavoritesStrip({ onNavigate }: { onNavigate: (path: string) => void }) 
 }
 
 function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
-  const featuredQuery = trpc.accounts.search.useQuery({ limit: 8, offset: 0 }, { staleTime: 20_000, refetchOnWindowFocus: false });
+  const featuredQuery = trpc.accounts.search.useQuery({ limit: 9, offset: 0 }, { staleTime: 20_000, refetchOnWindowFocus: false });
   const featured = (featuredQuery.data ?? []).map(normalizeAccount);
   return (
     <main className="space-y-5 pb-2">
@@ -1109,7 +792,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-3 landscape:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-2.5">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {featured.map(item => <ListingCard key={item.id} item={item} onOpen={id => onNavigate(`/account/${id}`)} showcase />)}
             </div>
             <button onClick={() => onNavigate('/accounts')} className="pubg-press mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-300 text-sm font-black text-black active:scale-[.98]">
@@ -1243,6 +926,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
   const item: Listing = accountQuery.data ? normalizeAccount(accountQuery.data) : ({ id, playerName: 'Akkaunt yuklanmoqda...', level: 0, rank: '—', price: 0, region: '—', kd: '0', winRate: '0%', matches: '0', skins: [], image: CARD_IMAGE, tag: 'YUKLANMOQDA', description: 'Ma’lumot yuklanmoqda yoki e’lon o‘chirilgan.' } as Listing);
   const gallery: string[] = item.galleryUrls?.length ? item.galleryUrls : [item.image];
   const [activeImage, setActiveImage] = useState(gallery[0] ?? item.image);
+  useEffect(() => { setActiveImage(item.image); }, [item.id, item.image]);
   const mediaItems: MediaItem[] = React.useMemo(() => {
     const list: MediaItem[] = gallery.map(url => ({ type: 'image' as const, url, alt: item.playerName }));
     if (item.videoUrl) list.push({ type: 'video' as const, url: item.videoUrl, alt: item.playerName });
@@ -1330,7 +1014,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
             <motion.img layoutId={`acc-image-${item.id}`} src={activeImage} alt={item.playerName} className="max-h-[78vh] min-h-[320px] w-full img-live object-contain bg-black transition duration-300 group-active:scale-[.99]" />
           </button>
           <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 text-[10px] font-bold text-white/85 backdrop-blur">ID: #{item.id}<Copy className="h-3 w-3 text-amber-200" /></span>
-          <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 text-[10px] font-bold text-white/85 backdrop-blur"><Grid2X2 className="h-3 w-3 text-amber-200" />1/{gallery.length}</span>
+          <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 text-[10px] font-bold text-white/85 backdrop-blur"><Grid2X2 className="h-3 w-3 text-amber-200" />{Math.max(0, gallery.indexOf(activeImage)) + 1}/{gallery.length}</span>
           {item.videoUrl && <button onClick={() => setViewerIndex(gallery.length)} className="absolute bottom-2.5 right-2.5 inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-black/60 px-2.5 text-[10px] font-bold text-white backdrop-blur active:scale-95"><Play className="h-3 w-3 text-amber-200" />Video</button>}
         </div>
 
@@ -1364,7 +1048,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
       {viewerIndex !== null && <MediaViewer items={mediaItems} index={viewerIndex} onIndexChange={setViewerIndex} onClose={() => setViewerIndex(null)} title={item.playerName} />}
     </section>
 
-    <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-3">
+    <section className="border-y border-border py-2">
       <div className="grid grid-cols-4 gap-1.5">
         {[['K/D', item.kd], ['Win rate', item.winRate], ['Jami o‘yin', item.matches], ['Region', item.region]].map(([label, value]) => <div key={label} className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-1 py-2 text-center"><span className="block truncate text-[8px] font-bold uppercase tracking-wider text-white/35">{label}</span><span className="mt-0.5 block truncate text-xs font-black text-white">{value}</span></div>)}
       </div>
@@ -1381,9 +1065,9 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
     </details>
 
     {/* Sotuvchi reytingi va statistikasi alohida ixcham bo'lim: faqat bosganda ochiladi */}
-    <details className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-3">
+    <details open className="border-t border-border py-3">
       <summary className="cursor-pointer select-none font-display text-xs font-black uppercase tracking-wider text-amber-200 flex items-center justify-between">
-        <span>👤 Sotuvchi profili va ishonch reytingi</span>
+        <span>{item.sellerName || "Sotuvchi"} — profil va reyting</span>
         <span className="text-[10px] text-amber-400/80 font-normal">Ko'rish ▼</span>
       </summary>
       <div className="mt-3 space-y-3">
@@ -1397,7 +1081,7 @@ function DetailPage({ id, onBack, onNavigate }: { id: number; onBack: () => void
 
 export const SELLER_MEDIA_MAX_FILES = 12;
 export const SELLER_MEDIA_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB
-export const SELLER_DIRECT_UPLOAD_MAX_BYTES = 40 * 1024 * 1024;
+export const SELLER_DIRECT_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
 export const SELLER_VIDEO_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB
 export const SELLER_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'] as const;
 
@@ -1475,7 +1159,7 @@ export function validateSellerMediaFiles(files: Array<Pick<File, 'type' | 'size'
   if (files.length > SELLER_MEDIA_MAX_FILES) return `Ko‘pi bilan ${SELLER_MEDIA_MAX_FILES} ta rasm yoki video tanlash mumkin.`;
   if (files.some(file => file.type.startsWith('image/') && file.size > SELLER_MEDIA_MAX_BYTES)) return 'Har bir rasm 1 GB dan kichik bo‘lishi kerak.';
   if (files.some(file => file.type.startsWith('video/') && file.size > SELLER_VIDEO_MAX_BYTES)) return 'Video 1 GB dan kichik bo‘lishi kerak.';
-  if (files.some(file => !file.type.startsWith('image/') && !SELLER_MEDIA_TYPES.includes(file.type as typeof SELLER_MEDIA_TYPES[number]))) return 'Faqat rasm (JPG, PNG, WEBP, HEIC) yoki video (MP4, MOV, WEBM) fayllari qabul qilinadi.';
+  if (files.some(file => !SELLER_MEDIA_TYPES.includes(file.type as typeof SELLER_MEDIA_TYPES[number]))) return 'Faqat rasm (JPG, PNG, WEBP) yoki video (MP4, MOV, WEBM) fayllari qabul qilinadi.';
   return null;
 }
 
@@ -1507,7 +1191,7 @@ export function SellerMediaPreview({ file, onRemove }: { file: File; onRemove?: 
 
   return <div className="group relative overflow-hidden rounded-xl border border-white/[0.12] bg-white/[0.03] transition hover:border-amber-400/40">
     <div className="relative aspect-video bg-black/50">
-      {previewUrl && file.type.startsWith('image/') ? <img loading="lazy" decoding="async" src={previewUrl} alt={file.name} className="h-full w-full img-live object-cover" /> : previewUrl && file.type.startsWith('video/') ? <video src={previewUrl} aria-label={file.name} muted playsInline className="h-full w-full img-live object-cover" /> : <div className="grid h-full place-items-center text-[10px] font-bold text-white/35">PREVIEW TAYYORLANMOQDA</div>}
+      {previewUrl && file.type.startsWith('image/') ? <img loading="lazy" decoding="async" src={previewUrl} alt={file.name} className="h-full w-full object-contain" /> : previewUrl && file.type.startsWith('video/') ? <video src={previewUrl} aria-label={file.name} muted playsInline className="h-full w-full img-live object-cover" /> : <div className="grid h-full place-items-center text-[10px] font-bold text-white/35">PREVIEW TAYYORLANMOQDA</div>}
       <span className="absolute left-2 top-2 rounded-md bg-black/75 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-200">{file.type.startsWith('video/') ? '🎬 Video' : '📸 Rasm'}</span>
       {onRemove && (
         <button
@@ -1727,7 +1411,7 @@ export function SellPage({ onNavigate }: { onNavigate: (path: string) => void })
           <Upload className="h-6 w-6 text-amber-200" />
           <span className="mt-3 text-sm font-bold text-white">Rasm yoki video yuklash</span>
           <span className="mt-1 text-xs text-amber-200/80 font-semibold">PNG, JPG, MP4 formatlari · Maksimal 1 GB</span>
-          <input type="file" multiple accept="image/*,video/*" onChange={handleFiles} className="hidden" />
+          <input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={handleFiles} className="hidden" />
         </label>
         {mediaError && <p role="alert" className="mt-2 rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-xs font-semibold leading-5 text-amber-50">{mediaError}</p>}
         {uploading && <SellerUploadProgress completed={uploadProgress.completed} total={uploadProgress.total} />}
@@ -2646,7 +2330,7 @@ function AdminPage() {
   const stats = statsQuery.data;
   const pending = pendingQuery.data ?? [];
   const disputes = disputesQuery.data ?? [];
-  return <main className="space-y-3 pb-24 sm:space-y-6 lg:pb-6"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:flex md:items-end md:justify-between"><div className="min-w-0"><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Boshqaruv</span><h1 className="mt-1 font-display text-xl sm:text-3xl font-black text-white">Admin panel</h1><p className="mt-1 line-clamp-2 text-xs text-white/45 sm:text-sm">Inferno Stealth xavfsizligi, tekshiruv va savdo nazorati.</p></div><StatusPill tone="green"><BadgeCheck className="h-3 w-3" />Owner</StatusPill></div><div className="grid grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-3 landscape:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-2.5 lg:grid-cols-5">{[["Foydalanuvchilar", stats?.totalUsers ?? '—', UserRound],['Faol e’lonlar', stats?.totalAccounts ?? '—', ShoppingBag],['Tekshiruv navbati', stats?.pendingAccounts ?? '—', FileCheck2],['Yakunlangan savdo', stats?.totalSales ?? '—', Check],['Ochiq nizolar', stats?.openDisputes ?? '—', MessageCircle]].map(([label, value, Icon]) => { const CardIcon = Icon as React.ElementType; return <div key={label as string} className="card-glow min-w-0 rounded-xl border border-white/[0.08] bg-[#16191c] p-2.5 sm:rounded-2xl sm:p-5"><CardIcon className="h-4 w-4 text-amber-200 sm:h-5 sm:w-5" /><span className="mt-2 block truncate text-[9px] font-bold uppercase tracking-wider text-white/35 sm:mt-4 sm:text-[10px]">{label as string}</span><span className="mt-1 block font-display text-base font-black text-white sm:mt-2 sm:text-2xl">{String(value)}</span></div>; })}</div><div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-emerald-400/20 bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Trust desk</span><h2 className="mt-2 font-display text-lg font-black text-white">Sotuvchi verifikatsiyasi</h2><p className="mt-1 text-xs text-white/40">Shaxsni tasdiqlash arizalarini ko‘rib chiqing va ishonch belgisini boshqaring.</p></div><StatusPill tone={(sellerVerificationQuery.data ?? []).length ? 'gold' : 'muted'}>{(sellerVerificationQuery.data ?? []).length} ta</StatusPill></div>{sellerVerificationQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-xs text-white/45"><LoaderCircle className="h-4 w-4 animate-spin text-emerald-300" />Arizalar yuklanmoqda...</div> : (sellerVerificationQuery.data ?? []).length === 0 ? <EmptyState title="Kutilayotgan ariza yo‘q" text="Yangi sotuvchi arizasi yuborilganda shu yerda ko‘rinadi." /> : <div className="mt-5 space-y-3">{(sellerVerificationQuery.data ?? []).map(row => { const application = row.application; return <article key={application.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-start gap-3"><a href={application.idCardPhotoUrl} target="_blank" rel="noreferrer" className="shrink-0"><img loading="lazy" decoding="async" src={application.idCardPhotoUrl} alt="Shaxsni tasdiqlovchi hujjat" className="h-20 w-20 rounded-xl bg-black/30 img-live object-cover ring-1 ring-emerald-400/20" /></a><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-emerald-200">#{application.id}</span><StatusPill tone="gold">Kutilmoqda</StatusPill></div><h3 className="mt-2 truncate text-sm font-black text-white">{application.fullName}</h3><p className="mt-1 truncate text-xs text-white/45">@{application.telegramUsername} · {row.userName || row.userOpenId || `User #${application.userId}`}</p><p className="mt-1 text-[10px] text-white/30">{new Date(application.createdAt).toLocaleString()}</p></div></div><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[application.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [application.id]: event.target.value }))} placeholder="Qaror izohi (ixtiyoriy)" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={reviewSellerVerification.isPending} onClick={() => reviewSellerVerification.mutate({ verificationId: application.id, approved: true, note: reviewNote[application.id] || undefined })}><Check className="h-4 w-4" />Tasdiqlash</PrimaryButton><PrimaryButton variant="ghost" disabled={reviewSellerVerification.isPending} onClick={() => reviewSellerVerification.mutate({ verificationId: application.id, approved: false, note: reviewNote[application.id] || 'Ma’lumotlar tekshiruvdan o‘tmadi.' })}>Rad etish</PrimaryButton></div></article>; })}</div>}</section><section className="rounded-2xl border border-rose-400/20 bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-rose-300">Moderation desk</span><h2 className="mt-2 font-display text-lg font-black text-white">Sharh shikoyatlari</h2><p className="mt-1 text-xs text-white/40">Spam yoki haqoratli sharhlarni yashiring, asossiz shikoyatlarni yoping.</p></div><StatusPill tone={(reviewReportsQuery.data ?? []).length ? 'gold' : 'muted'}>{(reviewReportsQuery.data ?? []).length} ta</StatusPill></div>{reviewReportsQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-xs text-white/45"><LoaderCircle className="h-4 w-4 animate-spin text-rose-300" />Shikoyatlar yuklanmoqda...</div> : (reviewReportsQuery.data ?? []).length === 0 ? <EmptyState title="Kutilayotgan shikoyat yo‘q" text="Foydalanuvchi sharh haqida xabar berganda shu yerda ko‘rinadi." /> : <div className="mt-5 space-y-3">{(reviewReportsQuery.data ?? []).map(row => <article key={row.report.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-black text-rose-200">Shikoyat #{row.report.id}</span><span className="text-[10px] text-white/35">{new Date(row.report.createdAt).toLocaleString()}</span></div><p className="mt-2 text-xs text-white/45">Sabab: <strong className="text-white/75">{row.report.reason}</strong></p><blockquote className="mt-3 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-3 text-xs leading-5 text-white/65">“{row.review?.comment || 'Izohsiz sharh'}”<footer className="mt-2 text-[10px] text-white/30">Xabar bergan: {row.reporterName || `User #${row.report.reporterId}`}</footer></blockquote><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[row.report.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [row.report.id]: event.target.value }))} placeholder="Moderatsiya izohi (ixtiyoriy)" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={moderateReviewReport.isPending} onClick={() => moderateReviewReport.mutate({ reportId: row.report.id, action: 'hidden', note: reviewNote[row.report.id] || 'Qoidabuzarlik tasdiqlandi.' })}>Yashirish</PrimaryButton><PrimaryButton variant="ghost" disabled={moderateReviewReport.isPending} onClick={() => moderateReviewReport.mutate({ reportId: row.report.id, action: 'dismissed', note: reviewNote[row.report.id] || 'Qoidabuzarlik topilmadi.' })}>Rad etish</PrimaryButton></div></article>)}</div>}</section></div><div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><section className="rounded-2xl border border-amber-400/20 bg-[#16191c] p-4 sm:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Wallet review</span><h2 className="mt-2 font-display text-lg font-black text-white">Deposit Review</h2><p className="mt-1 text-xs text-white/40">Kartaga tushgan to‘lov cheklarini tekshiring va balansni faqat bir marta kredit qiling.</p></div><select value={depositStatus} onChange={event => setDepositStatus(event.target.value as 'all' | 'pending' | 'approved' | 'rejected')} className="field-input w-full sm:w-32"><option value="pending">Kutilmoqda</option><option value="all">Barchasi</option><option value="approved">Tasdiqlangan</option><option value="rejected">Rad etilgan</option></select></div>{(depositsQuery.data ?? []).length === 0 ? <EmptyState title="Cheklar yo‘q" text="Tanlangan holat bo‘yicha manual top-up topilmadi." /> : <div className="mt-5 space-y-3">{(depositsQuery.data ?? []).map(row => { const receipt = row.receipt; return <article key={receipt.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3"><div className="flex gap-3"><a href={receipt.receiptUrl} target="_blank" rel="noreferrer" className="shrink-0"><img loading="lazy" decoding="async" src={receipt.receiptUrl} alt={`Chek #${receipt.id}`} className="h-24 w-20 rounded-xl bg-black/30 img-live object-cover" /></a><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-amber-200">#{receipt.id}</span><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? 'Tasdiqlandi' : receipt.status === 'rejected' ? 'Rad etildi' : 'Kutilmoqda'}</StatusPill></div><p className="mt-2 text-sm font-black text-white">{uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-1 truncate text-xs text-white/40">{row.userName || row.userOpenId || `User #${receipt.userId}`}</p><p className="mt-1 text-[10px] text-white/30">{new Date(receipt.createdAt).toLocaleString()}</p></div></div>{receipt.status === 'pending' && <><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[receipt.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [receipt.id]: event.target.value }))} placeholder="Admin izohi (ixtiyoriy)" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={reviewDeposit.isPending} onClick={() => reviewDeposit.mutate({ receiptId: receipt.id, approved: true, note: reviewNote[receipt.id] || undefined })}><Check className="h-4 w-4" />Tasdiqlash</PrimaryButton><PrimaryButton variant="ghost" disabled={reviewDeposit.isPending} onClick={() => reviewDeposit.mutate({ receiptId: receipt.id, approved: false, note: reviewNote[receipt.id] || 'Chek ma’lumotlari mos kelmadi.' })}>Rad etish</PrimaryButton></div></>}</article>; })}</div>}</section><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Payout queue</span><h2 className="mt-2 font-display text-lg font-black text-white">Yechib olish navbati</h2><p className="mt-1 text-xs text-white/40">Mablag‘ qaytarilishi yoki to‘lanishini qo‘lda tasdiqlang.</p></div><StatusPill tone={(payoutsQuery.data ?? []).length ? 'gold' : 'muted'}>{(payoutsQuery.data ?? []).length} ta</StatusPill></div>{(payoutsQuery.data ?? []).length === 0 ? <EmptyState title="Payout navbati bo‘sh" text="Kutilayotgan yechib olish so‘rovi yo‘q." /> : <div className="mt-5 space-y-3">{(payoutsQuery.data ?? []).map(row => { const transaction = row.transaction; return <article key={transaction.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-start justify-between gap-3"><div><span className="text-xs font-black text-amber-200">#{transaction.id}</span><h3 className="mt-2 text-sm font-black text-white">{uzNumber(Number(transaction.amount))} so‘m</h3><p className="mt-1 text-xs text-white/40">{row.userName || row.userOpenId || `User #${transaction.userId}`}</p><p className="mt-1 line-clamp-2 text-[11px] text-white/35">{transaction.description}</p></div><StatusPill tone="gold">Kutilmoqda</StatusPill></div><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[transaction.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [transaction.id]: event.target.value }))} placeholder="Payout izohi" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={processPayout.isPending} onClick={() => processPayout.mutate({ transactionId: transaction.id, approved: true, note: reviewNote[transaction.id] || undefined })}><Check className="h-4 w-4" />To‘landi</PrimaryButton><PrimaryButton variant="ghost" disabled={processPayout.isPending} onClick={() => processPayout.mutate({ transactionId: transaction.id, approved: false, note: reviewNote[transaction.id] || 'Payout rad etildi.' })}>Rad etish</PrimaryButton></div></article>; })}</div>}</section></div><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Audit trail</span><h2 className="mt-2 font-display text-lg font-black text-white">Audit log</h2><p className="mt-1 text-xs text-white/40">Deposit va payout qarorlari kim tomonidan va qachon bajarilganini ko‘ring.</p></div><button type="button" onClick={() => auditsQuery.refetch()} className="text-xs font-bold text-amber-200">Yangilash</button></div>{(auditsQuery.data ?? []).length === 0 ? <EmptyState title="Audit yozuvlari yo‘q" text="Yangi admin qarorlari shu yerda ko‘rinadi." /> : <div className="mt-4 divide-y divide-white/[0.07]">{(auditsQuery.data ?? []).slice(0, 12).map(row => <div key={row.audit.id} className="flex items-start justify-between gap-4 py-3"><div className="min-w-0"><p className="text-xs font-black text-white">{row.audit.eventType}</p><p className="mt-1 truncate text-[11px] text-white/40">{row.userName || `User #${row.audit.userId}`} · {row.audit.details || '—'}</p></div><span className="shrink-0 text-[10px] text-white/30">{new Date(row.audit.createdAt).toLocaleString()}</span></div>)}</div>}</section><div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Queue</span><h2 className="mt-2 font-display text-lg font-black text-white">Tekshiruv navbati</h2><p className="mt-1 text-xs text-white/40">Har bir e’lon egasiga chiqishidan oldin tekshiriladi.</p></div><StatusPill tone={pending.length ? 'gold' : 'muted'}>{pending.length ? `${pending.length} ta kutilmoqda` : 'Bo‘sh'}</StatusPill></div>{pending.length === 0 ? <EmptyState title="Kutilayotgan e’lonlar yo‘q" text="Yangi e’lon kelganda shu yerda ko‘rinadi." /> : <div className="mt-5 space-y-3">{pending.map(account => <article key={account.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex gap-4">{account.thumbnailUrl ? <img loading="lazy" decoding="async" src={account.thumbnailUrl} alt="" className="h-20 w-24 rounded-xl bg-black/30 img-live object-cover" /> : <span className="grid h-20 w-24 place-items-center rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-amber-200"><Shield className="h-6 w-6" /></span>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold text-amber-200">#{account.id}</span><span className="text-xs text-white/40">{account.accountId}</span><StatusPill tone="muted">{account.region}</StatusPill></div><h3 className="mt-2 truncate text-sm font-black text-white">{account.playerName}</h3><p className="mt-1 text-xs text-white/45">LVL {account.level} · {uzNumber(Number(account.price))} so‘m</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-white/35">{account.description || 'Tavsif kiritilmagan.'}</p></div></div><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[`acc${account.id}`] || ''} onChange={event => setReviewNote(current => ({ ...current, [`acc${account.id}`]: event.target.value }))} placeholder="Tasdiqlash/rad etish sababi (foydalanuvchiga ko‘rinadi)" /><div className="mt-3 flex flex-wrap gap-2"><PrimaryButton disabled={verifyAccount.isPending} onClick={() => verifyAccount.mutate({ accountId: account.id, approved: true, notes: reviewNote[`acc${account.id}`] || undefined })}><Check className="h-4 w-4" />Tasdiqlash</PrimaryButton><PrimaryButton variant="ghost" disabled={verifyAccount.isPending} onClick={() => verifyAccount.mutate({ accountId: account.id, approved: false, notes: reviewNote[`acc${account.id}`] || 'Admin tekshiruvidan o‘tmadi.' })}>Rad etish</PrimaryButton></div></article>)}</div>}</section><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-200"><MessageCircle className="h-5 w-5" /></span><div><h2 className="font-display text-lg font-black text-white">Broadcast xabar</h2><p className="mt-1 text-xs text-white/40">Barcha foydalanuvchilarga in-app xabar yuboring.</p></div></div><textarea className="field-input mt-5 min-h-32 resize-y" value={broadcastText} onChange={event => setBroadcastText(event.target.value)} placeholder="Masalan: Bugun barcha premium e’lonlar uchun komissiya kamaytirildi..." /><PrimaryButton className="mt-3 w-full" disabled={broadcast.isPending || broadcastText.trim().length < 3} onClick={() => broadcast.mutate({ message: broadcastText.trim() })}>{broadcast.isPending ? 'Yuborilmoqda...' : 'Barcha foydalanuvchilarga yuborish'}<ArrowRight className="h-4 w-4" /></PrimaryButton><div className="mt-6 rounded-2xl border border-amber-400/15 bg-amber-400/[0.05] p-4"><p className="text-xs leading-5 text-white/45">Jami tushum: <strong className="text-white">{uzNumber(Number(stats?.totalRevenue ?? 0))} so‘m</strong></p></div></section></div><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Safety desk</span><h2 className="mt-2 font-display text-lg font-black text-white">Ochiq nizolar</h2></div><StatusPill tone={disputes.length ? 'gold' : 'muted'}>{disputes.length ? `${disputes.length} ta ochiq` : 'Nizo yo‘q'}</StatusPill></div>{disputes.length === 0 ? <EmptyState title="Ochiq nizo yo‘q" text="Yangi murojaatlar shu yerda ko‘rinadi." /> : <div className="mt-5 grid gap-3 md:grid-cols-2">{disputes.map(dispute => <article key={dispute.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-amber-200">Nizo #{dispute.id}</span><span className="text-xs text-white/35">Buyurtma #{dispute.orderId}</span></div><h3 className="mt-3 text-sm font-black text-white">{dispute.reason}</h3><p className="mt-2 text-xs leading-5 text-white/40">{dispute.description || 'Qo‘shimcha izoh yo‘q.'}</p><textarea className="field-input mt-4 min-h-20 resize-y" value={resolutionText[dispute.id] || ''} onChange={event => setResolutionText(current => ({ ...current, [dispute.id]: event.target.value }))} placeholder="Qaror izohi..." /><PrimaryButton className="mt-3 w-full" disabled={resolveDispute.isPending || (resolutionText[dispute.id] || '').trim().length < 3} onClick={() => resolveDispute.mutate({ disputeId: dispute.id, resolution: resolutionText[dispute.id].trim() })}>Nizoni yopish <Check className="h-4 w-4" /></PrimaryButton></article>)}</div>}</section></main>;
+  return <main className="space-y-3 pb-24 sm:space-y-6 lg:pb-6"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:flex md:items-end md:justify-between"><div className="min-w-0"><span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Boshqaruv</span><h1 className="mt-1 font-display text-xl sm:text-3xl font-black text-white">Admin panel</h1><p className="mt-1 line-clamp-2 text-xs text-white/45 sm:text-sm">Inferno Stealth xavfsizligi, tekshiruv va savdo nazorati.</p></div><StatusPill tone="green"><BadgeCheck className="h-3 w-3" />Owner</StatusPill></div><div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-5">{[["Foydalanuvchilar", stats?.totalUsers ?? '—', UserRound],['Faol e’lonlar', stats?.totalAccounts ?? '—', ShoppingBag],['Tekshiruv navbati', stats?.pendingAccounts ?? '—', FileCheck2],['Yakunlangan savdo', stats?.totalSales ?? '—', Check],['Ochiq nizolar', stats?.openDisputes ?? '—', MessageCircle]].map(([label, value, Icon]) => { const CardIcon = Icon as React.ElementType; return <div key={label as string} className="card-glow min-w-0 rounded-xl border border-white/[0.08] bg-[#16191c] p-2.5 sm:rounded-2xl sm:p-5"><CardIcon className="h-4 w-4 text-amber-200 sm:h-5 sm:w-5" /><span className="mt-2 block truncate text-[9px] font-bold uppercase tracking-wider text-white/35 sm:mt-4 sm:text-[10px]">{label as string}</span><span className="mt-1 block font-display text-base font-black text-white sm:mt-2 sm:text-2xl">{String(value)}</span></div>; })}</div><div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-emerald-400/20 bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Trust desk</span><h2 className="mt-2 font-display text-lg font-black text-white">Sotuvchi verifikatsiyasi</h2><p className="mt-1 text-xs text-white/40">Shaxsni tasdiqlash arizalarini ko‘rib chiqing va ishonch belgisini boshqaring.</p></div><StatusPill tone={(sellerVerificationQuery.data ?? []).length ? 'gold' : 'muted'}>{(sellerVerificationQuery.data ?? []).length} ta</StatusPill></div>{sellerVerificationQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-xs text-white/45"><LoaderCircle className="h-4 w-4 animate-spin text-emerald-300" />Arizalar yuklanmoqda...</div> : (sellerVerificationQuery.data ?? []).length === 0 ? <EmptyState title="Kutilayotgan ariza yo‘q" text="Yangi sotuvchi arizasi yuborilganda shu yerda ko‘rinadi." /> : <div className="mt-5 space-y-3">{(sellerVerificationQuery.data ?? []).map(row => { const application = row.application; return <article key={application.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-start gap-3"><a href={application.idCardPhotoUrl} target="_blank" rel="noreferrer" className="shrink-0"><img loading="lazy" decoding="async" src={application.idCardPhotoUrl} alt="Shaxsni tasdiqlovchi hujjat" className="h-20 w-20 rounded-xl bg-black/30 img-live object-cover ring-1 ring-emerald-400/20" /></a><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-emerald-200">#{application.id}</span><StatusPill tone="gold">Kutilmoqda</StatusPill></div><h3 className="mt-2 truncate text-sm font-black text-white">{application.fullName}</h3><p className="mt-1 truncate text-xs text-white/45">@{application.telegramUsername} · {row.userName || row.userOpenId || `User #${application.userId}`}</p><p className="mt-1 text-[10px] text-white/30">{new Date(application.createdAt).toLocaleString()}</p></div></div><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[application.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [application.id]: event.target.value }))} placeholder="Qaror izohi (ixtiyoriy)" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={reviewSellerVerification.isPending} onClick={() => reviewSellerVerification.mutate({ verificationId: application.id, approved: true, note: reviewNote[application.id] || undefined })}><Check className="h-4 w-4" />Tasdiqlash</PrimaryButton><PrimaryButton variant="ghost" disabled={reviewSellerVerification.isPending} onClick={() => reviewSellerVerification.mutate({ verificationId: application.id, approved: false, note: reviewNote[application.id] || 'Ma’lumotlar tekshiruvdan o‘tmadi.' })}>Rad etish</PrimaryButton></div></article>; })}</div>}</section><section className="rounded-2xl border border-rose-400/20 bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-rose-300">Moderation desk</span><h2 className="mt-2 font-display text-lg font-black text-white">Sharh shikoyatlari</h2><p className="mt-1 text-xs text-white/40">Spam yoki haqoratli sharhlarni yashiring, asossiz shikoyatlarni yoping.</p></div><StatusPill tone={(reviewReportsQuery.data ?? []).length ? 'gold' : 'muted'}>{(reviewReportsQuery.data ?? []).length} ta</StatusPill></div>{reviewReportsQuery.isLoading ? <div className="mt-5 flex items-center gap-2 text-xs text-white/45"><LoaderCircle className="h-4 w-4 animate-spin text-rose-300" />Shikoyatlar yuklanmoqda...</div> : (reviewReportsQuery.data ?? []).length === 0 ? <EmptyState title="Kutilayotgan shikoyat yo‘q" text="Foydalanuvchi sharh haqida xabar berganda shu yerda ko‘rinadi." /> : <div className="mt-5 space-y-3">{(reviewReportsQuery.data ?? []).map(row => <article key={row.report.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-black text-rose-200">Shikoyat #{row.report.id}</span><span className="text-[10px] text-white/35">{new Date(row.report.createdAt).toLocaleString()}</span></div><p className="mt-2 text-xs text-white/45">Sabab: <strong className="text-white/75">{row.report.reason}</strong></p><blockquote className="mt-3 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-3 text-xs leading-5 text-white/65">“{row.review?.comment || 'Izohsiz sharh'}”<footer className="mt-2 text-[10px] text-white/30">Xabar bergan: {row.reporterName || `User #${row.report.reporterId}`}</footer></blockquote><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[row.report.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [row.report.id]: event.target.value }))} placeholder="Moderatsiya izohi (ixtiyoriy)" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={moderateReviewReport.isPending} onClick={() => moderateReviewReport.mutate({ reportId: row.report.id, action: 'hidden', note: reviewNote[row.report.id] || 'Qoidabuzarlik tasdiqlandi.' })}>Yashirish</PrimaryButton><PrimaryButton variant="ghost" disabled={moderateReviewReport.isPending} onClick={() => moderateReviewReport.mutate({ reportId: row.report.id, action: 'dismissed', note: reviewNote[row.report.id] || 'Qoidabuzarlik topilmadi.' })}>Rad etish</PrimaryButton></div></article>)}</div>}</section></div><div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><section className="rounded-2xl border border-amber-400/20 bg-[#16191c] p-4 sm:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Wallet review</span><h2 className="mt-2 font-display text-lg font-black text-white">Deposit Review</h2><p className="mt-1 text-xs text-white/40">Kartaga tushgan to‘lov cheklarini tekshiring va balansni faqat bir marta kredit qiling.</p></div><select value={depositStatus} onChange={event => setDepositStatus(event.target.value as 'all' | 'pending' | 'approved' | 'rejected')} className="field-input w-full sm:w-32"><option value="pending">Kutilmoqda</option><option value="all">Barchasi</option><option value="approved">Tasdiqlangan</option><option value="rejected">Rad etilgan</option></select></div>{(depositsQuery.data ?? []).length === 0 ? <EmptyState title="Cheklar yo‘q" text="Tanlangan holat bo‘yicha manual top-up topilmadi." /> : <div className="mt-5 space-y-3">{(depositsQuery.data ?? []).map(row => { const receipt = row.receipt; return <article key={receipt.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3"><div className="flex gap-3"><a href={receipt.receiptUrl} target="_blank" rel="noreferrer" className="shrink-0"><img loading="lazy" decoding="async" src={receipt.receiptUrl} alt={`Chek #${receipt.id}`} className="h-24 w-20 rounded-xl bg-black/30 img-live object-cover" /></a><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-amber-200">#{receipt.id}</span><StatusPill tone={receipt.status === 'approved' ? 'green' : receipt.status === 'rejected' ? 'muted' : 'gold'}>{receipt.status === 'approved' ? 'Tasdiqlandi' : receipt.status === 'rejected' ? 'Rad etildi' : 'Kutilmoqda'}</StatusPill></div><p className="mt-2 text-sm font-black text-white">{uzNumber(Number(receipt.amount))} so‘m</p><p className="mt-1 truncate text-xs text-white/40">{row.userName || row.userOpenId || `User #${receipt.userId}`}</p><p className="mt-1 text-[10px] text-white/30">{new Date(receipt.createdAt).toLocaleString()}</p></div></div>{receipt.status === 'pending' && <><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[receipt.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [receipt.id]: event.target.value }))} placeholder="Admin izohi (ixtiyoriy)" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={reviewDeposit.isPending} onClick={() => reviewDeposit.mutate({ receiptId: receipt.id, approved: true, note: reviewNote[receipt.id] || undefined })}><Check className="h-4 w-4" />Tasdiqlash</PrimaryButton><PrimaryButton variant="ghost" disabled={reviewDeposit.isPending} onClick={() => reviewDeposit.mutate({ receiptId: receipt.id, approved: false, note: reviewNote[receipt.id] || 'Chek ma’lumotlari mos kelmadi.' })}>Rad etish</PrimaryButton></div></>}</article>; })}</div>}</section><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Payout queue</span><h2 className="mt-2 font-display text-lg font-black text-white">Yechib olish navbati</h2><p className="mt-1 text-xs text-white/40">Mablag‘ qaytarilishi yoki to‘lanishini qo‘lda tasdiqlang.</p></div><StatusPill tone={(payoutsQuery.data ?? []).length ? 'gold' : 'muted'}>{(payoutsQuery.data ?? []).length} ta</StatusPill></div>{(payoutsQuery.data ?? []).length === 0 ? <EmptyState title="Payout navbati bo‘sh" text="Kutilayotgan yechib olish so‘rovi yo‘q." /> : <div className="mt-5 space-y-3">{(payoutsQuery.data ?? []).map(row => { const transaction = row.transaction; return <article key={transaction.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-start justify-between gap-3"><div><span className="text-xs font-black text-amber-200">#{transaction.id}</span><h3 className="mt-2 text-sm font-black text-white">{uzNumber(Number(transaction.amount))} so‘m</h3><p className="mt-1 text-xs text-white/40">{row.userName || row.userOpenId || `User #${transaction.userId}`}</p><p className="mt-1 line-clamp-2 text-[11px] text-white/35">{transaction.description}</p></div><StatusPill tone="gold">Kutilmoqda</StatusPill></div><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[transaction.id] || ''} onChange={event => setReviewNote(current => ({ ...current, [transaction.id]: event.target.value }))} placeholder="Payout izohi" /><div className="mt-2 grid grid-cols-2 gap-2"><PrimaryButton disabled={processPayout.isPending} onClick={() => processPayout.mutate({ transactionId: transaction.id, approved: true, note: reviewNote[transaction.id] || undefined })}><Check className="h-4 w-4" />To‘landi</PrimaryButton><PrimaryButton variant="ghost" disabled={processPayout.isPending} onClick={() => processPayout.mutate({ transactionId: transaction.id, approved: false, note: reviewNote[transaction.id] || 'Payout rad etildi.' })}>Rad etish</PrimaryButton></div></article>; })}</div>}</section></div><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Audit trail</span><h2 className="mt-2 font-display text-lg font-black text-white">Audit log</h2><p className="mt-1 text-xs text-white/40">Deposit va payout qarorlari kim tomonidan va qachon bajarilganini ko‘ring.</p></div><button type="button" onClick={() => auditsQuery.refetch()} className="text-xs font-bold text-amber-200">Yangilash</button></div>{(auditsQuery.data ?? []).length === 0 ? <EmptyState title="Audit yozuvlari yo‘q" text="Yangi admin qarorlari shu yerda ko‘rinadi." /> : <div className="mt-4 divide-y divide-white/[0.07]">{(auditsQuery.data ?? []).slice(0, 12).map(row => <div key={row.audit.id} className="flex items-start justify-between gap-4 py-3"><div className="min-w-0"><p className="text-xs font-black text-white">{row.audit.eventType}</p><p className="mt-1 truncate text-[11px] text-white/40">{row.userName || `User #${row.audit.userId}`} · {row.audit.details || '—'}</p></div><span className="shrink-0 text-[10px] text-white/30">{new Date(row.audit.createdAt).toLocaleString()}</span></div>)}</div>}</section><div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Queue</span><h2 className="mt-2 font-display text-lg font-black text-white">Tekshiruv navbati</h2><p className="mt-1 text-xs text-white/40">Har bir e’lon egasiga chiqishidan oldin tekshiriladi.</p></div><StatusPill tone={pending.length ? 'gold' : 'muted'}>{pending.length ? `${pending.length} ta kutilmoqda` : 'Bo‘sh'}</StatusPill></div>{pending.length === 0 ? <EmptyState title="Kutilayotgan e’lonlar yo‘q" text="Yangi e’lon kelganda shu yerda ko‘rinadi." /> : <div className="mt-5 space-y-3">{pending.map(account => <article key={account.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex gap-4">{account.thumbnailUrl ? <img loading="lazy" decoding="async" src={account.thumbnailUrl} alt="" className="h-20 w-24 rounded-xl bg-black/30 img-live object-cover" /> : <span className="grid h-20 w-24 place-items-center rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-amber-200"><Shield className="h-6 w-6" /></span>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold text-amber-200">#{account.id}</span><span className="text-xs text-white/40">{account.accountId}</span><StatusPill tone="muted">{account.region}</StatusPill></div><h3 className="mt-2 truncate text-sm font-black text-white">{account.playerName}</h3><p className="mt-1 text-xs text-white/45">LVL {account.level} · {uzNumber(Number(account.price))} so‘m</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-white/35">{account.description || 'Tavsif kiritilmagan.'}</p></div></div><textarea className="field-input mt-3 min-h-16 resize-y" value={reviewNote[`acc${account.id}`] || ''} onChange={event => setReviewNote(current => ({ ...current, [`acc${account.id}`]: event.target.value }))} placeholder="Tasdiqlash/rad etish sababi (foydalanuvchiga ko‘rinadi)" /><div className="mt-3 flex flex-wrap gap-2"><PrimaryButton disabled={verifyAccount.isPending} onClick={() => verifyAccount.mutate({ accountId: account.id, approved: true, notes: reviewNote[`acc${account.id}`] || undefined })}><Check className="h-4 w-4" />Tasdiqlash</PrimaryButton><PrimaryButton variant="ghost" disabled={verifyAccount.isPending} onClick={() => verifyAccount.mutate({ accountId: account.id, approved: false, notes: reviewNote[`acc${account.id}`] || 'Admin tekshiruvidan o‘tmadi.' })}>Rad etish</PrimaryButton></div></article>)}</div>}</section><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-200"><MessageCircle className="h-5 w-5" /></span><div><h2 className="font-display text-lg font-black text-white">Broadcast xabar</h2><p className="mt-1 text-xs text-white/40">Barcha foydalanuvchilarga in-app xabar yuboring.</p></div></div><textarea className="field-input mt-5 min-h-32 resize-y" value={broadcastText} onChange={event => setBroadcastText(event.target.value)} placeholder="Masalan: Bugun barcha premium e’lonlar uchun komissiya kamaytirildi..." /><PrimaryButton className="mt-3 w-full" disabled={broadcast.isPending || broadcastText.trim().length < 3} onClick={() => broadcast.mutate({ message: broadcastText.trim() })}>{broadcast.isPending ? 'Yuborilmoqda...' : 'Barcha foydalanuvchilarga yuborish'}<ArrowRight className="h-4 w-4" /></PrimaryButton><div className="mt-6 rounded-2xl border border-amber-400/15 bg-amber-400/[0.05] p-4"><p className="text-xs leading-5 text-white/45">Jami tushum: <strong className="text-white">{uzNumber(Number(stats?.totalRevenue ?? 0))} so‘m</strong></p></div></section></div><section className="card-glow rounded-2xl border border-white/[0.08] bg-[#16191c] p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Safety desk</span><h2 className="mt-2 font-display text-lg font-black text-white">Ochiq nizolar</h2></div><StatusPill tone={disputes.length ? 'gold' : 'muted'}>{disputes.length ? `${disputes.length} ta ochiq` : 'Nizo yo‘q'}</StatusPill></div>{disputes.length === 0 ? <EmptyState title="Ochiq nizo yo‘q" text="Yangi murojaatlar shu yerda ko‘rinadi." /> : <div className="mt-5 grid gap-3 md:grid-cols-2">{disputes.map(dispute => <article key={dispute.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-amber-200">Nizo #{dispute.id}</span><span className="text-xs text-white/35">Buyurtma #{dispute.orderId}</span></div><h3 className="mt-3 text-sm font-black text-white">{dispute.reason}</h3><p className="mt-2 text-xs leading-5 text-white/40">{dispute.description || 'Qo‘shimcha izoh yo‘q.'}</p><textarea className="field-input mt-4 min-h-20 resize-y" value={resolutionText[dispute.id] || ''} onChange={event => setResolutionText(current => ({ ...current, [dispute.id]: event.target.value }))} placeholder="Qaror izohi..." /><PrimaryButton className="mt-3 w-full" disabled={resolveDispute.isPending || (resolutionText[dispute.id] || '').trim().length < 3} onClick={() => resolveDispute.mutate({ disputeId: dispute.id, resolution: resolutionText[dispute.id].trim() })}>Nizoni yopish <Check className="h-4 w-4" /></PrimaryButton></article>)}</div>}</section></main>;
 }
 
 function EmptyState({ title, text }: { title: string; text: string }) {

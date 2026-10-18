@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -545,7 +546,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Fayl hajmi 40 MB dan oshmasin" });
         }
         const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-        return await storagePut(`users/${ctx.user.id}/accounts/${safeName}`, bytes, input.contentType);
+        return await storagePut(`users/${ctx.user.id}/accounts/${randomUUID()}-${safeName}`, bytes, input.contentType);
       }),
 
     // Large media (video up to 1 GB): browser PUTs straight to S3 with a presigned URL.
@@ -557,7 +558,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-        return await storagePresignPut(`users/${ctx.user.id}/accounts/${safeName}`, input.contentType);
+        return await storagePresignPut(`users/${ctx.user.id}/accounts/${randomUUID()}-${safeName}`, input.contentType);
       }),
   }),
 

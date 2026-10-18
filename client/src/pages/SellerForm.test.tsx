@@ -73,8 +73,8 @@ describe('SellPage upload and submit flow', () => {
 
     expect(await screen.findByAltText('screenshot.png')).toBeTruthy();
     expect(await screen.findByLabelText('match.mp4')).toBeTruthy();
-    expect(screen.getAllByText('Rasm').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Video').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Rasm$/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Video$/).length).toBeGreaterThan(0);
     vi.unstubAllGlobals();
   });
 

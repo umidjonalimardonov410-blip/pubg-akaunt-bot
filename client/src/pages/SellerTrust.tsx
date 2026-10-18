@@ -166,7 +166,7 @@ export function SellerTrustCard({ sellerId }: { sellerId?: number }) {
   const query = trpc.expansion.trust.profile.useQuery({ userId: sellerId ?? 0 }, { enabled: Boolean(sellerId), staleTime: 30_000 });
   if (!sellerId) return null;
   if (query.isLoading) {
-    return <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5 text-sm text-white/45"><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin text-amber-200" />Sotuvchi ma’lumoti yuklanmoqda...</section>;
+    return <section className="border-t border-border py-3 text-sm text-white/45"><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin text-amber-200" />Sotuvchi ma’lumoti yuklanmoqda...</section>;
   }
   const data: any = query.data;
   if (!data) return null;
@@ -175,12 +175,12 @@ export function SellerTrustCard({ sellerId }: { sellerId?: number }) {
   const tier = resolveTrustTier(totalSales, rating);
 
   return (
-    <section className="card-glow rounded-2xl border border-white/[0.08] bg-[#0e1013] p-4 sm:p-5">
+    <section className="border-t border-border py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400/10 text-amber-200"><ShieldCheck className="h-5 w-5" /></span>
           <div>
-            <h2 className="font-display text-lg font-black text-white">Sotuvchi ishonchi</h2>
+            <h2 className="font-display text-lg font-black text-white">{data.name || "Sotuvchi"}</h2>
             <p className="mt-0.5 text-[11px] text-white/40">{tier.hint}</p>
           </div>
         </div>
@@ -197,7 +197,7 @@ export function SellerTrustCard({ sellerId }: { sellerId?: number }) {
         {[
           ['Yakunlangan savdo', uzNumber(totalSales)],
           ['Faol e’lonlar', uzNumber(Number(data.activeListings ?? 0))],
-          ['Javob darajasi', `${Number(data.responseRate ?? 0)}%`],
+          ['Javob darajasi', data.responseRate == null ? '—' : `${Number(data.responseRate)}%`],
           ['A’zo bo‘lgan', data.memberSince ? new Date(data.memberSince).toLocaleDateString('uz-UZ', { month: 'short', year: 'numeric' }) : '—'],
         ].map(([label, value]) => (
           <div key={label} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-2.5">
