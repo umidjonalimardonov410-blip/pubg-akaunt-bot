@@ -1061,6 +1061,29 @@ function Hero({ onExplore, onSell }: { onExplore: () => void; onSell: () => void
   );
 }
 
+function FavoritesStrip({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { isAuthenticated } = useAuth();
+  const query = trpc.favorites.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000, refetchOnWindowFocus: false });
+  const items = (query.data ?? []).slice(0, 8).map(normalizeAccount);
+  if (!isAuthenticated || query.isLoading || items.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading eyebrow="Tezkor kirish" title="Sevimlilaringiz" actionLabel="Barchasi" onAction={() => onNavigate('/saved')} />
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {items.map(item => (
+          <button key={item.id} type="button" onClick={() => onNavigate(`/account/${item.id}`)} className="pubg-press flex w-40 shrink-0 items-center gap-2.5 rounded-2xl border border-amber-400/15 bg-[#16191c] p-2 text-left active:scale-[.97]">
+            <img src={item.image} alt={item.playerName} loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-white/10" />
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-bold text-white">{item.playerName}</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-amber-300">{uzNumber(item.price)} so'm</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const featuredQuery = trpc.accounts.search.useQuery({ limit: 8, offset: 0 }, { staleTime: 20_000, refetchOnWindowFocus: false });
   const featured = (featuredQuery.data ?? []).map(normalizeAccount);
@@ -1068,6 +1091,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
     <main className="space-y-5 pb-2">
       <LiveTicker />
       <Hero onExplore={() => onNavigate('/accounts')} onSell={() => onNavigate('/sell')} />
+      <FavoritesStrip onNavigate={onNavigate} />
       <div className="hidden sm:block"><TrustStrip /></div>
       <HypeDeck />
       <TopSellersBoard limit={5} />
