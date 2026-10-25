@@ -1,0 +1,75 @@
+@theme inline {
+ --color-primary: var(--market-primary);
+ --color-primary-foreground: var(--market-on-primary);
+ --color-secondary: var(--market-surface);
+ --color-secondary-foreground: var(--market-text);
+ --color-background: var(--market-background);
+ --color-card: var(--market-surface);
+ --color-popover: var(--market-surface);
+ --color-border: var(--market-border);
+ --color-input: var(--market-surface);
+ --color-ring: var(--market-primary);
+ --color-accent: var(--market-primary);
+ --color-accent-foreground: var(--market-on-primary);
+ --color-amber-50: oklch(0.97 0.02 155);
+ --color-amber-100: oklch(0.93 0.05 155);
+ --color-amber-200: oklch(0.87 0.09 155);
+ --color-amber-300: oklch(0.81 0.13 155);
+ --color-amber-400: var(--market-primary);
+ --color-amber-500: oklch(0.65 0.15 155);
+ --color-amber-600: oklch(0.55 0.13 155);
+ --color-gold: var(--market-primary);
+ --color-emerald-300: oklch(0.81 0.13 155);
+ --color-emerald-400: var(--market-primary);
+}
+:root {
+ --market-primary: oklch(0.75 0.16 155);
+ --market-on-primary: oklch(0.19 0.025 155);
+ --market-background: oklch(0.16 0.008 155);
+ --market-surface: oklch(0.215 0.01 155);
+ --market-text: oklch(0.96 0.005 155);
+ --market-muted: oklch(0.73 0.015 155);
+ --market-border: oklch(0.33 0.025 155);
+ --market-soft: oklch(0.75 0.16 155 / 12%);
+ --market-shadow: 0 8px 24px oklch(0.08 0.01 155 / 24%);
+ --primary: 145 62% 58%;
+ --primary-foreground: 150 35% 10%;
+ --accent: 145 62% 58%;
+ --ring: 145 62% 58%;
+}
+html, body { background: var(--market-background); color: var(--market-text); }
+body { font-family: 'Barlow', system-ui, sans-serif; }
+h1,h2,h3,h4,h5,h6,.font-display { font-family: 'Barlow',system-ui,sans-serif; font-weight:700 !important; letter-spacing:0; }
+button,input,textarea,select { letter-spacing:0; }
+button:focus-visible,a:focus-visible { outline:2px solid var(--market-primary); outline-offset:3px; }
+header,nav.fixed { border-color:var(--market-border) !important; }
+header { background:var(--market-background) !important; }
+button[class*="from-blood"],button[class*="bg-[linear-gradient"],a[class*="from-blood"],[data-slot="button"][class*="bg-primary"],.inferno-glow-button { background:var(--market-primary); color:var(--market-on-primary); border-color:var(--market-primary); box-shadow:none; font-weight:700; }
+button[class*="from-blood"]:hover,.inferno-glow-button:hover { background:color-mix(in oklch,var(--market-primary) 90%,var(--market-text)); box-shadow:var(--market-shadow); }
+button[aria-current="page"],button[aria-selected="true"] { color:var(--market-primary); background:var(--market-soft); border-color:var(--market-primary); }
+.field-input { min-height:48px; border-radius:8px; border-color:var(--market-border); background:var(--market-surface); color:var(--market-text); }
+.field-input::placeholder { color:var(--market-muted); }
+.field-input:focus { border-color:var(--market-primary) !important; background:var(--market-surface); box-shadow:0 0 0 3px var(--market-soft); }
+.field-input option { background:var(--market-surface); color:var(--market-text); }
+.market-account,.card-glow,.hype-card,.pro-glass,.px-glass { border-color:var(--market-border); border-radius:8px; box-shadow:var(--market-shadow); }
+.pro-glass,.px-glass { background:var(--market-surface); }
+.market-account:hover,.card-glow:hover,.hype-card:hover { border-color:var(--market-primary); box-shadow:var(--market-shadow); transform:none; }
+.market-photo { background:var(--market-background); }
+.market-name { font-weight:700; line-height:1.4; }
+.market-price { color:var(--market-primary); font-weight:800; }
+.market-open { min-height:40px; font-size:12px; padding:8px 10px; }
+.pubg-card:hover,.pubg-card:active { transform:none; box-shadow:var(--market-shadow); }
+.pro-clip { clip-path:none; border-radius:8px; }
+.pro-live { background:var(--market-background); }
+.pro-live__grid,.pro-live__scan,.pro-ember,.inferno-ember,.px-scan::before { display:none; }
+.pro-ring { background:var(--market-primary); animation:none; }
+.px-gold-text { background:none; color:var(--market-primary); text-shadow:none; }
+.inferno-glow { color:var(--market-primary); text-shadow:none; }
+.inferno-glow-border { border-color:var(--market-primary); box-shadow:none; }
+.hud-row::before,.hud-crate::after,.xp-bar { background:var(--market-primary); }
+.hud-stripes { background-image:none; }
+.pubg-glow,.price-flame,.px-pulse,.inferno-pulse,.pulse-glow,.fire-flicker { animation:none; }
+::-webkit-scrollbar-thumb { background:var(--market-border); }
+::-webkit-scrollbar-thumb:hover { background:var(--market-primary); }
+.theme-neon { --market-primary:oklch(0.8 0.12 200); }
+.theme-gamer { --market-primary:oklch(0.8 0.2 150); }
